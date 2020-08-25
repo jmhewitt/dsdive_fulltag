@@ -6,4 +6,4 @@ invisible(lapply(list.files("./R", full.names = TRUE, recursive = TRUE), source)
 
 source('R/plan.R')
 
-make(the_plan, lock_envir = FALSE)
+make(the_plan, lock_envir = FALSE, target = 'mcmc_samples_stagelearning')

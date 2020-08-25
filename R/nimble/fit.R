@@ -1,11 +1,19 @@
 fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
-               default_ranef_samplers = FALSE) {
+               default_ranef_samplers = FALSE, empirical_stage_priors) {
   
   nim_pkg = readRDS(nim_pkg)
   
-  dive_model = nimbleModel(code = modelCode, constants = nim_pkg$consts,
-                           data = nim_pkg$data, inits = nim_pkg$inits,
-                           name = id_chr())
+  if(empirical_stage_priors) {
+    dive_model = nimbleModel(code = modelCode, constants = nim_pkg$consts,
+                             data = nim_pkg$data, inits = nim_pkg$inits,
+                             name = id_chr())
+  } else {
+    dive_model = nimbleModel(code = modelCode_stageLearning, 
+                             constants = nim_pkg$consts,
+                             data = nim_pkg$data, inits = nim_pkg$inits,
+                             name = id_chr())
+  }
+  
   
   dive_model$initializeInfo()
 
@@ -23,6 +31,10 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
 
   # monitor dive-specific random effects
   cfg_mcmc$addMonitors(c('pi', 'lambda'))
+  
+  if(empirical_stage_priors) {
+    cfg_mcmc$addMonitors('xi_prior_cor')
+  }
   
 
   ##

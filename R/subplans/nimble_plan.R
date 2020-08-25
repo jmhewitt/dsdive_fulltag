@@ -30,11 +30,19 @@ nimble_plan = drake_plan(
     format = 'file'
   ),
 
-  # fit models
+  # fit full sattag model
   mcmc_samples = target(
-    fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints),
+    fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, 
+        empirical_stage_priors = TRUE),
     format = 'file',
     trigger = trigger(condition = FALSE, mode = 'condition')
+  ),
+  
+  # fit full sattag model with stage duration learning
+  mcmc_samples_stagelearning = target(
+    fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
+        empirical_stage_priors = FALSE),
+    format = 'file'
   )
   
 )
