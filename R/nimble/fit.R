@@ -1,11 +1,11 @@
-fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, .id_chr,
+fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
                default_ranef_samplers = FALSE) {
-
-  dir.create(mcmc_sample_dir, recursive = TRUE, showWarnings = FALSE)
+  
+  nim_pkg = readRDS(nim_pkg)
   
   dive_model = nimbleModel(code = modelCode, constants = nim_pkg$consts,
                            data = nim_pkg$data, inits = nim_pkg$inits,
-                           name = .id_chr)
+                           name = id_chr())
   
   dive_model$initializeInfo()
 
@@ -23,6 +23,7 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, .id_chr,
 
   # monitor dive-specific random effects
   cfg_mcmc$addMonitors(c('pi', 'lambda'))
+  
 
   ##
   ## semi-warm start for model parameters, and use covariances for RW proposals
@@ -31,11 +32,10 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, .id_chr,
   #
   # movement parameter samplers
   #
-
   
   cfg_mcmc$removeSamplers(c('logit_pi'))
   
-  lapply(c(1,3), function(s) {
+  lapply(c(1,3,4,5), function(s) {
     
     # status update
     message(paste('pi, stage:', s, sep = ' '))
@@ -69,8 +69,8 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, .id_chr,
 
   o_joint = lapply(1:nim_pkg$consts$N_tags, function(tagId) {
 
-    # stage 1 and 3 parameters
-    lapply(c(1,3), function(s) {
+    # stage 1 and 3 parameters, and stages "4" and "5" (i.e., shallow dives)
+    lapply(c(1,3,4,5), function(s) {
 
       # status update
       message(paste('tag:', tagId, 'stage:', s, sep = ' '))
@@ -179,6 +179,28 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, .id_chr,
                           control = list(propCov = cov))
       
     }
+    
+    for(i in 1:nim_pkg$consts$N_dives_shallow) {
+      
+      if(i %% 50 == 0) {
+        message(paste('shallow dive:', i))
+      }
+      
+      tgt = paste('log_xi_shallow[', i, ']', sep = '')
+      deps = cmodel$getDependencies(tgt)
+      
+      o = optim(par = cmodel[[tgt]], fn = function(theta) {
+        cmodel[[tgt]] = theta
+        cmodel$calculate(deps)
+      }, method = 'BFGS', control = list(fnscale = -1), hessian = TRUE)
+      
+      sd = as.numeric(sqrt(-1/o$hessian))
+      
+      sd = ifelse(is.finite(sd), sd, 1)
+      
+      cfg_mcmc$addSampler(target = tgt, type = 'RW', silent = TRUE,
+                          control = list(scale = sd))
+    }
   }
   
   
@@ -188,14 +210,15 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, .id_chr,
 
   model_mcmc = buildMCMC(cfg_mcmc)
 
-  cmcmc = compileNimble(model_mcmc, projectName = .id_chr)
+  cmcmc = compileNimble(model_mcmc, projectName = id_chr())
 
 
   #
   # posterior samples
   #
 
-  sample_file = file.path(mcmc_sample_dir, paste(.id_chr, '.RData', sep = ''))
+  dir.create(mcmc_sample_dir, recursive = TRUE, showWarnings = FALSE)
+  sample_file = file.path(mcmc_sample_dir, paste(id_chr(), '.RData', sep = ''))
   
   for(i in 1:ncheckpoints) {
     chunk_iter = ceiling(niter/ncheckpoints)

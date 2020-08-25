@@ -1,5 +1,6 @@
 flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
-                            cee_starts, validation_proportion) {
+                            cee_starts, validation_proportion, 
+                            mcmc_sample_dir) {
   
   # initialize flattened structures
   nim_pkg = list(
@@ -10,7 +11,7 @@ flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
     consts = list(
       endpoint_priors = NULL,
       dive_relations = NULL,
-      dive_relations_validation = NULL,
+      dive_relations_shallow = NULL,
       tag_covariates = NULL
     )
   )
@@ -39,15 +40,9 @@ flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
     #
     # id's of dives to keep from record
     #
-    
-    # keep deep dives and dives that pass earlier data completeness tests
-    dive.ids = base::intersect(which(dive.flags),
-                         dive.ranges$dive.id[dive.ranges$type == 'Deep'])
-    
-    # keep dives with more than three observations
-    dive.ids = base::intersect(dive.ids, 
-                         which(dive.ranges$end.ind - dive.ranges$start.ind + 1 > 
-                                 3))
+  
+    # keep dives that pass earlier data completeness tests
+    dive.ids = which(dive.flags)
     
     # keep dives that end before an exposure event
     if(length(cees_experienced) > 0) {
@@ -55,25 +50,6 @@ flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
       dive.ids = base::intersect(dive.ids,
                            which(endpoint.inds$t_lwr[dive.ranges$T3_endpoint] <= 
                                    exclude_after_time))
-    }
-    
-    # keep dives with observations that start and end at the surface
-    dive.ids = base::intersect(
-      dive.ids,
-      which(depths[endpoint.inds$ind[dive.ranges$T0_endpoint]] == 1 & 
-            depths[endpoint.inds$ind[dive.ranges$T3_endpoint]] == 1)
-    )
-    
-    # make train/test partitions
-    if(validation_proportion > 0) {
-      
-      # partition dives by id
-      test_dives = sample(x = dive.ids, 
-                          size = length(dive.ids) * validation_proportion)
-      dive.ids = base::setdiff(dive.ids, test_dives)
-      
-    } else {
-      test_dives = NULL
     }
     
     # id's of endpoints to keep from record
@@ -109,7 +85,7 @@ flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
     # merge each dive
     for(j in 1:nrow(dive.ranges)) {
       # only process valid dives
-      if(dive.ranges$dive.id[j] %in% c(dive.ids, test_dives)) {
+      if(dive.ranges$dive.id[j] %in% dive.ids) {
         
         # get index at which first depth will be stored
         flat_depth_ind = length(nim_pkg$data$depths) + 1
@@ -129,37 +105,46 @@ flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
         # merge dive record
         if(dive.ranges$dive.id[j] %in% dive.ids) { 
           
-          # construct id for dive in merged dataset
-          flat_dive_id = ifelse(is.null(nim_pkg$consts$dive_relations), 0, 
-                                nrow(nim_pkg$consts$dive_relations)) + 1
+          if(dive.ranges$type[j] == 'Deep') {
+            
+            # construct id for dive in merged dataset
+            flat_dive_id = ifelse(is.null(nim_pkg$consts$dive_relations), 0, 
+                                  nrow(nim_pkg$consts$dive_relations)) + 1
+            
+            # merge dive record
+            nim_pkg$consts$dive_relations = rbind(
+              nim_pkg$consts$dive_relations,
+              c(T0_endpoint = 
+                  endpoint.inds$merged.id[dive.ranges$T0_endpoint[j]], 
+                T3_endpoint = 
+                  endpoint.inds$merged.id[dive.ranges$T3_endpoint[j]],
+                tag = i,
+                depth_first = flat_depth_ind,
+                depth_last = length(nim_pkg$data$depths))
+            )
+            
+          } else if(dive.ranges$type[j] == 'Shallow') {
+            
+            # construct id for dive in merged dataset
+            flat_dive_id = ifelse(
+              is.null(nim_pkg$consts$dive_relations_shallow), 
+              0, nrow(nim_pkg$consts$dive_relations_shallow)) + 1
+            
+            # merge dive record
+            nim_pkg$consts$dive_relations_shallow = rbind(
+              nim_pkg$consts$dive_relations_shallow,
+              c(T0_endpoint = 
+                  endpoint.inds$merged.id[dive.ranges$T0_endpoint[j]], 
+                T2_endpoint = 
+                  endpoint.inds$merged.id[dive.ranges$T3_endpoint[j]],
+                tag = i,
+                depth_first = flat_depth_ind,
+                depth_last = length(nim_pkg$data$depths))
+            )
+            
+          }
           
-          # merge dive record
-          nim_pkg$consts$dive_relations = rbind(
-            nim_pkg$consts$dive_relations,
-            c(T0_endpoint = endpoint.inds$merged.id[dive.ranges$T0_endpoint[j]], 
-              T3_endpoint = endpoint.inds$merged.id[dive.ranges$T3_endpoint[j]],
-              tag = i,
-              depth_first = flat_depth_ind,
-              depth_last = length(nim_pkg$data$depths))
-          )
-          
-        } else {
-          
-          # construct id for dive in merged validation dataset
-          flat_dive_id = ifelse(
-            is.null(nim_pkg$consts$dive_relations_validation), 0, 
-            nrow(nim_pkg$consts$dive_relations_validation)
-          ) + 1
-          
-          # merge dive record
-          nim_pkg$consts$dive_relations_validation = rbind(
-            nim_pkg$consts$dive_relations_validation,
-            c(tag = i,
-              depth_first = flat_depth_ind,
-              depth_last = length(nim_pkg$data$depths))
-          )
-          
-        }
+        } 
         
       }
     }
@@ -169,25 +154,25 @@ flatten_tag_data = function(depth_files, dive_endpoints, template_bins, tag_sex,
     
   }
   
-  # locations where there are consecutive deep dives
-  length(which(
-    nim_pkg$consts$dive_relations[-1,'T0_endpoint'] == 
-      nim_pkg$consts$dive_relations[1:(nrow(nim_pkg$consts$dive_relations)-1),
-                                    'T3_endpoint']
-  ))
-  
   # extract sizes
   nim_pkg$consts$N_tags = length(dive_endpoints)
   nim_pkg$consts$N_dives = nrow(nim_pkg$consts$dive_relations)
+  nim_pkg$consts$N_dives_shallow = nrow(nim_pkg$consts$dive_relations_shallow)
   nim_pkg$consts$N_endpoints = nrow(nim_pkg$consts$endpoint_priors)
   nim_pkg$consts$N_bins = nrow(template_bins)
   
   # export bin widths
   nim_pkg$consts$widths = template_bins$halfwidth * 2
   
-  if(validation_proportion==0) {
-    nim_pkg$consts$dive_relations_validation = NULL
-  }
+  # reformat tag covariates
+  nim_pkg$consts$tag_covariates = matrix(nim_pkg$consts$tag_covariates, 
+                                         ncol = 1)
   
-  nim_pkg
+  # save package
+  dir.create(mcmc_sample_dir, recursive = TRUE, showWarnings = FALSE)
+  f = file.path(mcmc_sample_dir, paste(id_chr(), '.rds', sep = ''))
+  saveRDS(nim_pkg, f)
+  
+  # return path
+  f
 }
