@@ -33,7 +33,8 @@ nimble_plan = drake_plan(
   # fit models
   mcmc_samples = target(
     fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints),
-    format = 'file'
+    format = 'file',
+    trigger = trigger(condition = FALSE, mode = 'condition')
   )
   
 )
