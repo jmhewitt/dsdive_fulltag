@@ -215,6 +215,39 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
     }
   }
   
+  # stage duration samplers
+  if(!empirical_stage_priors) {
+    
+    cfg_rw_sampler = function(tgt) {
+      message(paste('updating sampler:', tgt, sep = ' '))
+      cfg_mcmc$removeSampler(tgt)
+      deps = cmodel$getDependencies(tgt)
+      o = optim(par = cmodel[[tgt]], fn = function(theta) {
+        cmodel[[tgt]] = theta
+        cmodel$calculate(deps)
+      }, method = 'BFGS', control = list(fnscale = -1), hessian = TRUE)
+      sd = as.numeric(sqrt(-1/o$hessian))
+      sd = ifelse(is.finite(sd), sd, 1)
+      cfg_mcmc$addSampler(target = tgt, type = 'RW', silent = TRUE,
+                          control = list(scale = sd))
+      1
+    }
+    
+    for(i in 1:nim_pkg$consts$N_tags) {
+      
+      for(j in 1:2) {
+        cfg_rw_sampler(paste('xi_prior_means[', i, ', ', j, ']', sep = ''))
+        cfg_rw_sampler(paste('xi_prior_covs[', i, ', ', j, ', ', j, ']', 
+                             sep = ''))
+      }
+      
+      cfg_rw_sampler(paste('xi_prior_cor_scaled[', i, ']', sep = ''))
+      cfg_rw_sampler(paste('xi_shallow_prior[', i, ', 1]', sep = ''))
+      cfg_rw_sampler(paste('xi_shallow_prior[', i, ', 2]', sep = ''))
+    }
+    
+  }
+  
   
   #
   # construct sampler
