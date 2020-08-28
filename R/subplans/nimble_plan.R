@@ -1,13 +1,13 @@
 nimble_plan = drake_plan(
   
   # location to store posterior samples
-  mcmc_sample_dir = file_out(!!file.path('output', 'mcmc')),
+  mcmc_sample_dir = file.path('output', 'mcmc'),
   
   # constant to add to infinitesimal generator diagonals for numerical speedup
   expm_delta = 1e-10,
   
   # number of posterior samples to generate
-  niter = 1e4,
+  niter = 1e5,
   
   # number of posterior samples to discard
   nburn = 5e3,
