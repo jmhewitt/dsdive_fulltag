@@ -1,5 +1,5 @@
 fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
-               default_ranef_samplers = FALSE, empirical_stage_priors) {
+               default_ranef_samplers = FALSE, empirical_stage_priors, thin) {
   
   nim_pkg = readRDS(nim_pkg)
   
@@ -27,7 +27,7 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
     stop('Model does not have a finite likelihood')
   }
 
-  cfg_mcmc = configureMCMC(cmodel, print = TRUE)
+  cfg_mcmc = configureMCMC(cmodel, print = TRUE, thin = thin)
 
   # monitor dive-specific random effects
   cfg_mcmc$addMonitors(c('pi', 'lambda'))

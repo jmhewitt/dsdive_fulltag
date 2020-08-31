@@ -6,8 +6,9 @@ nimble_plan = drake_plan(
   # constant to add to infinitesimal generator diagonals for numerical speedup
   expm_delta = 1e-10,
   
-  # number of posterior samples to generate
+  # number of posterior samples to generate, and thinning to apply
   niter = 1e5,
+  thin = 10,
   
   # number of posterior samples to discard
   nburn = 5e3,
@@ -33,7 +34,7 @@ nimble_plan = drake_plan(
   # fit full sattag model
   mcmc_samples = target(
     fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints, 
-        empirical_stage_priors = TRUE),
+        empirical_stage_priors = TRUE, thin = thin),
     format = 'file',
     trigger = trigger(condition = FALSE, mode = 'condition')
   ),
@@ -41,8 +42,9 @@ nimble_plan = drake_plan(
   # fit full sattag model with stage duration learning
   mcmc_samples_stagelearning = target(
     fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
-        empirical_stage_priors = FALSE),
-    format = 'file'
+        empirical_stage_priors = FALSE, thin = thin),
+    format = 'file',
+    trigger = trigger(condition = FALSE, mode = 'condition')
   )
   
 )
