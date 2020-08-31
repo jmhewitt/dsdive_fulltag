@@ -119,7 +119,7 @@ priors_and_inits = function(nim_data, template_bins, sattag_timestep,
   # 
   # reformat shallow dive duration priors for nimble
   # nim_pkg$inits$xi_shallow_prior = duration_priors_shallow
-  nim_pkg$inits$xi_shallow_prior = matrix(0, nrow = 1, ncol = 2)
+  nim_pkg$inits$xi_shallow_prior = matrix(1, nrow = 1, ncol = 2)
 
 
   #
