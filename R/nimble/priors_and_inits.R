@@ -20,7 +20,6 @@ priors_and_inits = function(nim_data, template_bins, sattag_timestep,
   nim_pkg$consts$G_prior_shape = c(2, 2)
   nim_pkg$consts$G_prior_rate = c(1, 1)
   nim_pkg$consts$G_prior_cor = c(1, 1)
-  # nim_pkg$inits$xi_prior_cor_scaled = .25
   nim_pkg$inits$xi_prior_cor_scaled = .8
   
   # shallow dives
@@ -103,23 +102,21 @@ priors_and_inits = function(nim_data, template_bins, sattag_timestep,
   colnames(duration_priors)[5] = 'cov_log'
   
   # reformat deep dive duration priors for nimble
-  # nim_pkg$inits$xi_prior_means = duration_priors[,c('G1_mean', 'G2_mean'), 
-  #                                                 drop = FALSE]
-  nim_pkg$inits$xi_prior_means = matrix(0, nrow = 1, ncol = 2)
+  nim_pkg$inits$xi_prior_means = duration_priors[,c('G1_mean', 'G2_mean'),
+                                                  drop = FALSE]
   
   nim_pkg$inits$xi_prior_covs = array(data = 1,
                                        dim = c(nrow(duration_priors), 2, 2))
   
-  # for(i in 1:nrow(duration_priors)) {
-  #   nim_pkg$inits$xi_prior_covs[i,1,1] = duration_priors[i, 'G1_var']
-  #   nim_pkg$inits$xi_prior_covs[i,1,2] = duration_priors[i, 'cov_log']
-  #   nim_pkg$inits$xi_prior_covs[i,2,1] = duration_priors[i, 'cov_log']
-  #   nim_pkg$inits$xi_prior_covs[i,2,2] = duration_priors[i, 'G2_var']
-  # }
-  # 
+  for(i in 1:nrow(duration_priors)) {
+    nim_pkg$inits$xi_prior_covs[i,1,1] = duration_priors[i, 'G1_var']
+    nim_pkg$inits$xi_prior_covs[i,1,2] = duration_priors[i, 'cov_log']
+    nim_pkg$inits$xi_prior_covs[i,2,1] = duration_priors[i, 'cov_log']
+    nim_pkg$inits$xi_prior_covs[i,2,2] = duration_priors[i, 'G2_var']
+  }
+   
   # reformat shallow dive duration priors for nimble
-  # nim_pkg$inits$xi_shallow_prior = duration_priors_shallow
-  nim_pkg$inits$xi_shallow_prior = matrix(1, nrow = 1, ncol = 2)
+  nim_pkg$inits$xi_shallow_prior = duration_priors_shallow
 
 
   #
