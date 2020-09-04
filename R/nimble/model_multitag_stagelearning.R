@@ -24,7 +24,7 @@ modelCode_stageLearning = nimbleCode({
     # deep dive: bivariate correlation
     xi_prior_cor_scaled[i] ~ dbeta(shape1 = G_prior_cor[1], 
                                    shape2 = G_prior_cor[2])
-    xi_prior_cor[i] <- xi_prior_cor_scaled[i] * 2 - 1
+    xi_prior_cor[i] <- xi_prior_cor_scaled[i] - 1
     # induced off-diagonal covariance
     xi_prior_covs[i, 1, 2] <- xi_prior_cor[i] * 
       sqrt(xi_prior_covs[i, 1, 1]) * 
