@@ -14,7 +14,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, cache = FALSE, message = FALSE, 
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, message = FALSE, 
                       warning = FALSE)
 ```
 
@@ -293,6 +293,75 @@ ggarrange(pl[[1]]$prior_post +
             geom_vline(xintercept = nim_pkg$inits$xi_shallow_prior[2], lty = 3), 
           ncol = 2)
 ```
+
+
+# Posterior predictive distributions
+
+```{r empirical_durations, include = FALSE}
+loadd(template_bins)
+
+# reformat deep dive data for 85% rule function
+dives.obs = apply(nim_pkg$consts$dive_relations, 1, function(r) {
+  list(
+    depth.bins = template_bins,
+    dive = list(
+      depths = nim_pkg$data$depths[r['depth_first']:r['depth_last']],
+      times = nim_pkg$data$times[r['depth_first']:r['depth_last']] -
+        nim_pkg$data$times[r['depth_first']]
+    )
+  )
+})
+
+# estimate deep dive stage durations by tag
+durations.est = cbind(
+  times.stages(dives.obs) * 60,
+  tag = nim_pkg$consts$dive_relations[,'tag']
+)
+
+colnames(durations.est) = c('sub.time.sec', 'bottom.time.sec', 'tag')
+  
+```
+
+```{r posterior_predictive_durations, include = FALSE}
+# draw stage durations from posterior predictive distribution
+postpred_stage_durations = data.frame(t(apply(samples[-burn,], 1, function(r) {
+  # loop over posteriors for each tag
+  do.call(cbind, lapply(1:nim_pkg$consts$N_tags, function(tagId) {
+    # identify mean and covariance parameters
+    tgt.mean = paste('xi_prior_means[', tagId, ', ',  1:2, ']', sep = '')
+    tgt.cov = c(
+      paste('xi_prior_covs[', tagId, ', 1, 1]', sep = ''),
+      paste('xi_prior_covs[', tagId, ', 1, 2]', sep = ''),
+      paste('xi_prior_covs[', tagId, ', 2, 1]', sep = ''),
+      paste('xi_prior_covs[', tagId, ', 2, 2]', sep = '')
+    )
+    # sample stage durations
+    exp(
+      rmvnorm(n = 1, mean = r[tgt.mean], sigma = matrix(r[tgt.cov], nrow = 2))
+    )
+  }))
+})))
+
+colnames(postpred_stage_durations) = c('sub.time.sec', 'bottom.time.sec')
+
+```
+
+```{r post_pred_durations}
+df = rbind(
+  cbind(postpred_stage_durations / 60, Density = 'Post. Pred.'),
+  cbind(durations.est %>% select(sub.time.sec, bottom.time.sec) / 60, 
+        Density = 'Empirical (in-sample)')
+)
+
+ggplot(df, aes(x = sub.time.sec, y = bottom.time.sec, col = Density)) + 
+  geom_density_2d() +
+  scale_color_brewer(type = 'qual', palette = 'Dark2') + 
+  xlab('Diving duration (min)') + 
+  ylab('Foraging duration (min)') +
+  theme_few() + 
+  theme(panel.border = element_blank())
+```
+
 
 
 
