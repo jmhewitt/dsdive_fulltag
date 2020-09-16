@@ -20,7 +20,7 @@ priors_and_inits = function(nim_data, template_bins, sattag_timestep,
   nim_pkg$consts$G_prior_shape = c(2, 2)
   nim_pkg$consts$G_prior_rate = c(1, 1)
   nim_pkg$consts$G_prior_cor = c(1, 1)
-  nim_pkg$inits$xi_prior_cor_scaled = .8
+  nim_pkg$inits$xi_prior_cor_scaled = rep(.8, nim_pkg$consts$N_tags)
   
   # shallow dives
   nim_pkg$consts$G_shallow_prior_mean = c(0, 1e2)

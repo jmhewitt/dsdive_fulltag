@@ -14,7 +14,6 @@ fit = function(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
                              name = id_chr())
   }
   
-  
   dive_model$initializeInfo()
 
   cmodel = compileNimble(dive_model)
