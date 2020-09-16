@@ -46,6 +46,137 @@ using the Monte Carlo sampling to empirically average over different patterns of
 short-term behavior.  As Nic often mentions, short-term behvaior may vary 
 accoring to longer-term behavior, which may be difficult to describe.
 
+
+# Distances, briefly explained
+
+Each distance function $\text{d}(pre,post)$ operates on a sequence of 
+"pre-exposure" and "post-exposure" depth bin observations.  Of course, to 
+compute the null/sampling distribution, both sequences $pre$ and $post$ are 
+sampled before the exposure occurred.  It would be more precise to 
+define the distance $\text{d}(pre,post)$ as the function $\text{d}(x,y)$ with 
+respect to sequences of depth bin observations $x$ and $y$.  I will adopt this 
+notation below.
+
+## SSE between depth bin counts
+
+Compare the marginal distribution of depth bins via
+
+$\text{d}(x,y) = \sum_i (N_x(i) - N_y(i))^2$,
+
+where $N_x(i)$ is the number of times depth bin $i$ was observed in the 
+sequence $x$, and $N_y(i)$ is defined similarly for $y$.
+
+## SSE between proportion of downward movements
+
+Compare the proportion of downward movements via 
+
+$\text{d}(x,y) = \left(\frac{N_{x,down}}{N_x} - \frac{N_{y,down}}{N_y}\right)^2$,
+
+where $N_{x,down}$ is the number of downward transitions observed in $x$, 
+$N_x$ is the length of the sequence $x$, and $N_{y,down}$ and $N_y$ are defined 
+similarly for $y$.
+
+## SSE between proportion of upward movements
+
+Compare the proportion of upward movements via 
+
+$\text{d}(x,y) = \left(\frac{N_{x,up}}{N_x} - \frac{N_{y,up}}{N_y}\right)^2$,
+
+where $N_{up}$ is the number of upward transitions observed in $x$, 
+$N_x$ is the length of the sequence $x$, and $N_{y,up}$ and $N_y$ are defined 
+similarly for $y$.
+
+## SSE between proportion of no-change "movements"
+
+Compare the proportion of times no movement was observed via 
+
+$\text{d}(x,y) = \left(\frac{N_{x,equal}}{N_x} - \frac{N_{y,equal}}{N_y}\right)^2$,
+
+where $N_{x,equal}$ is the number of times no movement was observed in $x$, 
+$N_x$ is the length of the sequence $x$, and $N_{y,equal}$ and $N_y$ are defined 
+similarly for $y$.
+
+## SSE between total up distance
+
+Compare the total upward distance traveled via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} (x_i - x_{i-1})\text{I}\{x_i > x_{i-1}\} - 
+    \sum_{i=2}^{N_y} (y_i - y_{i-1})\text{I}\{y_i > y_{i-1}\}
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, and $\text{I}\{\cdot\}$ is the 
+indicator function.  Here the indicator 
+function is used to restrict the summation to transitions from deeper 
+observations to shallower observations.  All notation is similarly defined for 
+$y$.
+
+## SSE between total down distance
+
+Compare the total downward distance traveled via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} (x_i - x_{i-1})\text{I}\{x_i < x_{i-1}\} - 
+    \sum_{i=2}^{N_y} (y_i - y_{i-1})\text{I}\{y_i < y_{i-1}\}
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, and $\text{I}\{\cdot\}$ is the 
+indicator function.  Here the indicator 
+function is used to restrict the summation to transitions from shallower 
+observations to deeper observations.  All notation is similarly defined for 
+$y$.
+
+## SSE between total absolute distance
+
+Compare the total distance traveled via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} \vert x_i - x_{i-1} \vert - 
+    \sum_{i=2}^{N_y} \vert y_i - y_{i-1} \vert
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, and $\vert\cdot\vert$ is the 
+absolute value function. All notation is similarly defined for 
+$y$.
+
+## SSE between proportion of surface observations in shallow periods
+
+Compare the proportion of surface bin observations during shallow periods via 
+
+$\text{d}(x,y) = \left(
+    \frac{N_{x,shallow}(1)}{N_{x,shallow}} - 
+    \frac{N_{y,shallow}(1)}{N_{y,shallow}}
+  \right)^2$,
+
+where $N_{x,shallow}$ is the number of observations in $x$ that are not 
+associated with a deep dive, and $N_{x,shallow}(1)$ is the number of times the 
+shallowest depth bin (i.e., the surface bin) was observed among the observations 
+that contribute to $N_{x,shallow}$. All notation is similarly defined for 
+$y$.
+
+
+
+## SSE between total absolute distance in shallow periods
+
+Compare the total distance traveled during shallow periods via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} \vert x_i - x_{i-1} \vert 
+      \text{I}( \text{Class}(x_{i-1}) \in \{\text{Shallow dive}, \text{Surface}\}) - 
+    \sum_{i=2}^{N_y} \vert y_i - y_{i-1} \vert
+      \text{I}( \text{Class}(x_{i-1}) \in \{\text{Shallow dive}, \text{Surface}\})
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, $\vert\cdot\vert$ is the 
+absolute value function, and $\text{I}(\cdot)$ is the indicator function.  Here, 
+the indicator function restricts the sum to all transitions that started 
+in a "non-deep" class, i.e., to transitions made during a shallow dive or from 
+the surface (excluding transitions from the surface that began a deep dive).
+
 # Results
 
 As expected, there are some distances that suggest some response on some whales.
@@ -239,7 +370,8 @@ for(tagId in 1:length(eda_stats)) {
                 mapping = aes(xmin = date_range[1], xmax = date_range[2], 
                                  ymin = 0, ymax = Inf), inherit.aes = FALSE,
                    fill = NA, col = 'black', lwd = 2) + 
-      ggtitle('Tag data with pre/post exposure window outlined (black)')
+      ggtitle(label = 'Tag data with pre/post exposure window outlined (black)', 
+              subtitle = '(Exposure occurred at dotted vertical line)')
     print(pl)
     cat(' \n\n')
   } else {
@@ -258,7 +390,9 @@ for(tagId in 1:length(eda_stats)) {
         ggplot(aes(x = x)) + 
         stat_density(geom = 'line') +
         geom_vline(xintercept = res$test[statInd], lty = 3) + 
-        ggtitle(paste('p=', signif(res$p[statInd], 2), sep = '')) + 
+        ggtitle(
+          label = 'Baseline density (black) with exposed value (dotted line)',
+          subtitle = paste('p=', signif(res$p[statInd], 2), sep = '')) + 
         ylab('Density') + 
         xlab(expression(d(italic(pre), italic(post)))) + 
         theme_few() + 
