@@ -38,6 +38,17 @@ report_plan = drake_plan(
                       nim_pkg_tgt = 'nim_pkg',
                       nburn = nburn)
       ), 
+      trigger = trigger(condition = FALSE)
+    ),
+  
+  exposure_eda = 
+    target(
+      rmarkdown::render(
+        knitr_in(!!file.path('reports', 'exposure_eda.Rmd')),
+        output_file = 'exposure_eda.html',
+        output_dir = 'reports',
+        quiet = FALSE
+      ), 
       trigger = trigger(condition = TRUE)
     )
   

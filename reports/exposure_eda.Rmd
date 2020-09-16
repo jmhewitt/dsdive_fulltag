@@ -1,0 +1,279 @@
+---
+title: "EDA for exposure effects"
+author: Josh
+date: 16 September 2020
+output:
+  html_document:
+    toc: false
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+      number_sections: true
+params:
+  dive_labels: dive_labels
+  template_bins: template_bins
+  depth_files: depth_files
+  cee_starts: cee_starts
+---
+
+# Overview
+
+This exploratory analysis studies the impact of exposure on diving behavior in a 
+non-parametric, empirical framework.  Exposure is studied through distances
+between two sequences of depth bin observations: depth bins observed in the last
+12 hours before an exposure, and depth bins observed in the first 12 hours 
+after exposure.  
+
+The observed distance's significance is quantified via a Monte Carlo---or 
+bootstrap---p-value.  The null (or sampling) distribution associated with the 
+p-value is the distribution of the distance function when it is applied to two 
+consecutive 12-hour sequences of unexposed depth bin observations.  The 
+null distribution is approximated via sampling.
+
+# Sampling units
+
+Studying consecutive 12-hour windows is slightly different from both my initial 
+analysis and Alan's proposal.  My initial analysis used pre-exposure shallow 
+dives as the sampling unit, and I sampled the same number of pre-exposure 
+shallow dives as were observed after the actual exposure.  Alan suggests using 
+12-hour time windows as the sampling unit, which is like a "time series" version 
+of my sampling units.  The time series approach captures both deep and shallow 
+dives, as well as some of the sequential nature of diving behavior.
+
+When considering a time series approach, I chose to work with consecutive 
+12-hour windows in order to highlight changes in short-term behavior, while 
+using the Monte Carlo sampling to empirically average over different patterns of 
+short-term behavior.  As Nic often mentions, short-term behvaior may vary 
+accoring to longer-term behavior, which may be difficult to describe.
+
+# Results
+
+As expected, there are some distances that suggest some response on some whales.
+Nothing is consistent across whales.  It also appears that there are gaps in 
+data collection for Zc 85 and 86, so I did not look closely at results for these 
+whales.  
+
+# Brief discussion
+
+- How many EDA measures and sampling schemes do we want to consider?
+- How does the rest of the BRS community deal with inconsistent response 
+  behaviors, and how does this inform our work?  For example, can we say that 
+  our EDA detects a true response in Zc 93 and a true non-response in Zc 95? 
+  If so, can we transition to formal modeling and simultaneously begin drafting 
+  a manuscript describing how to use our methodology to detect responses in 
+  individual animals?  
+- It might be premature to try to tackle holistic, population-level 
+  response models.  However, I think that formally a model for individual 
+  responses should still be worthwhile on its own.
+  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, message = FALSE, 
+                      warning = FALSE)
+```
+
+```{r load, cache = FALSE}
+loadd(params$dive_labels)
+loadd(params$template_bins)
+loadd(params$depth_files)
+loadd(params$cee_starts)
+```
+
+```{r pre_process_tags, include = FALSE}
+eda_data = lapply(1:length(dive_labels), function(tagId) {
+  
+  # copy labels and tag name
+  res = dive_labels[[tagId]]
+  
+  # load data
+  d = read.csv(file.path('..', depth_files[[tagId]]))
+  d$Date = anytime(paste(d$Day, d$Time))
+  
+  # map all depths to standardized bins
+  d$depth.bin = sapply(d$Depth, function(depth) {
+    which.min(abs(depth - template_bins$center))
+  })
+  d$depth.standardized = template_bins$center[d$depth.bin]
+  
+  # export standardized depths and times
+  res$depth.bin = d$depth.bin
+  res$depths = d$depth.standardized
+  res$times = d$Date
+  
+  # determine tag's temporal support
+  tag_start = d$Date[1]
+  tag_end = d$Date[length(d$Date)]
+  
+  # determine which CEE's overlap with tag record
+  cees_experienced = which((tag_start <= cee_starts) & (cee_starts <= tag_end))
+
+  # pre/post exposure labels
+  if(length(cees_experienced) == 0) {
+    res$exposure_time = Inf
+    res$exposed = numeric(length(res$depths))
+  } else {
+    res$exposure_time = cee_starts[min(cees_experienced)]
+    res$exposed = as.numeric(d$Date >= res$exposure_time)
+  }
+  
+  res
+})
+```
+
+```{r eda_stats, include = FALSE} 
+eda_stats = lapply(eda_data, function(tag_record) {
+  res = bootstrap_exposure(
+    depths = tag_record$depths, times = tag_record$times, window_length = 12, 
+    dive_labels = tag_record$labels, nsamples = 1e3, 
+    exposure_time = tag_record$exposure_time, deep_depth = 800, 
+    statistic = function(x, y, x_labels = NULL, y_labels = NULL) {
+      
+      # put depths into tidy format, to facilitate marginal distributions
+      df = data.frame(depth = c(x, y), 
+                      type = c(rep('pre', length(x)),
+                               rep('post', length(y))),
+                      label = c(x_labels, y_labels)
+                      )
+      
+      # identify deep dives by label 
+      #   (assumes x_labels and y_labels are from same tag)
+      deep_labels = df %>% 
+        dplyr::group_by(label) %>% 
+        dplyr::summarize(deep = max(depth) > 800) %>% 
+        dplyr::filter(deep == TRUE) %>% 
+        dplyr::select(label) %>% 
+        unlist()
+      
+      # summarize characteristics of pre/post shallow dives
+      shallow_summary = df %>% 
+        dplyr::filter(!(label %in% deep_labels)) %>% 
+        dplyr::group_by(type) %>% 
+        dplyr::summarise(
+          prop_surface = mean(depth == template_bins$center[1]),
+          total_distance = sum(abs(diff(depth)))
+        )
+      
+      # sequence of midpoint differences
+      dx = diff(x)
+      dy = diff(y)
+      
+      # sequence of ups/downs/no-changes
+      dx.sign = sign(dx)
+      dy.sign = sign(dy)
+
+      # compute sample statistics
+      stats = c(
+        # SSE between marginal depth bin distributions
+        marginal_bins = sum(apply(table(df), 1, diff)^2),
+        # SSE between proportion of downward movements
+        prop_downward = (mean(dx.sign == 1) - mean(dy.sign == 1))^2,
+        # SSE between proportion of upward movements
+        prop_upward = (mean(dx.sign == -1) - mean(dy.sign == -1))^2,
+        # SSE between proportion of no-change "movements"
+        prop_upward = (mean(dx.sign == 0) - mean(dy.sign == 0))^2,
+        # SSE between total up distance
+        total_upward = (sum(dx[dx>0]) - sum(dy[dy>0]))^2,
+        # SSE between total down distance
+        total_downward = (sum(dx[dx<0]) - sum(dy[dy<0]))^2,
+        # SSE between total absolute distance
+        total_movement = (sum(abs(dx)) - sum(abs(dy)))^2,
+        # SSE between proportion of surface observations in shallow periods
+        prop_shallow_surface = diff(shallow_summary$prop_surface)^2,
+        # SSE between total absolute distance in shallow periods
+        total_shallow_movement = diff(shallow_summary$total_distance)^2
+      )
+      
+      stats
+    }
+  )
+  
+  
+  if(is.null(res)) {
+    res = list()
+  }
+  
+  res$tag = tag_record$tag
+  res
+  
+})
+```
+
+# EDA by tag {.tabset}
+
+```{r eda_densities, results = 'asis', echo = FALSE}
+
+stat_labels = c(
+  'SSE between depth bin counts',
+  'SSE between proportion of downward movements',
+  'SSE between proportion of upward movements',
+  'SSE between proportion of no-change "movements"',
+  'SSE between total up distance',
+  'SSE between total down distance',
+  'SSE between total absolute distance',
+  'SSE between proportion of surface observations in shallow periods',
+  'SSE between total absolute distance in shallow periods'
+)
+      
+for(tagId in 1:length(eda_stats)) {
+  
+  res = eda_stats[[tagId]]
+  
+  # label tag with tagId
+  cat('##', res$tag, ' \n\n')
+  
+  
+  # plot tag around exposure
+  dat = eda_data[[tagId]]
+  if(is.finite(dat$exposure_time)) {
+    date_range = dat$exposure_time + c(-1, 1) * hours(12)
+    # base plot
+    pl = tagplot(depths = data.frame(depth.standardized = dat$depths,
+                                     Date = dat$times), 
+                 depth.bins = template_bins, 
+                 dives.labeled = dat$labels, 
+                 date_range = date_range,
+                 cee_starts = dat$exposure_time, depth_mark = 800)
+    # highlight the pre/post 12 hour window
+    pl = pl + 
+      geom_rect(data = data.frame(x = 0, y = 0),
+                mapping = aes(xmin = date_range[1], xmax = date_range[2], 
+                                 ymin = 0, ymax = Inf), inherit.aes = FALSE,
+                   fill = NA, col = 'black', lwd = 2) + 
+      ggtitle('Tag data with pre/post exposure window outlined (black)')
+    print(pl)
+    cat(' \n\n')
+  } else {
+    cat ('Tag was unexposed. \n\n')
+  }
+  
+  
+  # sse
+  if('p' %in% names(res)) {
+    for(statInd in 1:length(res$p)) {
+      
+      # label plot with plot name
+      cat('###', stat_labels[statInd], ' \n\n')
+      
+      pl = data.frame(x = res$null.samples[, statInd]) %>% 
+        ggplot(aes(x = x)) + 
+        stat_density(geom = 'line') +
+        geom_vline(xintercept = res$test[statInd], lty = 3) + 
+        ggtitle(paste('p=', signif(res$p[statInd], 2), sep = '')) + 
+        ylab('Density') + 
+        xlab(expression(d(italic(pre), italic(post)))) + 
+        theme_few() + 
+        theme(panel.border = element_blank())
+    
+    print(pl)
+    
+    cat(' \n\n')
+    
+    }
+    
+  } else {
+    cat('Tests were not able to run.')
+  }
+  
+  cat(' \n\n')
+}
+```
