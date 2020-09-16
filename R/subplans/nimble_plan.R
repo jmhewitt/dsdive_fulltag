@@ -18,9 +18,11 @@ nimble_plan = drake_plan(
   
   # reformat dive data for analysis in nimble (full dataset and validaiton set)
   nim_data = target(
-    flatten_tag_data(depth_files[1], dive_endpoints[1], template_bins, 
-                     tag_sex, cee_starts, validation_proportion = 0, 
+    flatten_tag_data(depth_files, dive_endpoints, template_bins, 
+                     tag_sex, cee_starts, validation_proportion, 
                      mcmc_sample_dir), 
+    transform = map(validation_proportion = c(0, .5)),
+    seed = 2020,
     format = 'file'
   ),
   
@@ -28,6 +30,7 @@ nimble_plan = drake_plan(
   nim_pkg = target(
     priors_and_inits(nim_data, template_bins, sattag_timestep, expm_delta, 
                      mcmc_sample_dir),
+    transform = map(validation_proportion),
     format = 'file'
   ),
 
@@ -43,8 +46,8 @@ nimble_plan = drake_plan(
   mcmc_samples_stagelearning = target(
     fit(nim_pkg, mcmc_sample_dir, niter, ncheckpoints,
         empirical_stage_priors = FALSE, thin = thin),
-    format = 'file',
-    trigger = trigger(condition = FALSE, mode = 'condition')
+    transform = map(nim_pkg),
+    format = 'file'
   )
   
 )
