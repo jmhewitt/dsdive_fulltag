@@ -16,188 +16,6 @@ params:
   cee_starts: cee_starts
 ---
 
-# Overview
-
-This exploratory analysis studies the impact of exposure on diving behavior in a 
-non-parametric, empirical framework.  Exposure is studied through distances
-between two sequences of depth bin observations: depth bins observed in the last
-12 hours before an exposure, and depth bins observed in the first 12 hours 
-after exposure.  
-
-The observed distance's significance is quantified via a Monte Carlo---or 
-bootstrap---p-value.  The null (or sampling) distribution associated with the 
-p-value is the distribution of the distance function when it is applied to two 
-consecutive 12-hour sequences of unexposed depth bin observations.  The 
-null distribution is approximated via sampling.
-
-# Sampling units
-
-Studying consecutive 12-hour windows is slightly different from both my initial 
-analysis and Alan's proposal.  My initial analysis used pre-exposure shallow 
-dives as the sampling unit, and I sampled the same number of pre-exposure 
-shallow dives as were observed after the actual exposure.  Alan suggests using 
-12-hour time windows as the sampling unit, which is like a "time series" version 
-of my sampling units.  The time series approach captures both deep and shallow 
-dives, as well as some of the sequential nature of diving behavior.
-
-When considering a time series approach, I chose to work with consecutive 
-12-hour windows in order to highlight changes in short-term behavior, while 
-using the Monte Carlo sampling to empirically average over different patterns of 
-short-term behavior.  As Nic often mentions, short-term behvaior may vary 
-accoring to longer-term behavior, which may be difficult to describe.
-
-
-# Distances, briefly explained
-
-Each distance function $\text{d}(pre,post)$ operates on a sequence of 
-"pre-exposure" and "post-exposure" depth bin observations.  Of course, to 
-compute the null/sampling distribution, both sequences $pre$ and $post$ are 
-sampled before the exposure occurred.  It would be more precise to 
-define the distance $\text{d}(pre,post)$ as the function $\text{d}(x,y)$ with 
-respect to sequences of depth bin observations $x$ and $y$.  I will adopt this 
-notation below.
-
-## SSE between depth bin counts
-
-Compare the marginal distribution of depth bins via
-
-$\text{d}(x,y) = \sum_i (N_x(i) - N_y(i))^2$,
-
-where $N_x(i)$ is the number of times depth bin $i$ was observed in the 
-sequence $x$, and $N_y(i)$ is defined similarly for $y$.
-
-## SSE between proportion of downward movements
-
-Compare the proportion of downward movements via 
-
-$\text{d}(x,y) = \left(\frac{N_{x,down}}{N_x} - \frac{N_{y,down}}{N_y}\right)^2$,
-
-where $N_{x,down}$ is the number of downward transitions observed in $x$, 
-$N_x$ is the length of the sequence $x$, and $N_{y,down}$ and $N_y$ are defined 
-similarly for $y$.
-
-## SSE between proportion of upward movements
-
-Compare the proportion of upward movements via 
-
-$\text{d}(x,y) = \left(\frac{N_{x,up}}{N_x} - \frac{N_{y,up}}{N_y}\right)^2$,
-
-where $N_{up}$ is the number of upward transitions observed in $x$, 
-$N_x$ is the length of the sequence $x$, and $N_{y,up}$ and $N_y$ are defined 
-similarly for $y$.
-
-## SSE between proportion of no-change "movements"
-
-Compare the proportion of times no movement was observed via 
-
-$\text{d}(x,y) = \left(\frac{N_{x,equal}}{N_x} - \frac{N_{y,equal}}{N_y}\right)^2$,
-
-where $N_{x,equal}$ is the number of times no movement was observed in $x$, 
-$N_x$ is the length of the sequence $x$, and $N_{y,equal}$ and $N_y$ are defined 
-similarly for $y$.
-
-## SSE between total up distance
-
-Compare the total upward distance traveled via 
-
-$\text{d}(x,y) = \left(
-    \sum_{i=2}^{N_x} (x_i - x_{i-1})\text{I}\{x_i > x_{i-1}\} - 
-    \sum_{i=2}^{N_y} (y_i - y_{i-1})\text{I}\{y_i > y_{i-1}\}
-  \right)^2$,
-
-where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
-of the $i$th depth bin observation in $x$, and $\text{I}\{\cdot\}$ is the 
-indicator function.  Here the indicator 
-function is used to restrict the summation to transitions from deeper 
-observations to shallower observations.  All notation is similarly defined for 
-$y$.
-
-## SSE between total down distance
-
-Compare the total downward distance traveled via 
-
-$\text{d}(x,y) = \left(
-    \sum_{i=2}^{N_x} (x_i - x_{i-1})\text{I}\{x_i < x_{i-1}\} - 
-    \sum_{i=2}^{N_y} (y_i - y_{i-1})\text{I}\{y_i < y_{i-1}\}
-  \right)^2$,
-
-where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
-of the $i$th depth bin observation in $x$, and $\text{I}\{\cdot\}$ is the 
-indicator function.  Here the indicator 
-function is used to restrict the summation to transitions from shallower 
-observations to deeper observations.  All notation is similarly defined for 
-$y$.
-
-## SSE between total absolute distance
-
-Compare the total distance traveled via 
-
-$\text{d}(x,y) = \left(
-    \sum_{i=2}^{N_x} \vert x_i - x_{i-1} \vert - 
-    \sum_{i=2}^{N_y} \vert y_i - y_{i-1} \vert
-  \right)^2$,
-
-where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
-of the $i$th depth bin observation in $x$, and $\vert\cdot\vert$ is the 
-absolute value function. All notation is similarly defined for 
-$y$.
-
-## SSE between proportion of surface observations in shallow periods
-
-Compare the proportion of surface bin observations during shallow periods via 
-
-$\text{d}(x,y) = \left(
-    \frac{N_{x,shallow}(1)}{N_{x,shallow}} - 
-    \frac{N_{y,shallow}(1)}{N_{y,shallow}}
-  \right)^2$,
-
-where $N_{x,shallow}$ is the number of observations in $x$ that are not 
-associated with a deep dive, and $N_{x,shallow}(1)$ is the number of times the 
-shallowest depth bin (i.e., the surface bin) was observed among the observations 
-that contribute to $N_{x,shallow}$. All notation is similarly defined for 
-$y$.
-
-
-
-## SSE between total absolute distance in shallow periods
-
-Compare the total distance traveled during shallow periods via 
-
-$\text{d}(x,y) = \left(
-    \sum_{i=2}^{N_x} \vert x_i - x_{i-1} \vert 
-      \text{I}( \text{Class}(x_{i-1}) \in \{\text{Shallow dive}, \text{Surface}\}) - 
-    \sum_{i=2}^{N_y} \vert y_i - y_{i-1} \vert
-      \text{I}( \text{Class}(x_{i-1}) \in \{\text{Shallow dive}, \text{Surface}\})
-  \right)^2$,
-
-where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
-of the $i$th depth bin observation in $x$, $\vert\cdot\vert$ is the 
-absolute value function, and $\text{I}(\cdot)$ is the indicator function.  Here, 
-the indicator function restricts the sum to all transitions that started 
-in a "non-deep" class, i.e., to transitions made during a shallow dive or from 
-the surface (excluding transitions from the surface that began a deep dive).
-
-# Results
-
-As expected, there are some distances that suggest some response on some whales.
-Nothing is consistent across whales.  It also appears that there are gaps in 
-data collection for Zc 85 and 86, so I did not look closely at results for these 
-whales.  
-
-# Brief discussion
-
-- How many EDA measures and sampling schemes do we want to consider?
-- How does the rest of the BRS community deal with inconsistent response 
-  behaviors, and how does this inform our work?  For example, can we say that 
-  our EDA detects a true response in Zc 93 and a true non-response in Zc 95? 
-  If so, can we transition to formal modeling and simultaneously begin drafting 
-  a manuscript describing how to use our methodology to detect responses in 
-  individual animals?  
-- It might be premature to try to tackle holistic, population-level 
-  response models.  However, I think that formally a model for individual 
-  responses should still be worthwhile on its own.
-  
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, cache = TRUE, message = FALSE, 
                       warning = FALSE)
@@ -329,10 +147,180 @@ eda_stats = lapply(eda_data, function(tag_record) {
 })
 ```
 
-# EDA by tag {.tabset}
+# {.tabset}
 
-```{r eda_densities, results = 'asis', echo = FALSE}
+## Overview
 
+### Introduction
+
+This exploratory analysis studies the impact of exposure on diving behavior in a 
+non-parametric, empirical framework.  Exposure is studied through distances
+between two sequences of depth bin observations: depth bins observed in the last
+12 hours before an exposure, and depth bins observed in the first 12 hours 
+after exposure.  
+
+The observed distance's significance is quantified via a Monte Carlo---or 
+bootstrap---p-value.  The null (or sampling) distribution associated with the 
+p-value is the distribution of the distance function when it is applied to two 
+consecutive 12-hour sequences of unexposed depth bin observations.  The 
+null distribution is approximated via sampling.
+
+### Sampling units
+
+Studying consecutive 12-hour windows is slightly different from both my initial 
+analysis and Alan's proposal.  My initial analysis used pre-exposure shallow 
+dives as the sampling unit, and I sampled the same number of pre-exposure 
+shallow dives as were observed after the actual exposure.  Alan suggests using 
+12-hour time windows as the sampling unit, which is like a "time series" version 
+of my sampling units.  The time series approach captures both deep and shallow 
+dives, as well as some of the sequential nature of diving behavior.
+
+When considering a time series approach, I chose to work with consecutive 
+12-hour windows in order to highlight changes in short-term behavior, while 
+using the Monte Carlo sampling to empirically average over different patterns of 
+short-term behavior.  As Nic often mentions, short-term behavior may vary 
+according to longer-term behavior, which may be difficult to describe.
+
+
+### Distances, briefly explained
+
+Each distance function $\text{d}(pre,post)$ operates on a sequence of 
+"pre-exposure" and "post-exposure" depth bin observations.  Of course, to 
+compute the null/sampling distribution, both sequences $pre$ and $post$ are 
+sampled before the exposure occurred.  It would be more precise to 
+define the distance $\text{d}(pre,post)$ as the function $\text{d}(x,y)$ with 
+respect to sequences of depth bin observations $x$ and $y$.  I will adopt this 
+notation below.
+
+#### SSE between depth bin counts
+
+Compare the marginal distribution of depth bins via
+
+$\text{d}(x,y) = \sum_i (N_x(i) - N_y(i))^2$,
+
+where $N_x(i)$ is the number of times depth bin $i$ was observed in the 
+sequence $x$, and $N_y(i)$ is defined similarly for $y$.
+
+#### SSE between proportion of downward movements
+
+Compare the proportion of downward movements via 
+
+$\text{d}(x,y) = \left(\frac{N_{x,down}}{N_x} - \frac{N_{y,down}}{N_y}\right)^2$,
+
+where $N_{x,down}$ is the number of downward transitions observed in $x$, 
+$N_x$ is the length of the sequence $x$, and $N_{y,down}$ and $N_y$ are defined 
+similarly for $y$.
+
+#### SSE between proportion of upward movements
+
+Compare the proportion of upward movements via 
+
+$\text{d}(x,y) = \left(\frac{N_{x,up}}{N_x} - \frac{N_{y,up}}{N_y}\right)^2$,
+
+where $N_{up}$ is the number of upward transitions observed in $x$, 
+$N_x$ is the length of the sequence $x$, and $N_{y,up}$ and $N_y$ are defined 
+similarly for $y$.
+
+#### SSE between proportion of no-change "movements"
+
+Compare the proportion of times no movement was observed via 
+
+$\text{d}(x,y) = \left(\frac{N_{x,equal}}{N_x} - \frac{N_{y,equal}}{N_y}\right)^2$,
+
+where $N_{x,equal}$ is the number of times no movement was observed in $x$, 
+$N_x$ is the length of the sequence $x$, and $N_{y,equal}$ and $N_y$ are defined 
+similarly for $y$.
+
+#### SSE between total up distance
+
+Compare the total upward distance traveled via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} (x_i - x_{i-1})\text{I}\{x_i > x_{i-1}\} - 
+    \sum_{i=2}^{N_y} (y_i - y_{i-1})\text{I}\{y_i > y_{i-1}\}
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, and $\text{I}\{\cdot\}$ is the 
+indicator function.  Here the indicator 
+function is used to restrict the summation to transitions from deeper 
+observations to shallower observations.  All notation is similarly defined for 
+$y$.
+
+#### SSE between total down distance
+
+Compare the total downward distance traveled via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} (x_i - x_{i-1})\text{I}\{x_i < x_{i-1}\} - 
+    \sum_{i=2}^{N_y} (y_i - y_{i-1})\text{I}\{y_i < y_{i-1}\}
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, and $\text{I}\{\cdot\}$ is the 
+indicator function.  Here the indicator 
+function is used to restrict the summation to transitions from shallower 
+observations to deeper observations.  All notation is similarly defined for 
+$y$.
+
+#### SSE between total absolute distance
+
+Compare the total distance traveled via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} \vert x_i - x_{i-1} \vert - 
+    \sum_{i=2}^{N_y} \vert y_i - y_{i-1} \vert
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, and $\vert\cdot\vert$ is the 
+absolute value function. All notation is similarly defined for 
+$y$.
+
+#### SSE between proportion of surface observations in shallow periods
+
+Compare the proportion of surface bin observations during shallow periods via 
+
+$\text{d}(x,y) = \left(
+    \frac{N_{x,shallow}(1)}{N_{x,shallow}} - 
+    \frac{N_{y,shallow}(1)}{N_{y,shallow}}
+  \right)^2$,
+
+where $N_{x,shallow}$ is the number of observations in $x$ that are not 
+associated with a deep dive, and $N_{x,shallow}(1)$ is the number of times the 
+shallowest depth bin (i.e., the surface bin) was observed among the observations 
+that contribute to $N_{x,shallow}$. All notation is similarly defined for 
+$y$.
+
+
+#### SSE between total absolute distance in shallow periods
+
+Compare the total distance traveled during shallow periods via 
+
+$\text{d}(x,y) = \left(
+    \sum_{i=2}^{N_x} \vert x_i - x_{i-1} \vert 
+      \text{I}( \text{Class}(x_{i-1}) \in \{\text{Shallow dive}, \text{Surface}\}) - 
+    \sum_{i=2}^{N_y} \vert y_i - y_{i-1} \vert
+      \text{I}( \text{Class}(x_{i-1}) \in \{\text{Shallow dive}, \text{Surface}\})
+  \right)^2$,
+
+where $N_x$ is the number of observations in $x$, $x_i$ is the midpoint depth 
+of the $i$th depth bin observation in $x$, $\vert\cdot\vert$ is the 
+absolute value function, and $\text{I}(\cdot)$ is the indicator function.  Here, 
+the indicator function restricts the sum to all transitions that started 
+in a "non-deep" class, i.e., to transitions made during a shallow dive or from 
+the surface (excluding transitions from the surface that began a deep dive).
+
+## Results {.tabset}
+
+As expected, there are some distances that suggest some response on some whales.
+Nothing is consistent across whales.  It also appears that there are gaps in 
+data collection for Zc 85 and 86, so I did not look closely at results for these 
+whales.  The p-values are summarized in the table below, and p-values smaller 
+than 0.05 are highlighted.  The additional tabs below present results for 
+individual tags.
+
+```{r stat_labels, include = FALSE}
 stat_labels = c(
   'SSE between depth bin counts',
   'SSE between proportion of downward movements',
@@ -344,13 +332,55 @@ stat_labels = c(
   'SSE between proportion of surface observations in shallow periods',
   'SSE between total absolute distance in shallow periods'
 )
-      
+```
+
+```{r summary_table, echo = FALSE}
+
+# put p-values into matrix format
+pvals = data.frame(t(do.call(rbind, lapply(eda_stats, function(res) {
+  if('p' %in% names(res)) {
+    round(res$p, 2)
+  } else {
+    rep(NA, length(stat_labels))
+  }
+}))))
+
+colnames(pvals) = sapply(eda_stats, function(res) res$tag)
+rownames(pvals) = stat_labels
+
+for(i in 1:ncol(pvals)) { 
+  
+  formatted_colors = sapply(pvals[, i], function(x) {
+    color = 'white'
+    if(is.finite(x)) {
+      if(x < .05) {
+        color = 'orange'
+      }
+    }
+    color
+  })
+  
+  pvals[, i] = cell_spec(x = pvals[, i], 
+                         background = formatted_colors, 
+                         bold = ifelse(formatted_colors == 'white', F, T))
+  
+}
+
+kbl(pvals, escape = FALSE) %>% 
+  kable_paper("hover", full_width = F)
+```
+
+<br/>
+<br/>
+
+```{r eda_densities, results = 'asis', echo = FALSE}
+
 for(tagId in 1:length(eda_stats)) {
   
   res = eda_stats[[tagId]]
   
   # label tag with tagId
-  cat('##', res$tag, ' \n\n')
+  cat('###', res$tag, ' \n\n')
   
   
   # plot tag around exposure
@@ -384,7 +414,7 @@ for(tagId in 1:length(eda_stats)) {
     for(statInd in 1:length(res$p)) {
       
       # label plot with plot name
-      cat('###', stat_labels[statInd], ' \n\n')
+      cat('####', stat_labels[statInd], ' \n\n')
       
       pl = data.frame(x = res$null.samples[, statInd]) %>% 
         ggplot(aes(x = x)) + 
@@ -411,3 +441,17 @@ for(tagId in 1:length(eda_stats)) {
   cat(' \n\n')
 }
 ```
+
+## Brief discussion
+
+- How many EDA measures and sampling schemes do we want to consider?
+- How does the rest of the BRS community deal with inconsistent response 
+  behaviors, and how does this inform our work?  For example, can we say that 
+  our EDA detects a true response in Zc 93 and a true non-response in Zc 95? 
+  If so, can we transition to formal modeling and simultaneously begin drafting 
+  a manuscript describing how to use our methodology to detect responses in 
+  individual animals?  
+- It might be premature to try to tackle holistic, population-level 
+  response models.  However, I think that formally a model for individual 
+  responses should still be worthwhile on its own.
+  
