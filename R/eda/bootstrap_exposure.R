@@ -16,7 +16,7 @@ bootstrap_exposure = function(depths, times, dive_labels, exposure_time,
   }
   
   # maximum range of post-exposure times to analyze
-  exposure_window = exposure_time + hours(c(0,12))
+  exposure_window = exposure_time + hours(c(0, window_length))
   
   # index into pre-exposure observations
   pre_exposure_selector = times <= exposure_window[1]
