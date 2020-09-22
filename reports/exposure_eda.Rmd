@@ -15,10 +15,11 @@ params:
   depth_files: depth_files
   cee_starts: cee_starts
   window_length: 12
+  response_lag: 12
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, cache = TRUE, message = FALSE, 
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE, message = FALSE, 
                       warning = FALSE)
 ```
 
@@ -74,8 +75,9 @@ eda_data = lapply(1:length(dive_labels), function(tagId) {
 eda_stats = lapply(eda_data, function(tag_record) {
   res = bootstrap_exposure(
     depths = tag_record$depths, times = tag_record$times, 
+    response_lag = params$response_lag,
     window_length = params$window_length, 
-    dive_labels = tag_record$labels, nsamples = 1e3, 
+    dive_labels = tag_record$labels, nsamples = 1e2, 
     exposure_time = tag_record$exposure_time, deep_depth = 800, 
     statistic = function(x, y, x_labels = NULL, y_labels = NULL) {
       
@@ -138,7 +140,6 @@ eda_stats = lapply(eda_data, function(tag_record) {
     }
   )
   
-  
   if(is.null(res)) {
     res = list()
   }
@@ -149,6 +150,12 @@ eda_stats = lapply(eda_data, function(tag_record) {
 })
 ```
 
+Window length: <span style="color:blue">`r params$window_length`</span> hours
+<br />
+Window lag: <span style="color:blue">`r params$response_lag`</span> hours
+
+
+
 # {.tabset}
 
 ## Overview
@@ -158,20 +165,22 @@ eda_stats = lapply(eda_data, function(tag_record) {
 This exploratory analysis studies the impact of exposure on diving behavior in a 
 non-parametric, empirical framework.  Exposure is studied through distances
 between two sequences of depth bin observations: depth bins observed in the last
-<span style="color:blue">`r params$window_length`</span> hours before an exposure, 
-and depth bins observed in the first 
-<span style="color:blue">`r params$window_length`</span> hours after exposure.  
+<span style="color:blue">`r params$window_length`</span> hours before an 
+exposure, then <span style="color:blue">`r params$window_length`</span> hours of 
+depth bin observations starting 
+<span style="color:blue">`r params$response_lag`</span> hours after exposure.
 
 The observed distance's significance is quantified via a Monte Carlo---or 
 bootstrap---p-value.  The null (or sampling) distribution associated with the 
 p-value is the distribution of the distance function when it is applied to two 
-consecutive <span style="color:blue">`r params$window_length`</span>-hour sequences 
-of unexposed depth bin observations.  The null distribution is approximated via 
-sampling.
+<span style="color:blue">`r params$window_length`</span>-hour sequences 
+of unexposed depth bin observations, separated by 
+<span style="color:blue">`r params$response_lag`</span> hours.  The 
+null distribution is approximated via sampling.
 
 ### Sampling units
 
-Studying consecutive <span style="color:blue">`r params$window_length`</span>-hour 
+Studying <span style="color:blue">`r params$window_length`</span>-hour 
 windows is slightly different from both my initial 
 analysis and Alan's proposal.  My initial analysis used pre-exposure shallow 
 dives as the sampling unit, and I sampled the same number of pre-exposure 
@@ -181,8 +190,9 @@ sampling unit, which is like a "time series" version
 of my sampling units.  The time series approach captures both deep and shallow 
 dives, as well as some of the sequential nature of diving behavior.
 
-When considering a time series approach, I chose to work with consecutive 
-<span style="color:blue">`r params$window_length`</span>-hour windows in order to 
+When considering a time series approach, I chose to work with 
+<span style="color:blue">`r params$window_length`</span>-hour windows separated 
+by <span style="color:blue">`r params$response_lag`</span> hours in order to 
 highlight changes in short-term behavior, while 
 using the Monte Carlo sampling to empirically average over different patterns of 
 short-term behavior.  As Nic often mentions, short-term behavior may vary 

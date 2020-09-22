@@ -46,12 +46,14 @@ report_plan = drake_plan(
       rmarkdown::render(
         knitr_in(!!file.path('reports', 'exposure_eda.Rmd')),
         output_file = paste(.id_chr, '.html', sep = ''),
-        output_dir = 'reports',
+        output_dir = file.path('reports', 'exposure_eda'),
         quiet = FALSE,
-        params = list(window_length = window_length)
+        params = list(window_length = window_length, 
+                      response_lag = response_lag)
       ), 
       trigger = trigger(condition = TRUE), 
-      transform = map(window_length = c(3, 6, 12, 18, 24))
+      transform = cross(window_length = c(1, 3, 6, 12, 18, 24, 72),
+                        response_lag = c(0, 6, 12))
     )
   
 )
