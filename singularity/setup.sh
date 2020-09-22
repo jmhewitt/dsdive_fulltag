@@ -14,8 +14,8 @@ fi
 
 echo Installing packages into singularity image...
 
-singularity exec rmovement.sif install2.r -l libs dgof
-singularity exec rmovement.sif install2.r -l libs kableExtra
-singularity exec rmovement.sif install2.r -l libs KSgeneral
+singularity exec rmovement.sif install2.r -l libs -s dgof
+singularity exec rmovement.sif install2.r -l libs -s kableExtra
+singularity exec rmovement.sif install2.r -l libs -s KSgeneral
 
 echo Finished setting up singularity image
