@@ -12,4 +12,10 @@ then
   mkdir libs
 fi
 
+echo Installing packages into singularity image...
+
+singularity exec rmovement.sif install2.r -l libs dgof
+singularity exec rmovement.sif install2.r -l libs kableExtra
+singularity exec rmovement.sif install2.r -l libs KSgeneral
+
 echo Finished setting up singularity image
