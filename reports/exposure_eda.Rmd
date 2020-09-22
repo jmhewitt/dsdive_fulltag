@@ -77,7 +77,7 @@ eda_stats = lapply(eda_data, function(tag_record) {
     depths = tag_record$depths, times = tag_record$times, 
     response_lag = params$response_lag,
     window_length = params$window_length, 
-    dive_labels = tag_record$labels, nsamples = 1e2, 
+    dive_labels = tag_record$labels, nsamples = 1e4, 
     exposure_time = tag_record$exposure_time, deep_depth = 800, 
     statistic = function(x, y, x_labels = NULL, y_labels = NULL) {
       
