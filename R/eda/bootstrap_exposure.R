@@ -13,80 +13,110 @@ bootstrap_exposure = function(depths, times, dive_labels, exposure_time,
   #  statistic - function to apply to each sampled window; the function should 
   #   work directly on a time-series vector of depths
   
-  # return early if tag was unexposed
+  # fail analysis if tag was unexposed
   if(!is.finite(exposure_time)) {
     return(NULL)
   }
   
   
   #
-  # define pre/post exposure windows
+  # extract data for analysis
   #
   
-  # pre-exposure observations
-  pre_exposure_selector = times <= exposure_time
+  # format data for processing
+  dat = data.frame(depths = depths, times = times, labels = dive_labels)
   
-  # ideal post-exposure times to analyze
-  exposure_window = exposure_time + hours(response_lag + c(0, window_length))
+  # data windows
+  exposed_window = exposure_time + hours(response_lag + c(0, window_length))
+  pre_exposed_window = exposure_time - hours(c(window_length, 0))
     
-  # actual post-exposure observations to analyze
-  exposed_selector = (!pre_exposure_selector) & (exposure_window[1] <= times) & 
-    (times <= exposure_window[2]) 
+  # extract exposed observations
+  dat.exposed = dat %>% dplyr::filter(exposed_window[1] <= times, 
+                                      times < exposed_window[2])
   
-  # return early there are no exposed observations to analyze 
-  # (i.e., if response_lag is too large, or window_length is too short)
-  if(sum(exposed_selector) == 0) {
-    return(NULL)
+  # extract observations immediately before exposure
+  dat.pre_exposed = dat %>% dplyr::filter(pre_exposed_window[1] <= times, 
+                                          times < pre_exposed_window[2])
+  
+  
+  # initialize output
+  res = list(
+    pre_exposed_window = pre_exposed_window,
+    exposed_window = exposed_window,
+    pre_exposure_days = difftime(time2 = times[1], time1 = exposure_time,
+                                 units = 'days'),
+    # ideal amount of total duration of pre-post-lag analysis period
+    analysis_duration_days = (response_lag + 2 * window_length) / 24
+  )
+  
+  # failure conditions
+  if(any(
+    # there are no exposed observations to analyze
+    nrow(dat.exposed) == 0,
+    # unequal number of pre/post-exposure observations
+    nrow(dat.exposed) != nrow(dat.pre_exposed),
+    # exposed window is missing observations
+    length(unique(diff(dat.exposed$times))) > 1,
+    # unexposed window is missing observations
+    length(unique(diff(dat.pre_exposed$times))) > 1
+  )) {
+    return(res)
   }
   
-  #
-  # extract pre/post exposure indices and dive labels
-  #
-  
-  # index at which exposure occurs
-  exposure_ind = which(!pre_exposure_selector)[1]
-  # index of first exposed observation to analyze
-  first_exposed = which(exposed_selector)[1]
-  # number of exposed observations to analyze
-  n_exposed = sum(exposed_selector)
-  # number of observations after exposure, but before exposure window to analyze
-  n_lag = sum((!pre_exposure_selector) & (times < exposure_window[1]))
-  
-  depths.exposed = window(x = depths, start = first_exposed, 
-                          end = first_exposed + n_exposed - 1)
-  labels.exposed = window(x = dive_labels, start = first_exposed, 
-                          end = first_exposed + n_exposed - 1)
-  
-  depths.pre_exposed = window(x = depths, end = exposure_ind - 1, 
-                          start = exposure_ind - n_exposed)
-  labels.pre_exposed = window(x = dive_labels, end = exposure_ind - 1, 
-                              start = exposure_ind - n_exposed)
-  
+  # number of observations in each window
+  n_per_window = nrow(dat.exposed)
+
+  # total duration of pre-post-lag analysis period
+  analysis_duration_days = difftime(time1 = tail(dat.exposed$times, 1),
+                                    time2 = dat.pre_exposed$times[1],
+                                    units = 'days')
+
 
   #
-  # bootstrap sampling distribution
+  # bootstrap baseline (i.e., unexposed) sampling distribution
   #
-  
+
+  # time range in which baseline, lagged pre/post window pairs may begin
+  support = c(times[1], exposure_time - analysis_duration_days)
+
+  # draw bootstrap samples of test statistic
   samples = replicate(n = nsamples, expr = {
+
+    # sample start time for lagged window pair
+    start_by = runif(1, min = support[1],  max = support[2])
+    start_time = max(times[times <= start_by])
     
-    # sample two lagged time windows
-    window_start_support = 1:(exposure_ind - 2 * n_exposed - n_lag)
-    window_start = sample(x = window_start_support, size = 1)
+    pre_sample = dat %>% dplyr::filter(
+      start_time <= times,
+      times < start_time + hours(window_length)
+    )
     
-    depths_first = window(x = depths, start = window_start, 
-                          end = window_start + n_exposed - 1)
-    labels_first = window(x = dive_labels, start = window_start, 
-                          end = window_start + n_exposed - 1)
+    post_sample = dat %>% dplyr::filter(
+      start_time + hours(response_lag) + hours(window_length) <= times,
+      times < start_time + hours(response_lag) + hours(2 * window_length)
+    )
     
-    depths_second = window(x = depths, 
-                           end = window_start + 2 * n_exposed - 1 + n_lag, 
-                           start = window_start + n_exposed + n_lag)
-    labels_second = window(x = dive_labels, 
-                           end = window_start + 2 * n_exposed - 1 + n_lag, 
-                           start = window_start + n_exposed + n_lag)
+    # early-return if sample is invalid
+    if(any(
+      # there are no post observations to analyze
+      nrow(post_sample) == 0,
+      # there are no pre observations to analyze
+      nrow(pre_sample) == 0,
+      # unequal number of pre/post-exposure observations
+      nrow(pre_sample) != nrow(post_sample),
+      # number of observations doesn't match target observations
+      nrow(pre_sample) !=  n_per_window,
+      # exposed window is missing observations
+      length(unique(diff(pre_sample$times))) > 1,
+      # unexposed window is missing observations
+      length(unique(diff(post_sample$times))) > 1
+    )) {
+      return(NULL)
+    }
     
     # evalute statistic
-    statistic(depths_first, depths_second, labels_first, labels_second)
+    statistic(x = pre_sample$depths, y = post_sample$depths,  
+              x_labels = pre_sample$labels, y_labels = post_sample$labels)
   })
   
   # repackage output
@@ -97,12 +127,18 @@ bootstrap_exposure = function(depths, times, dive_labels, exposure_time,
   }
   
   # test statistic
-  test_stat = statistic(depths.pre_exposed, depths.exposed, 
-                        labels.pre_exposed, labels.exposed)
-  list(null.samples = samples,
-       test = test_stat, 
-       p = colMeans(
-         sapply(1:length(test_stat), function(i) samples[, i] >= test_stat[i])
-       )
-      )
+  test_stat = statistic(x = dat.pre_exposed$depths,
+                        x_labels = dat.pre_exposed$labels,
+                        y = dat.exposed$depth,
+                        y_labels = dat.exposed$labels)
+  
+  # add to output
+  res$null.samples = samples
+  res$test = test_stat
+  res$p = colMeans(
+    sapply(1:length(test_stat), function(i) samples[, i] >= test_stat[i])
+  )
+  res$analysis_duration_days = analysis_duration_days
+
+  res
 }
