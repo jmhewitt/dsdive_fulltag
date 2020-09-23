@@ -80,7 +80,7 @@ bootstrap_exposure = function(depths, times, dive_labels, exposure_time,
   support = c(times[1], exposure_time - analysis_duration_days)
 
   # draw bootstrap samples of test statistic
-  samples = replicate(n = nsamples, expr = {
+  raw_samples = replicate(n = nsamples, simplify = FALSE, expr = {
 
     # sample start time for lagged window pair
     start_by = runif(1, min = support[1],  max = support[2])
@@ -120,11 +120,8 @@ bootstrap_exposure = function(depths, times, dive_labels, exposure_time,
   })
   
   # repackage output
-  if(is.list(samples)) {
-    samples = do.call(rbind, samples)
-  } else if(is.numeric(samples) & !is.matrix(samples)) {
-    samples = matrix(samples, ncol = 1)
-  }
+  samples = do.call(rbind, lapply(raw_samples, function(x) x$stats))
+  samples_data = lapply(raw_samples, function(x) x$data)
   
   # test statistic
   test_stat = statistic(x = dat.pre_exposed$depths,
@@ -134,9 +131,10 @@ bootstrap_exposure = function(depths, times, dive_labels, exposure_time,
   
   # add to output
   res$null.samples = samples
-  res$test = test_stat
+  res$test = test_stat$stats
+  res$test_data = test_stat$data
   res$p = colMeans(
-    sapply(1:length(test_stat), function(i) samples[, i] >= test_stat[i])
+    sapply(1:length(res$test), function(i) samples[, i] >= res$test[i])
   )
   res$analysis_duration_days = analysis_duration_days
 
