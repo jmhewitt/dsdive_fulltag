@@ -14,8 +14,8 @@ params:
   template_bins: template_bins
   depth_files: depth_files
   cee_starts: cee_starts
-  window_length: 12
-  response_lag: 12
+  window_length: 24
+  response_lag: 6
 ---
 
 ```{r setup, include=FALSE}
@@ -38,7 +38,7 @@ eda_data = lapply(1:length(dive_labels), function(tagId) {
   
   # load data
   d = read.csv(file.path('..', depth_files[[tagId]]))
-  d$Date = anytime(paste(d$Day, d$Time))
+  d$Date = as.POSIXct(d$Date, origin = '1970-01-01 00:00.00 UTC', tz = 'UTC')
   
   # map all depths to standardized bins
   d$depth.bin = sapply(d$Depth, function(depth) {
@@ -153,7 +153,6 @@ eda_stats = lapply(eda_data, function(tag_record) {
 Window length: <span style="color:blue">`r params$window_length`</span> hours
 <br />
 Window lag: <span style="color:blue">`r params$response_lag`</span> hours
-
 
 
 # {.tabset}
@@ -390,6 +389,27 @@ kbl(pvals, escape = FALSE) %>%
 <br/>
 <br/>
 
+
+```{r date_axis_minor_major, include = FALSE}
+date_major_minor = function(x) {
+  
+  day_round = round_date(x, unit = 'day')
+  hour_round = round_date(x, unit = 'hour')
+  
+  day_label = date(x)
+  hour_label = hour(x)
+  
+  # labs = format.POSIXct(x, format = '%Hh')
+  labs = x
+  date_breaks = x == day_round
+  date_breaks[is.na(date_breaks)] = FALSE
+  labs[date_breaks] = format.POSIXct(x[date_breaks], format = '%d-%b')
+  
+  
+  labs
+}
+```
+
 ```{r eda_densities, results = 'asis', echo = FALSE}
 
 for(tagId in 1:length(eda_stats)) {
@@ -399,6 +419,17 @@ for(tagId in 1:length(eda_stats)) {
   # label tag with tagId
   cat('###', res$tag, ' \n\n')
   
+  cat('#### Metadata \n\n')
+  
+  # print exposure time and other information
+  cat('Exposure time: ', format(eda_data[[tagId]]$exposure_time, usetz = TRUE), 
+      ' \n\n')
+  cat('Pre-exposure data: ', round(as.numeric(res$pre_exposure_days), 1), 
+      'days \n\n')
+  cat('Total pre/lag/post window length: ', 
+      round(as.numeric(res$analysis_duration_days), 1), 'days \n\n')
+  
+  cat('#### Data around exposure \n\n')
   
   # plot tag around exposure
   dat = eda_data[[tagId]]
@@ -410,21 +441,37 @@ for(tagId in 1:length(eda_stats)) {
                  depth.bins = template_bins, 
                  dives.labeled = dat$labels, 
                  date_range = date_range,
-                 cee_starts = dat$exposure_time, depth_mark = 800)
-    # highlight the pre/post window
+                 cee_starts = dat$exposure_time, depth_mark = 800) + 
+      # scale_x_datetime(date_breaks = '1 hour', 
+      #                  labels = date_major_minor) +
+      scale_x_datetime(date_breaks = '6 hours',
+                       date_labels = '%b %d (%Hh)') + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+            axis.title.x = element_blank())
+    
+    analysis_windows = data.frame(
+      xmin = c(res$pre_exposed_window[1], res$exposed_window[1]),
+      xmax = c(res$pre_exposed_window[2], res$exposed_window[2])
+    )
+    
+    # highlight the pre/post window, and re-overlay exposure time
     pl = pl + 
-      geom_rect(data = data.frame(x = 0, y = 0),
-                mapping = aes(xmin = date_range[1], xmax = date_range[2], 
+      geom_rect(data = analysis_windows,
+                mapping = aes(xmin = xmin, xmax = xmax,
                                  ymin = 0, ymax = Inf), inherit.aes = FALSE,
-                   fill = NA, col = 'black', lwd = 2) + 
-      ggtitle(label = 'Tag data with pre/post exposure window outlined (black)', 
-              subtitle = '(Exposure occurred at dotted vertical line)')
+                   fill = NA, col = 'black', lwd = 2) +
+      ggtitle(label = 'Tag data with pre/post windows outlined (black)', 
+              subtitle = '(Exposure occurred at yellow vertical line)') + 
+      geom_vline(xintercept = dat$exposure_time, lty = 1, col = 'yellow')
+    
     print(pl)
     cat(' \n\n')
   } else {
     cat ('Tag was unexposed. \n\n')
   }
   
+  
+  cat('#### Test results \n\n')
   
   # sse
   if('p' %in% names(res)) {
