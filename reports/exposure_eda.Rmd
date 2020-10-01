@@ -14,8 +14,8 @@ params:
   template_bins: template_bins
   depth_files: depth_files
   cee_starts: cee_starts
-  window_length: 6
-  response_lag: 12
+  window_length: 1
+  response_lag: 0
 ---
 
 ```{r setup, include=FALSE}
@@ -106,6 +106,15 @@ eda_stats = lapply(eda_data, function(tag_record) {
           total_distance = sum(abs(diff(depth)))
         )
       
+      # marginal distribution of bins in shallow periods
+      shallow_bin_count = table(
+        df %>% 
+          dplyr::filter(!(label %in% deep_labels)) %>% 
+          dplyr::select(depth, type)
+      )
+      shallow_bin_dist = sweep(x = shallow_bin_count, MARGIN = 2, 
+                               STATS = colSums(shallow_bin_count), FUN = '/')
+      
       # sequence of midpoint differences
       dx = diff(x)
       dy = diff(y)
@@ -129,6 +138,8 @@ eda_stats = lapply(eda_data, function(tag_record) {
       data = list(
         # marginal depth bin distributions
         marginal_bins = table(df %>% dplyr::select(depth, type)),
+        # marginal depth bin distributions for shallow dives
+        marginal_shallow_bins = shallow_bin_dist,
         # proportion of downward movements
         prop_downward = c(x = mean(dx.sign == 1), y = mean(dy.sign == 1)),
         # proportion of upward movements
@@ -154,6 +165,11 @@ eda_stats = lapply(eda_data, function(tag_record) {
         # SSE between marginal depth bin distributions
         marginal_bins = sum(apply(table(df %>% dplyr::select(depth, type)), 
                                   1, diff)^2),
+        # CvM between marginal depth bin distributions for shallow dives
+        # marginal_shallow_bins = sum(apply(shallow_bin_dist, 1, diff)^2),
+        marginal_shallow_bins = sum(
+          diff(t(apply(shallow_bin_dist, 2, cumsum)))^2
+        ),
         # SSE between proportion of downward movements
         prop_downward = (mean(dx.sign == 1) - mean(dy.sign == 1))^2,
         # SSE between proportion of upward movements
@@ -378,6 +394,7 @@ individual tags.
 ```{r stat_labels, include = FALSE}
 stat_labels = c(
   'SSE between depth bin counts',
+  'CvM between marginal depth bin distributions of shallow dives',
   'SSE between proportion of downward movements',
   'SSE between proportion of upward movements',
   'SSE between proportion of no-change "movements"',
