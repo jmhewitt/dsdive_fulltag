@@ -1,0 +1,10 @@
+total_downward = function(pre_post_list) {
+  # SSE for
+  sum(diff(
+    sapply(pre_post_list, function(d) {
+      # total upward distance
+      dx = diff(d$depths)
+      sum(dx[dx<0])
+    })
+  )^2)
+}
