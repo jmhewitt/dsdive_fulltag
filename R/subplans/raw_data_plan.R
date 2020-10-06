@@ -19,9 +19,7 @@ raw_data_plan = drake_plan(
   # sex information for tags
   tag_sex = read.csv(file_in(!!file.path('data', 'raw', 'tag_sex.csv')), 
                      colClasses = 'factor'),
-  
-  tag_names = as.character(tag_sex$deployid),
-  
+
   # threshold for deep dives
   deep_dive_depth = 800
   
