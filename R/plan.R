@@ -5,5 +5,6 @@ the_plan = bind_plans(
   depth_bin_imputation_plan,
   dive_segmentation_plan,
   nimble_plan,
-  report_plan
+  report_plan,
+  eda_plan
 )
