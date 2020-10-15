@@ -8,6 +8,10 @@ raw_data_plan = drake_plan(
                          '6/7/19 15:13:09', '8/6/19 17:37:43', 
                          '8/19/19 19:11:00'), tz = 'UTC'),
   
+  # location of dtag data
+  dtag_files = file_in(!!dir(path = file.path('data', 'raw'),
+                             pattern = 'aprh', full.names = TRUE)),
+  
   # location of sattag series data
   depth_files = file_in(!!dir(path = file.path('data', 'raw'),
                               pattern = 'series_', full.names = TRUE)),
