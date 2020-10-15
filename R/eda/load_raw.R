@@ -1,9 +1,9 @@
-load_raw = function(depth_files, template_bins, cee_starts) {
+load_raw = function(depth_files, template_bins, cee_starts, dive_labels) {
   
-  lapply(depth_files, function(f) {
+  lapply(1:length(depth_files), function(i) {
     
     # load data
-    d = read.csv(file.path(f))
+    d = read.csv(file.path(depth_files[i]))
     d$Date = as.POSIXct(d$Date, origin = '1970-01-01 00:00.00 UTC', tz = 'UTC')
     
     # map all depths to standardized bins
@@ -30,6 +30,18 @@ load_raw = function(depth_files, template_bins, cee_starts) {
       exposed = as.numeric(d$Date >= exposure_time)
     }
     
+    # add dive segmentation to depths time series
+    labelInd = which(
+      sapply(dive_labels, function(x) x$tag) == as.character(d$DeployID[1])
+    )
+    d$diveId = dive_labels[[labelInd]]$labels
+
+    # classify dives by max observed depth
+    diveTypes = d %>%
+      dplyr::group_by(diveId) %>%
+      dplyr::summarise(diveType = ifelse(max(depth.standardized) > 800,
+                                         'Deep', 'Shallow'))
+    
     # package results
     list(
       # get name of tagged individual
@@ -38,6 +50,9 @@ load_raw = function(depth_files, template_bins, cee_starts) {
       depth.bin = d$depth.bin,
       depths = d$depth.standardized,
       times = d$Date,
+      # dive segmentation
+      diveIds = d$diveId,
+      diveTypes = diveTypes,
       # exposure information
       exposure_time = exposure_time,
       exposed = exposed

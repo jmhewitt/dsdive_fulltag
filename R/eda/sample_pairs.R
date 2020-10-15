@@ -1,9 +1,10 @@
 sample_pairs = function(depths, depth_bins, times, exposure_time, response_lag, 
-                        window_length, nsamples) {
+                        window_length, nsamples, diveIds) {
   # Parameters:
   #  depths - time series of depth observations
   #  depth_bins - time series of depth bin sequence
   #  times - time at which depths are observed
+  #  diveIds - time series that segments the depth series into a dive sequence
   #  exposure_time - time at which exposure occured
   #  response_lag - number of hours before post-exposure window
   #  window_length - number of hours to sample post-exposure
@@ -17,7 +18,8 @@ sample_pairs = function(depths, depth_bins, times, exposure_time, response_lag,
   }
   
   # format data for processing
-  dat = data.frame(depths = depths, depth_bins = depth_bins, times = times)
+  dat = data.frame(depths = depths, depth_bins = depth_bins, times = times,
+                   diveIds = diveIds)
   
   # data windows
   exposed_window = exposure_time + hours(response_lag + c(0, window_length))

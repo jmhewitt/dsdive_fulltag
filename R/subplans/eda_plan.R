@@ -16,7 +16,8 @@ eda_plan = drake_plan(
   
   # data, in list format
   standardized_sattags = target(
-    load_raw(depth_files, template_bins, cee_starts),
+    load_raw(depth_files = depth_files, template_bins = template_bins, 
+             cee_starts = cee_starts, dive_labels = dive_labels),
     dynamic = map(depth_files)
   ),
   
@@ -35,6 +36,7 @@ eda_plan = drake_plan(
           pairs = sample_pairs(depths = tag$depths,
                                depth_bins = tag$depth.bin, 
                                times = tag$times, 
+                               diveIds = tag$diveIds,
                                exposure_time = tag$exposure_time,
                                response_lag = response_lag, 
                                window_length = window_length,
@@ -98,7 +100,8 @@ eda_plan = drake_plan(
       pre_post_pairs, 
       test_fn_name = c('prop_surface', 'bin_counts', 'prop_downward', 
                        'prop_upward', 'prop_no_change', 'total_upward', 
-                       'total_downward', 'total_absolute')
+                       'total_downward', 'total_absolute', 'type_seq',
+                       'depth_seq', 'type_cdf', 'type_trans')
     ),
     format = 'file'
   ),
