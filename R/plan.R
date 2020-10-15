@@ -6,5 +6,6 @@ the_plan = bind_plans(
   dive_segmentation_plan,
   nimble_plan,
   report_plan,
-  eda_plan
+  eda_plan,
+  eda_dtag_plan
 )
