@@ -33,10 +33,10 @@ eda_plan = drake_plan(
           response_lag = response_lag,
           window_length = window_length,
           # samples
-          pairs = sample_pairs(depths = tag$depths,
-                               depth_bins = tag$depth.bin, 
+          pairs = sample_pairs(data = data.frame(depths = tag$depths, 
+                                                 depth_bins = tag$depth.bin,
+                                                 diveIds = tag$diveIds),
                                times = tag$times, 
-                               diveIds = tag$diveIds,
                                exposure_time = tag$exposure_time,
                                response_lag = response_lag, 
                                window_length = window_length,
