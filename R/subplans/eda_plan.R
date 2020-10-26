@@ -146,7 +146,6 @@ eda_plan = drake_plan(
                    pval = ifelse(is.null(mcout$pval), NA, mcout$pval))
       }))
       
-      browser()
       # plot output
       pl = ggplot(data = df %>%
                     mutate(signif = cut(as.numeric(pval),
