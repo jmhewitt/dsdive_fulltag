@@ -19,7 +19,9 @@ type_cdf = function(pre_post_list) {
     # process pre/post observations separately
     dplyr::group_by(type) %>% 
     # sequential proportion of time in shallow periods
-    dplyr::mutate(cum_shallow_obs = cumsum(diveType == 'Shallow') / n())
+    dplyr::mutate(cum_shallow_obs = cumsum(diveType == 'Shallow') / n()) %>% 
+    # return to normal
+    ungroup()
   
   # reshape pre/post summary statistics
   summary_stats_wider = data.frame(
