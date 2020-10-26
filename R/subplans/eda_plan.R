@@ -1,5 +1,5 @@
 eda_plan = drake_plan(
-
+  
   # output directory for eda files
   eda_dir = {
     p = file.path('output', 'eda')
@@ -24,6 +24,8 @@ eda_plan = drake_plan(
   # Monte Carlo pre/post sample pairs
   pre_post_pairs = target(
     command = {
+      # "unwrap" command
+      cdtl = ifelse(conditional == 'conditional', TRUE, FALSE)
       # generate samples
       res = lapply(standardized_sattags, function(tag) {
         list(
@@ -40,7 +42,11 @@ eda_plan = drake_plan(
                                exposure_time = tag$exposure_time,
                                response_lag = response_lag, 
                                window_length = window_length,
-                               nsamples = 1e3)
+                               nsamples = 1e3,
+                               conditional = cdtl,
+                               conditional_class = function(x) {
+                                 ifelse(x['depths'] >= 800, 'Deep', 'Shallow')
+                               })
         )
       })
       # save samples, and return file name
@@ -55,7 +61,8 @@ eda_plan = drake_plan(
     },
     dynamic = map(standardized_sattags), 
     transform = cross(response_lag = c(0, 6, 12),
-                      window_length = c(1, 3, 6, 12, 18, 24, 72)),
+                      window_length = c(1, 3, 6, 12, 18, 24, 72),
+                      conditional = c('conditional', '')),
     format = 'file'
   ),
   
@@ -101,7 +108,16 @@ eda_plan = drake_plan(
       test_fn_name = c('prop_surface', 'bin_counts', 'prop_downward', 
                        'prop_upward', 'prop_no_change', 'total_upward', 
                        'total_downward', 'total_absolute', 'type_seq',
-                       'depth_seq', 'type_cdf', 'type_trans')
+                       'depth_seq', 'type_cdf', 'type_trans', 
+                       'increasing_prop_downward', 'decreasing_depth_seq', 
+                       'increasing_depth_seq', 'decreasing_prop_downward', 
+                       'increasing_prop_no_change', 'decreasing_prop_no_change',
+                       'increasing_prop_surface', 'decreasing_prop_surface', 
+                       'increasing_prop_upward', 'decreasing_prop_upward', 
+                       'increasing_total_absolute', 'decreasing_total_absolute',
+                       'increasing_total_downward', 'decreasing_total_downward',
+                       'increasing_total_upward', 'decreasing_total_upward', 
+                       'increasing_type_seq', 'decreasing_type_seq')
     ),
     format = 'file'
   ),
@@ -110,7 +126,7 @@ eda_plan = drake_plan(
   pre_post_files = target(
     command = list(dplyr::combine(pre_post_tests)),
     dynamic = map(pre_post_tests),
-    transform = combine(pre_post_tests)
+    transform = combine(pre_post_tests, .by = conditional)
   ),
   
   eda_tagsummary = target(
@@ -130,6 +146,7 @@ eda_plan = drake_plan(
                    pval = ifelse(is.null(mcout$pval), NA, mcout$pval))
       }))
       
+      browser()
       # plot output
       pl = ggplot(data = df %>%
                     mutate(signif = cut(as.numeric(pval),
@@ -159,6 +176,7 @@ eda_plan = drake_plan(
       f
     },
     dynamic = map(pre_post_files),
+    transform = map(pre_post_files),
     format = 'file'
   )
 
