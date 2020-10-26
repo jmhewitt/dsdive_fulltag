@@ -1,5 +1,6 @@
 sample_pairs = function(data, times, exposure_time, response_lag, 
-                        window_length, nsamples, sparse = FALSE) {
+                        window_length, nsamples, sparse = FALSE, 
+                        conditional = FALSE, conditional_class = NULL) {
   # Parameters:
   #  data - data frame in which each row contains all data for a single obs,
   #   or a function that returns such a data frame.  This is only needed if 
@@ -10,6 +11,9 @@ sample_pairs = function(data, times, exposure_time, response_lag,
   #  window_length - number of hours to sample post-exposure
   #  sparse - TRUE to output the exact samples, FALSE to output the indices
   #    in the data argument associated with each sample
+  #  conditional - TRUE to ensure pre-exposure sample pairs are selected so 
+  #    that they match the dive class at the time of exposure
+  #  conditional_class - function to give each observation a class label
   #
   # Return: 
   #  List of resampled pre/post sample pairs, and the target pair
@@ -51,6 +55,13 @@ sample_pairs = function(data, times, exposure_time, response_lag,
   } else {
     dat.exposed = dat[exposed_inds, , drop = FALSE]
     dat.pre_exposed = dat[pre_exposed_inds, , drop = FALSE]
+  }
+  
+  # determine dive class at time of exposure
+  if(conditional) {
+    exposed_class = conditional_class(
+      dat[exposed_inds, , drop = FALSE][1, , drop = FALSE]
+    )[1]
   }
   
   # initialize output
@@ -108,19 +119,40 @@ sample_pairs = function(data, times, exposure_time, response_lag,
   if(res$pre_exposure_days < res$analysis_duration_days) {
     return(res)
   }
-
-  # time range in which baseline, lagged pre/post window pairs may begin
+  
+  # time range and associated inds where lagged pre/post window pairs may begin
   support = c(times[1], exposure_time - res$analysis_duration_days)
-
+  start_inds = which((support[1] <= times) & (times <= support[2]))
+  
   # constants for sampling
   window_duration = seconds(tscale * window_length)
+  
+  # restrict indices at which pre/post window pairs may begin
+  if(conditional) {
+    # determine which window pairs match the conditional class
+    correct_class = sapply(start_inds, function(sind) {
+      # start time for lagged window pair
+      start_time = times[sind]
+      # indices for lagged window pair's post sample
+      pre_end = start_time + window_duration
+      post_start = pre_end + seconds(tscale * response_lag)
+      post_inds = (post_start <= dat$times) & 
+        (dat$times < post_start + window_duration)
+      # check to see if the post window class matches the conditional class
+      rowind = which(post_inds)[1]
+      ifelse(is.na(rowind), FALSE, 
+             conditional_class(dat[rowind, , drop = FALSE]) == exposed_class)
+    })
     
+    # only keep pre/post windows that match the conditional class
+    start_inds = start_inds[correct_class]
+  }
+  
   # draw bootstrap samples of test statistic
   res$resampled = replicate(n = nsamples, simplify = FALSE, expr = {
 
     # sample start time for lagged window pair
-    start_by = runif(1, min = support[1],  max = support[2])
-    start_time = max(times[times <= start_by])
+    start_time = times[sample(x = start_inds, size = 1)]
     
     pre_end = start_time + window_duration
     post_start = pre_end + seconds(tscale * response_lag)
