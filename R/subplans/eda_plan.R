@@ -177,7 +177,117 @@ eda_plan = drake_plan(
     dynamic = map(pre_post_files),
     transform = map(pre_post_files),
     format = 'file'
+  ),
+  
+  # Monte Carlo pre/post sample pairs, and generate plots
+  sattag_eda_stats = target(
+    command = {
+      if(conditional == 'conditional') {
+        conditional_class = function(x) {
+          ifelse(x['depths'] >= 800, 'Deep', 'Shallow')
+        }
+      } else {
+        conditional_class = NULL
+      }
+      # generate and evaluate samples
+      tag = standardized_sattags[[1]]
+      res = sattag_eda(depths = tag$depths, times = tag$times, 
+                       depth_bins = tag$depth.bin, dive_ids = tag$diveIds, 
+                       dive_types = tag$diveTypes,
+                       exposure_time = tag$exposure_time,
+                       response_lag = response_lag, 
+                       window_length = window_length, nsamples = 1e3, 
+                       conditional_class = conditional_class,
+                       stat = sattag_summary)
+      # package and return results
+      res$tag = tag$tag
+      res
+    },
+    dynamic = map(standardized_sattags),
+    transform = cross(response_lag = c(0, 6, 12),#, 12),
+                      window_length = c(1, 3, 6, 12, 24),#, 12, 18, 24, 72))
+                      conditional = c('conditional', ''))
+  ),
+  
+  sattag_eda_stat_format = target(
+    command = {
+      if(length(sattag_eda_stats) > 1) {
+        data.frame(tag = sattag_eda_stats$tag, 
+                   response_lag = sattag_eda_stats[['response_lag']],
+                   window_length = sattag_eda_stats[['window_length']],
+                   conditional = sattag_eda_stats[['conditional']],
+                   p_right = sattag_eda_stats$p.right,
+                   p_left = sattag_eda_stats$p.left,
+                   p_sse = sattag_eda_stats$p.sse,
+                   stat = names(sattag_eda_stats$observed))
+      } else {
+        NULL
+      }
+    },
+    dynamic = map(sattag_eda_stats),
+    transform = map(sattag_eda_stats)
+  ),
+  
+  sattag_eda_plots = target(
+    command = {
+      
+      # combine data from all EDA tests
+      df = rbind(sattag_eda_stat_format)
+      
+      if(!is.null(df)) {
+        
+        targetTag = df$tag[1]
+        
+        #
+        # format df for plotting
+        #
+        
+        df.plottable = df %>% 
+          tidyr::pivot_longer(cols = c('p_right', 'p_left', 'p_sse'), 
+                              names_to = 'pval_type', values_to = 'pval') %>% 
+          dplyr::mutate(
+            signif = factor(cut(x = pval, breaks = c(0, .05, .1, 1), 
+                                include.lowest = TRUE)),
+            response_lag = factor(x = paste(response_lag, 'h lag', sep = ''),
+                                  levels = paste(sort(unique(response_lag)),
+                                                 'h lag', sep ='')),
+            window_length = factor(x = paste(window_length, 'h window', 
+                                             sep = ''),
+                                   levels = paste(sort(unique(window_length)),
+                                                  'h window', sep ='')),
+            pval_type = factor(x = pval_type, 
+                               levels = c('p_sse', 'p_left', 'p_right'),
+                               labels = c('P(X > t^2)', 'P(X < t)', 'P(X > t)'))
+          ) 
+        
+        # build plot
+        pl = ggplot(df.plottable, aes(x = pval_type, y = stat, fill = signif)) + 
+          geom_tile(height = .9, width = .9, col = 1, alpha = .6) +
+          scale_fill_brewer('Signif.', type = 'seq', palette = 'PuRd',
+                            direction = -1) +
+          scale_y_discrete(position = 'right') + 
+          facet_grid(response_lag ~ window_length, switch = 'y') + 
+          ylab('Statistic') +
+          xlab('p-value') + 
+          theme_few() + 
+          theme(axis.title.y = element_blank(), 
+                axis.text.x = element_text(angle = -45, hjust = 0)) + 
+          ggtitle(targetTag) + 
+          coord_equal(ratio = .75) 
+        
+        # save output
+        f = file.path(eda_plots_dir,
+                      paste(targetTag, '_', id_chr(), '.png', sep = ''))
+        ggsave(pl, filename = f)
+        f
+      } else {
+        NULL
+      }
+    },
+    dynamic = map(sattag_eda_stat_format),
+    transform = combine(sattag_eda_stat_format, .by = conditional),
+    format = 'file',
+    hpc = FALSE
   )
-
 )
 
