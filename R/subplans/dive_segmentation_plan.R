@@ -16,7 +16,7 @@ dive_segmentation_plan = drake_plan(
   # segment tag records into dives 
   dive_labels = segment_dives(dive_label_plot_dir, label_diagnostic_plot_dir, 
                               template_bins, exploratory_merge_ratios, 
-                              depth_files, merge_ratio, cee_starts),
+                              depth_files, merge_ratio, tag_info),
   
   # identify endpoints of segmented dives
   dive_endpoints = identify_dive_endpoints(depth_files, dive_labels, 

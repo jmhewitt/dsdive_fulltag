@@ -17,7 +17,7 @@ eda_plan = drake_plan(
   # data, in list format
   standardized_sattags = target(
     load_raw(depth_files = depth_files, template_bins = template_bins, 
-             cee_starts = cee_starts, dive_labels = dive_labels),
+             tag_info = tag_info, dive_labels = dive_labels),
     dynamic = map(depth_files)
   ),
   
@@ -195,6 +195,7 @@ eda_plan = drake_plan(
                        depth_bins = tag$depth.bin, dive_ids = tag$diveIds, 
                        dive_types = tag$diveTypes,
                        exposure_time = tag$exposure_time,
+                       baseline_end = tag$baseline_end,
                        response_lag = response_lag, 
                        window_length = window_length, nsamples = 1e3, 
                        conditional_class = conditional_class,

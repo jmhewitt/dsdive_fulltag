@@ -1,6 +1,6 @@
 sattag_eda = function(depths, depth_bins, dive_ids, dive_types, times, 
                       exposure_time, response_lag, window_length, nsamples, 
-                      conditional_class = NULL, stat) {
+                      conditional_class = NULL, stat, baseline_end) {
   # 
   # response_lags and window_lengths will be crossed
   #
@@ -60,7 +60,7 @@ sattag_eda = function(depths, depth_bins, dive_ids, dive_types, times,
   n_per_window = sum(exposed_inds)
   
   # length of pre-exposure record available for "baselining" response
-  pre_exposure_days = difftime(time2 = times[1], time1 = exposure_time,
+  pre_exposure_days = difftime(time2 = times[1], time1 = baseline_end,
                                units = 'days')
   
   # ideal amount of total duration of pre-post-lag analysis period
@@ -84,7 +84,7 @@ sattag_eda = function(depths, depth_bins, dive_ids, dive_types, times,
   #
   
   # time range and associated inds where lagged pre/post window pairs may begin
-  support = c(times[1], exposure_time - analysis_duration_days)
+  support = c(times[1], baseline_end - analysis_duration_days)
   start_inds = which((support[1] <= times) & (times < support[2]))
   
   # constants for sampling

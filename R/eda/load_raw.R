@@ -1,4 +1,4 @@
-load_raw = function(depth_files, template_bins, cee_starts, dive_labels) {
+load_raw = function(depth_files, template_bins, tag_info, dive_labels) {
   
   lapply(1:length(depth_files), function(i) {
     
@@ -16,18 +16,34 @@ load_raw = function(depth_files, template_bins, cee_starts, dive_labels) {
     tag_start = d$Date[1]
     tag_end = d$Date[length(d$Date)]
     
-    # determine which CEE's overlap with tag record
-    cees_experienced = which(
-      (tag_start <= cee_starts) & (cee_starts <= tag_end)
-    )
+    # get tag name
+    tag_id = str_extract(depth_files[i], 'ZcTag[0-9]+')
     
-    # pre/post exposure labels
-    if(length(cees_experienced) == 0) {
+    # determine which CEE's overlap with tag record
+      cees_experienced = tag_info %>% 
+        dplyr::filter(deployid == tag_id) %>% 
+        dplyr::select(cee_start) %>%
+      unlist()
+      
+    # pre/post exposure and baseline labels
+    if(!is.na(cees_experienced) == 0) {
       exposure_time = Inf
-      exposed = numeric(length(d$depths))
+      exposed = numeric(nrow(d))
+      baseline = numeric(nrow(d)) + 1
+      baseline_end = tag_end
     } else {
-      exposure_time = cee_starts[min(cees_experienced)]
+      exposure_time = as.POSIXct(
+        cees_experienced, origin = '1970-01-01 00:00.00 UTC'
+      )
+      baseline_end = as.POSIXct(
+        tag_info %>% 
+          dplyr::filter(deployid == tag_id) %>% 
+          dplyr::select(baseline_end) %>% 
+          unlist(), 
+        origin = '1970-01-01 00:00.00 UTC'
+      )
       exposed = as.numeric(d$Date >= exposure_time)
+      baseline = as.numeric(d$Date < baseline_end)
     }
     
     # add dive segmentation to depths time series
@@ -55,7 +71,9 @@ load_raw = function(depth_files, template_bins, cee_starts, dive_labels) {
       diveTypes = diveTypes,
       # exposure information
       exposure_time = exposure_time,
-      exposed = exposed
+      exposed = exposed,
+      baseline = baseline,
+      baseline_end = baseline_end
     )
   })
    
