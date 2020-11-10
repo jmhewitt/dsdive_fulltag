@@ -17,7 +17,7 @@ eda_dtag_plan = drake_plan(
   # data, in list format
   standardized_dtags = target(
     command = {
-      dat = load_raw_dtag(dtag_files = dtag_files, cee_starts = cee_starts)
+      dat = load_raw_dtag(dtag_files = dtag_files, tag_info = tag_info)
       f = file.path(eda_dtag_dir, paste(id_chr(), '.rds', sep =''))
       saveRDS(dat[[1]], file = f)
       f
