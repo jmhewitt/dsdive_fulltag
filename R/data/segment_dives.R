@@ -1,6 +1,6 @@
 segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir, 
                          template_bins, exploratory_merge_ratios, 
-                         depth_files, merge_ratio, cee_starts) {
+                         depth_files, merge_ratio, tag_info) {
 
   dir.create(dive_label_plot_dir, recursive = TRUE)
   dir.create(label_diagnostic_plot_dir, recursive = TRUE)
@@ -150,7 +150,7 @@ segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir,
     
     # plot dive record
     pl = tagplot(depths = record$depths, depth.bins = template_bins, 
-                 dives.labeled = labs, cee_starts = cee_starts, 
+                 dives.labeled = labs, cee_starts = tag_info$cee_start, 
                  depth_mark = 800)
     
     # save plot of dive record 
