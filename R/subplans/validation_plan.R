@@ -26,7 +26,7 @@ validation_plan = drake_plan(
                           template_bins = template_bins,
                           sattag_timestep = sattag_timestep,
                           validation_output_dir = validation_output_dir,
-                          tag_sex = tag_sex),
+                          tag_info = tag_info),
     transform = map(tag, 
                     .names = !!(paste('validation_statistics', 1:7, sep = '_')))
   )
