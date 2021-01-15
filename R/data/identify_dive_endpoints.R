@@ -1,5 +1,5 @@
 identify_dive_endpoints = function(depth_files, dive_labels, template_bins, 
-                                   sattag_timestep) {
+                                   sattag_timestep, deep_threshold) {
   
   endpoints = mapply(FUN = function(depth_file, labels) { 
   
@@ -11,7 +11,7 @@ identify_dive_endpoints = function(depth_files, dive_labels, template_bins,
     
     # load data
     d = read.csv(file = depth_file)
-    d$Date = anytime(paste(d$Day, d$Time))
+    d$Date = as.POSIXct(d$Date, tz = 'UTC', origin = '1970-01-01 00:00.00 UTC')
     
     # map all depths to standardized bins
     d$depth.bin = sapply(d$Depth, function(depth) {
@@ -117,7 +117,7 @@ identify_dive_endpoints = function(depth_files, dive_labels, template_bins,
       max_d = template_bins$center[
         max(d$depth.bin[r['start.ind']:r['end.ind']])
       ]
-      ifelse(max_d > 800, 'Deep', 'Shallow')
+      ifelse(max_d > deep_threshold, 'Deep', 'Shallow')
     }))
     
     # add endpoint links to dive information

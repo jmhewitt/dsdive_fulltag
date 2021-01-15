@@ -11,7 +11,7 @@ segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir,
     
     # load data
     d = read.csv(file = f)
-    d$Date = anytime(paste(d$Day, d$Time))
+    d$Date = as.POSIXct(d$Date, tz = 'UTC', origin = '1970-01-01 00:00.00 UTC')
     
     # extract tag name
     tag.name = str_extract(f, 'Zc[0-9A-Za-z]+')
