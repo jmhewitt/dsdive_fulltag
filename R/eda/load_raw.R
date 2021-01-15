@@ -33,14 +33,14 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels) {
       baseline_end = tag_end
     } else {
       exposure_time = as.POSIXct(
-        cees_experienced, origin = '1970-01-01 00:00.00 UTC'
+        cees_experienced, origin = '1970-01-01 00:00.00 UTC', tz = 'UTC'
       )
       baseline_end = as.POSIXct(
         tag_info %>% 
           dplyr::filter(deployid == tag_id) %>% 
           dplyr::select(baseline_end) %>% 
           unlist(), 
-        origin = '1970-01-01 00:00.00 UTC'
+        origin = '1970-01-01 00:00.00 UTC', tz = 'UTC'
       )
       exposed = as.numeric(d$Date >= exposure_time)
       baseline = as.numeric(d$Date < baseline_end)
