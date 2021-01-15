@@ -1,10 +1,6 @@
 segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir, 
                          template_bins, exploratory_merge_ratios, 
-                         depth_files, merge_ratio, tag_info) {
-
-  dir.create(dive_label_plot_dir, recursive = TRUE)
-  dir.create(label_diagnostic_plot_dir, recursive = TRUE)
-  
+                         depth_files, merge_ratio, tag_info, deep_threshold) {
   
   #
   # find and process raw data
@@ -65,7 +61,7 @@ segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir,
                   end = max(Date),
                   duration = difftime(time1 = end, time2 = start, 
                                       units = 'mins'),
-                  deep = (maxd >= 800)) %>% 
+                  deep = (maxd >= deep_threshold)) %>% 
         # aggregate summaries by dive type
         group_by(deep) %>% 
         summarise(n = length(deep), 
@@ -151,7 +147,7 @@ segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir,
     # plot dive record
     pl = tagplot(depths = record$depths, depth.bins = template_bins, 
                  dives.labeled = labs, cee_starts = tag_info$cee_start, 
-                 depth_mark = 800)
+                 depth_mark = deep_threshold)
     
     # save plot of dive record 
     ggsave(pl, filename = file.path(dive_label_plot_dir, 

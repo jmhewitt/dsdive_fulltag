@@ -1,9 +1,6 @@
 impute_bins = function(message_files, depth_files, imputed_out_dir, 
                        imputed_plot_dir) {
 
-  dir.create(path = imputed_out_dir, recursive = TRUE, showWarnings = FALSE)
-  dir.create(path = imputed_plot_dir, recursive = TRUE, showWarnings = FALSE)
-  
   #
   # Load/Extract depth bins from all 4-hr message blocks from all sattag records
   #
