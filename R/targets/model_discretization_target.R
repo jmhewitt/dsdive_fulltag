@@ -5,7 +5,7 @@ model_discretization_target = list(
     
     # vertical speeds, by movement structure (i.e., stage)
     lambda = matrix(
-      rep(c(0.01, .05, 100), 3), 
+      rep(c(0, .05, 101), 3), 
       ncol = 3, byrow = TRUE,
       dimnames = list(
         rownames = c('descent', 'foraging', 'ascent'), 
