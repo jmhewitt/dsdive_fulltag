@@ -3,14 +3,14 @@
 #
 
 # nimbleList for storing entries of a tridiagonal matrix
-tridiagonalEntries = nimbleList(
+tridiagonalEntries = nimble::nimbleList(
   diag = double(1),
   dsuper = double(1),
   dsub = double(1)
 )
 
 # build components for infinitesimal generator matrix for depth bin transitions
-buildInfinitesimalGeneratorEntries = nimbleFunction(
+buildInfinitesimalGeneratorEntries = nimble::nimbleFunction(
   run = function(pi = double(0), lambda = double(0), M = integer(0),
                  stage = integer(0), widths = double(1)) {
     # Parameters:
@@ -63,7 +63,7 @@ buildInfinitesimalGeneratorEntries = nimbleFunction(
 )
 
 # build infinitesimal generator matrix for depth bin transitions
-buildInfinitesimalGenerator = nimbleFunction(
+buildInfinitesimalGenerator = nimble::nimbleFunction(
   run = function(pi = double(0), lambda = double(0), M = integer(0),
                  stage = integer(0), widths = double(1)) {
     # Parameters:
