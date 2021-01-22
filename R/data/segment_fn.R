@@ -2,7 +2,8 @@
 # water-drop segmentation function
 #
 
-dive.segmentation = function(y, merge.ratio = .5, depth.bins) {
+dive.segmentation = function(y, times, merge.ratio = .5, depth.bins,
+                             timestep) {
   
   o = order(y, decreasing = TRUE)
   
@@ -170,6 +171,39 @@ dive.segmentation = function(y, merge.ratio = .5, depth.bins) {
       }
     }
     
+  }
+
+    
+  #
+  # split dive labels where there are time gaps
+  #
+  
+  # forward difference: time elapsed from one observation to the next
+  time_increments = difftime(
+    time2 = times[1:(length(times)-1)], 
+    time1 = times[2:length(times)], 
+    units = 'secs'
+  )
+  
+  # identify time indices immediately preceding consequential data gaps
+  split_after = which(time_increments >= 2*timestep)
+  
+  # add new diive labels after data gap
+  if(length(split_after) > 0) {
+    for(gap_ind in split_after) {
+      # identify the dive id that needs to be split
+      id_before_gap = modes[gap_ind]
+      # only process modes that are not conflict locations
+      if(id_before_gap > 0) {
+        # find the last time the dive id is used
+        last_ind_with_id = max(which(modes == id_before_gap))
+        # generate and apply new dive id if the gap does not end the dive
+        if(last_ind_with_id > gap_ind) {
+          e = max(modes) + 1
+          modes[(gap_ind+1):last_ind_with_id] = e
+        }
+      }
+    }
   }
   
   

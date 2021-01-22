@@ -1,6 +1,7 @@
 segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir, 
                          template_bins, exploratory_merge_ratios, 
-                         depth_files, merge_ratio, tag_info, deep_threshold) {
+                         depth_files, merge_ratio, tag_info, deep_threshold,
+                         timestep) {
   
   #
   # find and process raw data
@@ -26,7 +27,8 @@ segment_dives = function(dive_label_plot_dir, label_diagnostic_plot_dir,
     label.seq = lapply(exploratory_merge_ratios, function(mr) {
       list(
         labels = dive.segmentation(y = d$depth.bin, merge.ratio = mr,
-                                   depth.bins = template_bins),
+                                   depth.bins = template_bins, times = d$Date,
+                                   timestep = timestep),
         merge.ratio = mr
       )
     })

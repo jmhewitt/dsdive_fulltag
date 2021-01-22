@@ -9,9 +9,16 @@ dive_segmentation_targets = list(
   # segment tag records into dives 
   tar_target(
     name = dive_labels, 
-    command = segment_dives(dive_label_plot_dir, label_diagnostic_plot_dir, 
-                            template_bins, exploratory_merge_ratios, 
-                            depth_files, merge_ratio, tag_info, deep_dive_depth)
+    command = segment_dives(
+      dive_label_plot_dir = dive_label_plot_dir, 
+      label_diagnostic_plot_dir = label_diagnostic_plot_dir, 
+      template_bins = template_bins, 
+      exploratory_merge_ratios = exploratory_merge_ratios, 
+      depth_files = depth_files, 
+      merge_ratio = merge_ratio, 
+      tag_info = tag_info, deep_threshold = deep_dive_depth, 
+      timestep = sattag_timestep
+    )
   ),
   
   # identify endpoints of segmented dives
