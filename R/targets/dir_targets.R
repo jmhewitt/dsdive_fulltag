@@ -33,6 +33,16 @@ dir_targets = list(
     }
   ),
   
+  # location for storing dive id labels for imputed dives
+  tar_target(
+    name = imputed_dive_label_plot_dir, 
+    command = {
+      f = file.path('output', 'tag_labels_imputed')
+      dir.create(f, recursive = TRUE, showWarnings = FALSE)
+      f
+    }
+  ),
+  
   # location for storing dive segmentation diagnostics
   tar_target(
     name = label_diagnostic_plot_dir, 

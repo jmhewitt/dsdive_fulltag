@@ -1,0 +1,187 @@
+impute_observations = function(tag, endpoints, timestep, imputation_factor,
+                               template_bins, stages, 
+                               imputed_dive_label_plot_dir) {
+  # Parameters:
+  #  tag - data about satellite tags
+  #  endpoints - information about the likely start/end times of dives
+  #  timestep - number of seconds between observations
+  #  imputation_factor - (integer) factor used to upscale sampling rate
+  #  template_bins - reference depth bins
+  
+  if(imputation_factor <= 1) {
+    stop(paste('Imputation factor must be larger than 1 to ensure stationary',
+               'movement between observations.', sep = ' '))
+  }
+  
+  # remove outermost list wrappings
+  tag = tag[[1]]
+  endpoints = endpoints[[1]]
+  
+  # initialize imputation with refined times and observed bins
+  imputed = data.frame(
+    time = seq(from = min(tag$times), to = max(tag$times), 
+               by = timestep / imputation_factor)
+  ) %>% dplyr::left_join(
+    data.frame(time = tag$times, bin = tag$depth.bin, depth = tag$depths), 
+    by = 'time'
+  ) %>% dplyr::mutate(
+    ind = 1:n()
+  )
+  
+  # randomly assign dive starts/ends at discretized times (without replacment)
+  endpoint_inds = numeric(nrow(endpoints$endpoint.inds))
+  for(i in 1:length(endpoint_inds)) {
+    r = endpoints$endpoint.inds[i,]
+    x = imputed %>% 
+      dplyr::filter(
+        r['t_lwr'] <= time, time <= r['t_upr'], 
+        any( is.na(bin), # allow transitions between observations
+             bin == 1 ), # surface obs. can be transitions
+        !(ind %in% endpoint_inds) # endpoints must be unique!
+      ) %>% 
+      dplyr::sample_n(1) %>%
+      dplyr::select(ind) %>% 
+      unlist()
+    endpoint_inds[i] = x
+  }
+  
+  # add the imputed surface observations and depths
+  imputed$bin[endpoint_inds] = 1
+  imputed$depth[endpoint_inds] = template_bins$center[1]
+  
+  # forward difference: time elapsed from one observation to the next
+  time_increments = difftime(
+    time2 = tag$times[1:(length(tag$times)-1)], 
+    time1 = tag$times[2:length(tag$times)], 
+    units = 'secs'
+  )
+  
+  # linearly impute depth sequence
+  df.observed = imputed %>% dplyr::filter(is.finite(depth))
+  df.impute = imputed %>% dplyr::filter(is.na(depth))
+  df.impute$depth = approx(
+    x = df.observed$time, y = df.observed$depth, xout = df.impute$time
+  )$y
+  
+  # map imputed depths to standardized bins
+  df.impute$bin = sapply(df.impute$depth, function(depth) {
+    which.min(abs(depth - template_bins$center))
+  })
+  df.impute$depth = template_bins$center[df.impute$bin]
+  imputed[df.impute$ind, c('bin', 'depth')] = df.impute[, c('bin', 'depth')]
+  imputed$observed = imputed$time %in% tag$times
+  
+  # identify (inclusive) time ranges for data gaps
+  gap_after = which(time_increments > timestep)
+  gap_ranges = data.frame(
+    start = tag$times[gap_after] + timestep,
+    end = tag$times[gap_after + 1] - timestep
+  )
+  
+  # remove imputed depths during data gaps, and label gaps in data
+  imputed$data_gap = FALSE
+  if(nrow(gap_ranges) > 0) {
+    for(i in 1:nrow(gap_ranges)) {
+      gap_times = (gap_ranges[i, 'start'] <= imputed$time) & 
+        (imputed$time <= gap_ranges[i, 'end'])
+      imputed$bin[gap_times] = NA
+      imputed$depth[gap_times] = NA
+      imputed$data_gap[gap_times] = TRUE
+    }
+  }
+  
+  
+  # 
+  # label dive stages
+  #
+  
+  imputed$stage = NA
+  
+  
+  # label deep/shallow descent/foage/ascent dive stages
+  for(i in 1:nrow(endpoints$dive.ranges)) {
+    # indices for dive
+    start_ind = endpoint_inds[endpoints$dive.ranges$T0_endpoint[i]]
+    end_ind = endpoint_inds[endpoints$dive.ranges$T3_endpoint[i]]
+    dive_inds = start_ind:end_ind
+    # assign stages according to dive type
+    if(endpoints$dive.ranges$type[i] == 'Shallow') {
+      # for shallow dives, assume descending before dive midpoint
+      descent_inds = dive_inds < median(dive_inds)
+      # assign stages
+      imputed$stage[
+        dive_inds[descent_inds]
+      ] = stages['shallow_descent']
+      imputed$stage[
+        dive_inds[!descent_inds]
+      ] = stages['shallow_ascent']
+    } else {
+      # extract depths
+      dive_depths = imputed$depth[dive_inds]
+      # find max depth, and stage threshold via 85% rule
+      max.depth = max(dive_depths)
+      stage.thresh = .85 * max.depth
+      # compute observed stage vector
+      bottom.range = range(which(dive_depths >= stage.thresh))
+      descent_inds = dive_inds[dive_inds < dive_inds[bottom.range[1]]]
+      ascent_inds = dive_inds[dive_inds > dive_inds[bottom.range[2]]]
+      forage_inds = dive_inds[!(dive_inds %in% c(descent_inds, ascent_inds))]
+      # assign stages
+      imputed$stage[descent_inds] = stages['deep_descent']
+      imputed$stage[ascent_inds] = stages['deep_ascent']
+      imputed$stage[forage_inds] = stages['deep_forage']
+    }
+  }
+  
+  # assign (remaining) obs not associated with dives to unrestricted movement
+  imputed$stage[
+    (imputed$data_gap == FALSE) & is.na(imputed$stage)
+  ] = stages['free_surface']
+  
+  # plot tag with imputed labels
+  pl = ggplot(imputed %>% 
+                mutate(stage = factor(stage, labels = names(stages))), 
+              aes(x = time, y = depth, col = stage)) + 
+    # cee time
+    geom_vline(xintercept = tag$exposure_time, lty = 3, alpha = .6) + 
+    # imputed trajectory as path
+    geom_line(col = 'grey80') +
+    # highlight observations
+    # geom_point(data = imputed %>% dplyr::filter(observed == TRUE), 
+    #            mapping = aes(x = time, y = depth), inherit.aes = FALSE,
+    #            size = 1) + 
+    # imputed trajectory as discrete depths
+    geom_point() + 
+    # deep depth threshold
+    geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
+    # formatting
+    # scale_color_brewer(type = 'qual', palette = 'Dark2') + 
+    scale_color_manual(
+      values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
+                 shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
+                 deep_forage = '#d95f02', free_surface = '#e7298a')
+    ) + 
+    scale_y_reverse('Depth (m)') + 
+    scale_x_datetime(date_breaks = '12 hours', 
+                     date_labels = c('%b %d', ' ')) + 
+    theme_few() + 
+    theme(axis.title.x = element_blank(), 
+          legend.title = element_blank())
+  
+  # save plot of dive record 
+  ggsave(pl, filename = file.path(imputed_dive_label_plot_dir, 
+                                  paste(tag$tag, '.pdf', sep = '')),
+         dpi = 'print', height = 12, width = 12*12, limitsize = FALSE)
+  
+  # package results
+  list(
+    tag = tag$tag,
+    depth.bin = imputed$bin,
+    depths = imputed$depth,
+    times = imputed$time,
+    stages = imputed$stage,
+    data_gaps = imputed$data_gap,
+    exposure_time = tag$exposure_time,
+    baseline_end = tag$baseline_end
+  )
+}

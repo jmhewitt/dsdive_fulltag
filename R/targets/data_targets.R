@@ -33,6 +33,14 @@ data_targets = list(
             x = cee_start, orders = 'mdy HMS', tz = 'UTC'
           )
         )
+  ),
+  
+  # load tags into standard format
+  tar_target(
+    name = raw_sattags,
+    command = load_raw(depth_files = depth_files, 
+                       template_bins = template_bins, tag_info = tag_info, 
+                       dive_labels = dive_labels, deep_depth_threshold = 800)
   )
   
 )

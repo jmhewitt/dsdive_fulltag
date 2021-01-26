@@ -2,7 +2,7 @@ dive_segmentation_targets = list(
   
   # range of dive segmentation merge ratios to build diagnostics for
   tar_target(exploratory_merge_ratios, seq(from = .005, to = .99, by = .01)),
-  
+
   # dive segmentation ratio to usse for "production"
   tar_target(merge_ratio, .6),
   
@@ -24,9 +24,34 @@ dive_segmentation_targets = list(
   # identify endpoints of segmented dives
   tar_target(
     name = dive_endpoints,
-    command = identify_dive_endpoints(depth_files, dive_labels, 
-                                      template_bins, sattag_timestep, 
-                                      deep_dive_depth)
+    command = identify_dive_endpoints(depth_files = depth_files, 
+                                      dive_labels = dive_labels, 
+                                      template_bins = template_bins, 
+                                      sattag_timestep = sattag_timestep, 
+                                      deep_threshold = deep_dive_depth)
+  ),
+
+  # names/labels for movement types
+  tar_target(
+    name = stages,
+    command = c('deep_descent' = 1, 'deep_forage' = 2, 'deep_ascent' = 3,
+                'shallow_descent' = 4, 'shallow_ascent' = 5, 'free_surface' = 6)
+  ),
+  
+  # linear dive imputation
+  tar_target(
+    name = imputed_dive,
+    command = {
+      list(
+      impute_observations(
+        tag = raw_sattags, endpoints = dive_endpoints, 
+        timestep = sattag_timestep, imputation_factor = 5, 
+        template_bins = template_bins, stages = stages, 
+        imputed_dive_label_plot_dir = imputed_dive_label_plot_dir
+      ))
+    }
+    ,
+    pattern = map(raw_sattags, dive_endpoints)
   )
   
 )
