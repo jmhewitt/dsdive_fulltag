@@ -11,7 +11,7 @@ closestIndex = nimble::nimbleFunction(
     
     # determine "optimal" index
     ind <- round((value - minval) / stepsize) + 1
-    
+
     # constrain optimal index to be within the discrete set
     if(ind < 0) {
       ind <- 1
