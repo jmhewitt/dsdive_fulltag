@@ -15,5 +15,6 @@ c(
   data_targets, 
   depth_bin_imputation_targets,
   dive_segmentation_targets,
-  model_discretization_target
+  model_discretization_target,
+  nimble_targets
 )
