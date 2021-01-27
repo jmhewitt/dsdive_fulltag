@@ -5,10 +5,10 @@ model_discretization_target = list(
 
     # vertical speeds, by movement structure (i.e., stage)
     lambda = matrix(
-      rep(c(0, .05, 101), 3),
+      rep(c(0, .05, 101), 4),
       ncol = 3, byrow = TRUE,
       dimnames = list(
-        rownames = c('descent', 'foraging', 'ascent'),
+        rownames = c('descent', 'foraging', 'ascent', 'free'),
         colnames = c('min_val', 'stepsize', 'nvals')
       )
     ),
@@ -16,11 +16,12 @@ model_discretization_target = list(
     # directional preferences, by movement structure (i.e., stage)
     pi = matrix(
       c(0, .01, 51,
-        0.5, 0, 1,
-        0.5, .01, 51),
+        0.5, 1, 1,
+        0.5, .01, 51,
+        0, .01, 101),
       ncol = 3, byrow = TRUE,
       dimnames = list(
-        rownames = c('descent', 'foraging', 'ascent'),
+        rownames = c('descent', 'foraging', 'ascent', 'free'),
         colnames = c('min_val', 'stepsize', 'nvals')
       )
     )
@@ -36,7 +37,7 @@ model_discretization_target = list(
       bin_widths = 2 * template_bins$halfwidth
 
       # range of model parameters to consider under each dive construction
-      movement_types = c('descent', 'foraging', 'ascent')
+      movement_types = c('descent', 'foraging', 'ascent', 'free')
       params = lapply(movement_types, function(mv_type) {
         expand.grid(
           pi = seq(
@@ -64,7 +65,7 @@ model_discretization_target = list(
             widths = bin_widths
           ))
         })
-      }, params, 1:3, SIMPLIFY = FALSE)))
+      }, params, 1:length(movement_types), SIMPLIFY = FALSE)))
     }
   )
 

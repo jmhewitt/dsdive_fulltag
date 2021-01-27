@@ -30,6 +30,9 @@ lookupProb = nimble::nimbleFunction(
     if(movement_type > 2) {
       index <- index + Ksq * n_pi[2] * n_lambda[2]
     }
+    if(movement_type > 3) {
+      index <- index + Ksq * n_pi[3] * n_lambda[3]
+    }
     
     # return after offsetting wrt. grouping vars
     p <- tmats[

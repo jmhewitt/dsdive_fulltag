@@ -2,99 +2,71 @@
 # support for CTMC model across depth bins
 #
 
-# nimbleList for storing entries of a tridiagonal matrix
-tridiagonalEntries = nimble::nimbleList(
-  diag = double(1),
-  dsuper = double(1),
-  dsub = double(1)
-)
-
-# build components for infinitesimal generator matrix for depth bin transitions
-buildInfinitesimalGeneratorEntries = nimble::nimbleFunction(
-  run = function(pi = double(0), lambda = double(0), M = integer(0),
-                 stage = integer(0), widths = double(1)) {
+dtagsegment = nimble::nimbleFunction(
+  run = function(x = integer(1), stages = integer(1), n_segments = integer(0),
+                 segment_info = integer(2), tmats = double(1), 
+                 n_bins = integer(0),
+                 stage_map = integer(1), alpha = double(0), beta = double(0),
+                 pi_discretization = double(2), 
+                 n_pi = integer(1), n_lambda = integer(1),
+                 lambda_discretization = double(2),
+                 log = logical(0, default = 0)) {
     # Parameters:
-    #  pi - probability of making a downward descent
-    #  lambda - speed of moving through bin
-    #  M - total number of depth bins
-    #  stage - build generator matrix for "stage"
-    #  widths - vector of depth bin widths
-
-    returnType(tridiagonalEntries())
-
-    entries <- tridiagonalEntries$new(diag = numeric(M, init = FALSE),
-                                      dsub = numeric(M-1, init = FALSE),
-                                      dsuper = numeric(M-1, init = FALSE))
-
-    # only allow (downward) transitions from shallowest bin during stages 1 & 2
-    if(stage == 1 | stage == 2) {
-      rate <- lambda / widths[1]
-      entries$diag[1] <- -rate
-      entries$dsuper[1] <- rate
+    #  x - sequence of observed depth bins
+    #  stages - sequence of dive stages
+    #  n_segments - number of sattag segments in the data
+    #  segment_info - matrix, each row of which describes a segment's support
+    #  tmats - family of pre-computed transition matrices, in flat format
+    #  n_bins - the number of depth bins
+    #  stage_map - maps the stage value to an associated movement type in tmats
+    #  alpha - transformed coefficient for descent probability
+    #  beta - transformed coefficient for vertical speed
+    #  pi_discretization - matrix describing descent probability grids
+    #  lambda_discretization - matrix describing grid for descent probabilities
+    #  log - if TRUE, then the log-likelihood is returned
+    
+    returnType(double(0))
+    
+    # initialize log-likelihood
+    ll <- 0
+    
+    # aggregate likelihood over tag segments
+    for(seg_num in 1:n_segments) {
+      # only process segments with at least one transition
+      if(segment_info[seg_num,2] > 1) {
+        # process each transition in segment; we go one fewer than the 
+        # segment length b/c this accounts for the last transition
+        seg_start = segment_info[seg_num,1]
+        last_tx = segment_info[seg_num,1] + segment_info[seg_num,2] - 2
+        for(ind in seg_start:last_tx) {
+          # extract movement type associated with dive stage
+          mtype <- stage_map[stages[ind]]
+          # discretize pi and lambdas
+          pi_ind  <- closestIndex(
+            value = ilogit(alpha),
+            minval = pi_discretization[mtype, 1], 
+            stepsize = pi_discretization[mtype, 2], 
+            nvals = pi_discretization[mtype, 3]
+          )
+          lambda_ind  <- closestIndex(
+            value = exp(beta),
+            minval = lambda_discretization[mtype, 1], 
+            stepsize = lambda_discretization[mtype, 2], 
+            nvals = lambda_discretization[mtype, 3]
+          )
+          # aggregate likelihood for transition
+          ll <- ll + log(lookupProb(
+            movement_type = mtype, pi_ind = pi_ind, lambda_ind = lambda_ind, 
+            i = x[ind], j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda, 
+            n_bins = n_bins, tmats = tmats
+          ))
+          # end transition processing
+        }
+        # end conditional segment processing
+      } 
+      # end segment processing
     }
-
-    # only allow surfacing from second bin to occur in stage 3
-    rate <- lambda / widths[2]
-    if(stage == 1 | stage == 2) {
-      entries$diag[2] <- -rate
-      entries$dsuper[2] <- rate
-      entries$dsub[1] <- 0
-    } else {
-      entries$diag[2] <- -rate
-      entries$dsuper[2] <- rate * pi
-      entries$dsub[1] <- rate * (1-pi)
-    }
-
-    # intermediate bins may always transition up or down
-    for(i in 3:(M-1)) {
-      rate <- lambda / widths[i]
-      entries$diag[i] <- -rate
-      entries$dsuper[i] <- rate * pi
-      entries$dsub[i-1] <- rate * (1-pi)
-    }
-
-    # deepest bin can only transition to next shallowest depth
-    rate <- lambda / widths[M]
-    entries$diag[M] <- -rate
-    entries$dsub[M-1] <- rate
-
-    return(entries)
-  }
-)
-
-# build infinitesimal generator matrix for depth bin transitions
-buildInfinitesimalGenerator = nimble::nimbleFunction(
-  run = function(pi = double(0), lambda = double(0), M = integer(0),
-                 stage = integer(0), widths = double(1)) {
-    # Parameters:
-    #  pi - probability of making a downward descent
-    #  lambda - speed of moving through bin
-    #  M - total number of depth bins
-    #  stage - build generator matrix for "stage"
-    #  widths - vector of depth bin widths
-
-    returnType(double(2))
-
-    # compute matrix's tridiagonal entries
-    entries <- buildInfinitesimalGeneratorEntries(pi = pi, lambda = lambda,
-                                                  M = M, stage = stage,
-                                                  widths = widths)
-
-    # initialize matrix
-    A <- matrix(0, nrow = M, ncol = M)
-
-    #
-    # populate matrix
-    #
-
-    for(i in 1:(M-1)) {
-      A[i,i] <- entries$diag[i]
-      A[i,i+1] <- entries$dsuper[i]
-      A[i+1,i] <- entries$dsub[i]
-    }
-
-    A[M,M] <- entries$diag[M]
-
-    return(A)
+    
+    if(log) { return(ll) } else { return(exp(ll)) }
   }
 )
