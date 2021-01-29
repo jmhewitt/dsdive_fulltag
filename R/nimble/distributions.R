@@ -10,16 +10,20 @@ stageTxMats = nimble::nimbleFunction(
     # Parameters: 
     #   betas - matrix of coefficients for multinomial logit distributions.
     #    each column holds the coefficient for the logit of one pair of 
-    #    allowed state transitions.  the first column should define coeffs. for
-    #    logit(deep_descent->deep_forage) = log(pi_deep_forage/pi_deep_descent).
-    #    in order, the remaining columns should define coefficients for 
-    #    logit(deep_forage->deep_ascent), logit(deep_ascent->deep_descent),
-    #    logit(deep_ascent->shallow_descent), logit(deep_ascent->free_surface),
+    #    allowed state transitions.  the columns should define coeffs. for
+    #    logit(stage_from->stage_to) = log(pi_stage_to/pi_stage_from) in the 
+    #    following order:
+    #    logit(deep_descent->deep_forage), 
+    #    logit(deep_forage->deep_ascent), 
+    #    logit(deep_ascent->deep_descent),
+    #    logit(deep_ascent->shallow_descent), 
+    #    logit(deep_ascent->free_surface),
     #    logit(shallow_descent->shallow_ascent), 
     #    logit(shallow_ascent->deep_descent), 
     #    logit(shallow_ascent->shallow_descent), 
     #    logit(shallow_ascent->free_surface),
-    #    logit(free_surface->deep_descent), logit(free_surface->shallow_descent)
+    #    logit(free_surface->deep_descent), 
+    #    logit(free_surface->shallow_descent)
     #   covariates - matrix of covariates used to generate stage transition 
     #     matrices.  each column specifies covariates for a timepoint.
     #   n_timepoints - number of timepoints, each of which will get a stage 
@@ -40,26 +44,32 @@ stageTxMats = nimble::nimbleFunction(
     m <- array(dim = c(6, 6, n_timepoints))
     
     for(i in 1:n_timepoints) {
-      p <- multinomialLogitProbs(betas = betas[, 1, drop = FALSE], x = covariates[,i])
+      p <- multinomialLogitProbs(betas = betas[, 1, drop = FALSE], 
+                                 x = covariates[,i])
       m[1,2,i] <- p[1]  # deep_descent -> deep_forage
       m[1,1,i] <- p[2]  # deep_descent -> deep_descent
-      p <- multinomialLogitProbs(betas = betas[, 2, drop = FALSE], x = covariates[,i])
+      p <- multinomialLogitProbs(betas = betas[, 2, drop = FALSE], 
+                                 x = covariates[,i])
       m[2,3,i] <- p[1]  # deep_forage -> deep_ascent
       m[2,2,i] <- p[2]  # deep_forage -> deep_forage
-      p <- multinomialLogitProbs(betas = betas[, 3:5, drop = FALSE], x = covariates[,i])
+      p <- multinomialLogitProbs(betas = betas[, 3:5, drop = FALSE], 
+                                 x = covariates[,i])
       m[3,1,i] <- p[1]  # deep_ascent -> deep_descent
       m[3,4,i] <- p[2]  # deep_ascent -> shallow_descent
       m[3,6,i] <- p[3]  # deep_ascent -> free_surface
       m[3,3,i] <- p[4]  # deep_ascent -> deep_ascent
-      p <- multinomialLogitProbs(betas = betas[, 6, drop = FALSE], x = covariates[,i])
+      p <- multinomialLogitProbs(betas = betas[, 6, drop = FALSE], 
+                                 x = covariates[,i])
       m[4,5,i] <- p[1]  # shallow_descent -> shallow_ascent
       m[4,4,i] <- p[2]  # shallow_descent -> shallow_descent
-      p <- multinomialLogitProbs(betas = betas[, 7:9, drop = FALSE], x = covariates[,i])
+      p <- multinomialLogitProbs(betas = betas[, 7:9, drop = FALSE], 
+                                 x = covariates[,i])
       m[5,1,i] <- p[1]  # shallow_ascent -> deep_descent
       m[5,4,i] <- p[2]  # shallow_ascent -> shallow_descent
       m[5,6,i] <- p[3]  # shallow_ascent -> free_surface
       m[5,5,i] <- p[4]  # shallow_ascent -> shallow_ascent
-      p <- multinomialLogitProbs(betas = betas[, 10:11, drop = FALSE], x = covariates[,i])
+      p <- multinomialLogitProbs(betas = betas[, 10:11, drop = FALSE], 
+                                 x = covariates[,i])
       m[6,1,i] <- p[1]  # free_surface -> deep_descent
       m[6,4,i] <- p[2]  # free_surface -> shallow_descent
       m[6,6,i] <- p[3]  # free_surface -> free_surface
