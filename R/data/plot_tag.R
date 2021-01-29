@@ -6,13 +6,11 @@ tagplot = function(depths, depth.bins, dives.labeled, date_range = NULL,
   
   # compute date range
   if(is.null(date_range)) {
-    date_range = c(floor_date(with_tz(df$Date[1], 'America/New_York'), 'day'),
-                   ceiling_date(with_tz(df$Date[nrow(df)], 'America/New_York'), 
-                                'day'))
+    date_range = c(floor_date(df$Date[1], 'day'),
+                   ceiling_date(df$Date[nrow(df)], 'day'))
   } else {
-    date_range = c(floor_date(with_tz(date_range[1], 'America/New_York'), 'day'),
-                   ceiling_date(with_tz(date_range[2], 'America/New_York'), 
-                                'day'))
+    date_range = c(floor_date(date_range[1], 'day'),
+                   ceiling_date(date_range[2], 'day'))
     
     df = df %>% filter(Date >= date_range[1], Date <= date_range[2])
   }
