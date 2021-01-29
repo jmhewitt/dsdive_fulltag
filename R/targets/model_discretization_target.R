@@ -55,7 +55,7 @@ model_discretization_target = list(
       names(params) = movement_types
 
       # compute CTMC transition matrix for this time duration
-      tstep = sattag_timestep
+      tstep = sattag_timestep / imputation_factor
 
       # condensed transition matrices for movement structures
       as.numeric(do.call(cbind, mapply(function(params, stage) {

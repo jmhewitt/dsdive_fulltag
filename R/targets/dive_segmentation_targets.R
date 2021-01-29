@@ -46,6 +46,12 @@ dive_segmentation_targets = list(
                 'shallow_descent' =1, 'shallow_ascent' = 3, 'free_surface' = 4)
   ),
   
+  # factor by which to increase temporal resolution during imputation
+  tar_target(imputation_factor, 5),
+  
+  # runs of surface obs. longer than this will be assigned to free_surface stage
+  tar_target(surface_run_length, 10),
+  
   # linear dive imputation
   tar_target(
     name = imputed_dive,
@@ -53,9 +59,10 @@ dive_segmentation_targets = list(
       list(
       impute_observations(
         tag = raw_sattags, endpoints = dive_endpoints, 
-        timestep = sattag_timestep, imputation_factor = 5, 
+        timestep = sattag_timestep, imputation_factor = imputation_factor, 
         template_bins = template_bins, stages = stages, 
-        imputed_dive_label_plot_dir = imputed_dive_label_plot_dir
+        imputed_dive_label_plot_dir = imputed_dive_label_plot_dir,
+        surface_run_length = surface_run_length
       ))
     }
     ,
