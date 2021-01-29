@@ -1,5 +1,5 @@
 impute_observations = function(tag, endpoints, timestep, imputation_factor,
-                               template_bins, stages, 
+                               template_bins, stages, surface_run_length,
                                imputed_dive_label_plot_dir) {
   # Parameters:
   #  tag - data about satellite tags
@@ -7,6 +7,8 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
   #  timestep - number of seconds between observations
   #  imputation_factor - (integer) factor used to upscale sampling rate
   #  template_bins - reference depth bins
+  #  surface_run_length - number of observations needed to label a run of 
+  #   surface depth bin observations as a "free_surface" period
   
   if(imputation_factor <= 1) {
     stop(paste('Imputation factor must be larger than 1 to ensure stationary',
@@ -91,6 +93,105 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
   }
   
   
+  #
+  # supports for possible dive stage distributions
+  #
+  
+  stage_support = matrix(0, nrow = length(stages), ncol = nrow(imputed))
+  rownames(stage_support) = names(stages)
+  
+  for(i in 1:nrow(endpoints$dive.ranges)) {
+    # indices for dive
+    start_ind = endpoint_inds[endpoints$dive.ranges$T0_endpoint[i]]
+    end_ind = endpoint_inds[endpoints$dive.ranges$T3_endpoint[i]]
+    dive_inds = start_ind:end_ind
+    # assign stages according to dive type
+    if(endpoints$dive.ranges$type[i] == 'Shallow') {
+      # identify observations before midpoint
+      descent_inds = dive_inds < median(dive_inds)
+      # disallow ascent movement before midpoint, also allow the possibility of 
+      # coming out of a deep dive
+      stage_support[
+        c('deep_ascent', 'shallow_descent', 'free_surface'),
+        dive_inds[descent_inds]
+      ] = 1
+      stage_support[
+        c('deep_descent', 'shallow_ascent', 'free_surface'),
+        dive_inds[!descent_inds]
+      ] = 1
+    } else {
+      # extract depths
+      dive_depths = imputed$depth[dive_inds]
+      # find max depth, and indices surrounding max depth
+      max.depth = max(dive_depths, na.rm = TRUE)
+      foraging.range = range(which(dive_depths == max.depth))
+      # assume foraging around the deepest portion of the dive
+      forage_inds = dive_inds[
+        seq(from = foraging.range[1], to = foraging.range[2])
+      ]
+      stage_support['deep_forage', forage_inds] = 1
+      # disallow deep_ascent before foraging
+      pre_forage_inds = dive_inds[dive_inds < min(forage_inds)]
+      stage_support[
+        c('deep_descent', 'deep_forage', 'shallow_descent', 'shallow_ascent', 
+          'free_surface'), 
+        pre_forage_inds
+      ] = 1
+      # disallow deep_descent after foraging
+      post_forage_inds = dive_inds[dive_inds > max(forage_inds)]
+      stage_support[
+        c('deep_forage', 'deep_ascent', 'shallow_descent', 'shallow_ascent', 
+          'free_surface'),
+        post_forage_inds
+      ] = 1
+    }
+  }
+  
+  # assign (remaining) obs not associated with dives to unrestricted movement
+  stage_support[, colSums(stage_support) == 0] = 1
+  
+  
+  # identify long surface runs
+  surface_runs = rle(imputed$bin == 1)
+  long_surface_runs = data.frame(
+    surface_run = c(surface_runs$values, FALSE),
+    run_length = c(surface_runs$lengths, 0),
+    start_ind = cumsum(c(1, surface_runs$lengths)) 
+  ) %>% 
+    dplyr::filter(surface_run == TRUE, run_length > surface_run_length) %>% 
+    dplyr::select(run_length, start_ind) %>% 
+    # get indices of the non-endpoint observations
+    dplyr::mutate(
+      interior_start = start_ind + 1,
+      interior_end = start_ind + run_length - 2
+    )
+  
+  # restrict the "insides" of surface runs to be free_surface periods
+  if(nrow(long_surface_runs) > 0) {
+    for(i in 1:nrow(long_surface_runs)) {
+      run_inds = seq(
+        from = long_surface_runs[i,'interior_start'],
+        to = long_surface_runs[i,'interior_end'],
+        by = 1
+      )
+      stage_support[, run_inds] = 0
+      stage_support['free_surface', run_inds] = 1
+    }
+  }
+  
+  # # forward/backward-neighbors for each observation
+  # fwd_nbrs = c(imputed$bin[2:nrow(imputed)], NA)
+  # bkwd_nbrs = c(NA, imputed$bin[1:(nrow(imputed) - 1)])
+  # 
+  # # observations that are "inside" a run of surface observations.
+  # #   calling "which" removes na's from selector
+  # surf_run = which((fwd_nbrs == 1) & (bkwd_nbrs == 1) & (imputed$bin == 1))
+  # 
+  # # restrict the "insides" of surface runs to be free_surface periods
+  # stage_support[, surf_run] = 0
+  # stage_support['free_surface', surf_run] = 1
+    
+  
   # 
   # label dive stages
   #
@@ -98,7 +199,7 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
   imputed$stage = NA
   
   
-  # label deep/shallow descent/foage/ascent dive stages
+  # label deep/shallow descent/forage/ascent dive stages
   for(i in 1:nrow(endpoints$dive.ranges)) {
     # indices for dive
     start_ind = endpoint_inds[endpoints$dive.ranges$T0_endpoint[i]]
@@ -180,6 +281,7 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
     depths = imputed$depth,
     times = imputed$time,
     stages = imputed$stage,
+    stage_support = stage_support,
     data_gaps = imputed$data_gap,
     exposure_time = tag$exposure_time,
     baseline_end = tag$baseline_end
