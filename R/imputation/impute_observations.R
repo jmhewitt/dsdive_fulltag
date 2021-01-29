@@ -150,7 +150,6 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
   # assign (remaining) obs not associated with dives to unrestricted movement
   stage_support[, colSums(stage_support) == 0] = 1
   
-  
   # identify long surface runs
   surface_runs = rle(imputed$bin == 1)
   long_surface_runs = data.frame(
@@ -178,18 +177,6 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
       stage_support['free_surface', run_inds] = 1
     }
   }
-  
-  # # forward/backward-neighbors for each observation
-  # fwd_nbrs = c(imputed$bin[2:nrow(imputed)], NA)
-  # bkwd_nbrs = c(NA, imputed$bin[1:(nrow(imputed) - 1)])
-  # 
-  # # observations that are "inside" a run of surface observations.
-  # #   calling "which" removes na's from selector
-  # surf_run = which((fwd_nbrs == 1) & (bkwd_nbrs == 1) & (imputed$bin == 1))
-  # 
-  # # restrict the "insides" of surface runs to be free_surface periods
-  # stage_support[, surf_run] = 0
-  # stage_support['free_surface', surf_run] = 1
     
   
   # 
