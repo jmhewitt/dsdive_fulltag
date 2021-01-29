@@ -5,7 +5,9 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
   nim_pkg = list(
     data = list(
       depths = NULL,
-      stages = NULL
+      times = NULL,
+      stages = NULL,
+      stage_supports = NULL
     ),
     consts = list(
       segments = NULL,
@@ -15,7 +17,8 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
       pi_discretization = pi_discretization,
       lambda_discretization = lambda_discretization,
       n_pi = as.integer(pi_discretization[, 'nvals']),
-      n_lambda = as.integer(lambda_discretization[, 'nvals'])
+      n_lambda = as.integer(lambda_discretization[, 'nvals']),
+      subject_id_labels = NULL
     )
   )
   
@@ -24,6 +27,11 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
     
     # unwrap tag
     tag = tag_list[[tag_ind]]
+    
+    # store tag name
+    nim_pkg$consts$subject_id_labels = c(
+      nim_pkg$consts$subject_id_labels, tag$tag
+    )
     
     # identify all of the observations to analyze
     tag_segments = rle(tag$data_gaps)
@@ -43,6 +51,11 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
       # copy data to package
       nim_pkg$data$depths = c(nim_pkg$data$depths, tag$depth.bin[seg_inds])
       nim_pkg$data$stages = c(nim_pkg$data$stages, tag$stages[seg_inds])
+      nim_pkg$data$stage_supports = cbind(
+        nim_pkg$data$stage_supports,
+        tag$stage_support[,seg_inds]
+      )
+      nim_pkg$data$times = c(nim_pkg$data$times, tag$times[seg_inds])
       # save segment information
       nim_pkg$consts$segments = rbind(
         nim_pkg$consts$segments,
