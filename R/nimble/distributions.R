@@ -110,6 +110,9 @@ dstageLik = nimble::nimbleFunction(
     #   contains all covariates for each timepoint
     #  pi_discretization - matrix describing descent probability grids
     #  lambda_discretization - matrix describing grid for descent probabilities
+    #  n_pi - the number of pre-specified descent preference values
+    #  n_lambda - the number of pre-specified speed values
+    
     #
     # Return:
     #  a matrix, where each column outlines the unnormalized distribution,
