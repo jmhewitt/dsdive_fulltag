@@ -91,7 +91,7 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
       imputed$data_gap[gap_times] = TRUE
     }
   }
-  
+
   
   #
   # supports for possible dive stage distributions
@@ -177,7 +177,41 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
       stage_support['free_surface', run_inds] = 1
     }
   }
-    
+  
+  # remove last observations before gap, and first observations after gap.
+  # this step should be done after initially assigning stage supports so that
+  # no stage support information is lost.  we only want to exclude data from 
+  # estimation.
+  if(nrow(gap_ranges) > 0) {
+    for(i in 1:nrow(gap_ranges)) {
+      # remove last observations before data gap
+      remove_from = (endpoint_inds + 1)[max(
+        which(imputed$time[endpoint_inds + 1] <= gap_ranges[i, 'start'])
+      )]
+      if(is.finite(remove_from)) {
+        remove_inds = seq(
+          from = remove_from,
+          to = which(imputed$time == gap_ranges[i, 'start'])
+        )
+        imputed$bin[remove_inds] = NA
+        imputed$depth[remove_inds] = NA
+        imputed$data_gap[remove_inds] = TRUE
+      }
+      # remove first observations after data gap
+      remove_to = (endpoint_inds - 1)[min(
+        which(gap_ranges[i, 'end'] <= imputed$time[endpoint_inds - 1])
+      )]
+      if(is.finite(remove_to)) {
+        remove_inds = seq(
+          from = which(imputed$time == gap_ranges[i, 'end']),
+          to = remove_to
+        )
+        imputed$bin[remove_inds] = NA
+        imputed$depth[remove_inds] = NA
+        imputed$data_gap[remove_inds] = TRUE
+      }
+    }
+  }
   
   # 
   # label dive stages
