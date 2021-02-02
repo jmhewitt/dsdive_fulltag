@@ -1,6 +1,6 @@
 closestIndex = nimble::nimbleFunction(
   run = function(value = double(0), minval = double(0), stepsize = double(0),
-                 nvals = integer(0)) {
+                 nvals = double(0)) {
     # Parameters:
     #  value - continuous-space parameter to map to discrete set
     #  minval - minimum value in discrete set

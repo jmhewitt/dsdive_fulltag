@@ -1,7 +1,7 @@
 lookupProb = nimble::nimbleFunction(
-  run = function(movement_type = integer(0), pi_ind = integer(0), 
-                 lambda_ind = integer(0), i = integer(0), j = integer(0), 
-                 n_pi = integer(1), n_lambda = integer(1), n_bins = integer(0), 
+  run = function(movement_type = double(0), pi_ind = double(0), 
+                 lambda_ind = double(0), i = double(0), j = double(0), 
+                 n_pi = double(1), n_lambda = double(1), n_bins = double(0), 
                  tmats = double(1)) {
     # Parameters:
     #  movement_type - the type of movement (i.e., ascent, forage, descent) 

@@ -1,20 +1,17 @@
 ffbs_stages = nimble::nimbleFunction(
-  run = function(n_segments = integer(0), segment_info = integer(2), 
-                 depths = integer(1), 
+  run = function(depths = double(1), n_timepoints = double(0),
                  transition_matrices = double(1),
-                 n_bins = integer(0), n_stages = integer(0),
-                 stage_map = integer(1), alpha = double(2), beta = double(2),
+                 n_bins = double(0), n_stages = double(0),
+                 stage_map = double(1), alpha = double(2), beta = double(2),
                  covariates = double(2), pi_discretization = double(2),
-                 n_pi = integer(1), n_lambda = integer(1),
+                 n_pi = double(1), n_lambda = double(1),
                  lambda_discretization = double(2), betas_tx = double(2),
                  stage_supports = double(2)) {
     # use forward-filtering backwards-sampling to impute stages
     #
     # Parameters:
-    #  n_segments - number of segments for which to impute stages
-    #  segments - matrix, each row of which defines the starting index, length, 
-    #   and subject id for each segment in the data
     #  depths - sequence of observed depth bins
+    #  n_timepoints - number of observed depth bins
     #  segment_info - matrix, each row of which describes a segment's support
     #  transition_matrices - family of pre-computed tx. matrices, in flat format
     #  n_bins - the number of depth bins
@@ -36,46 +33,40 @@ ffbs_stages = nimble::nimbleFunction(
     #  stage_supports - matrix, each column of which specifies support for 
     #   latent stage distribution at each timepoint
     
-    returnType(integer(1))
+    returnType(double(1))
     
     # initialize return
-    sampled_stages <- integer(sum(segment_info[1:n_segments, 2]), init = FALSE)
+    sampled_stages <- numeric(n_timepoints, init = FALSE)
     
     # initial distribution over latent stages
     a0 <- numeric(n_stages)
     a0[1:n_stages] <- 1/n_stages
     
-    # impute stages for each segment
-    for(segment_num in 1:n_segments) {
+    # extract basic information about segment
+    start_ind <- 1
+    end_ind <- n_timepoints
     
-      # extract basic information about segment
-      start_ind <- segment_info[segment_num, 1]
-      n_timepoints <-  segment_info[segment_num, 2]
-      end_ind <- start_ind + n_timepoints - 1
-      
-      # compute likelihood for each latent stage for each depth bin tx. observed
-      lmat <- dstageLik(
-        x = depths, segment_num = segment_num, segment_info = segment_info, 
-        tmats = transition_matrices, n_bins = n_bins, n_stages = n_stages, 
-        stage_map = stage_map, alpha = alpha, beta = beta, 
-        covariates = covariates, pi_discretization = pi_discretization, 
-        n_pi = n_pi, n_lambda = n_lambda, 
-        lambda_discretization = lambda_discretization
-      )
-      
-      # transition matrices for latent stages
-      stx <- stageTxMats(
-        betas = betas_tx, covariates = covariates, n_timepoints = n_timepoints
-      )
-      
-      # sample stages
-      sampled_stages[start_ind:end_ind] <- ffbs(
-        L = lmat * stage_supports[, start_ind:end_ind], B = stx, 
-        a0 = a0, n_states = n_stages, n_timepoints = n_timepoints
-      )
-      
-    }
+    # compute likelihood for each latent stage for each depth bin tx. observed
+    lmat <- dstageLik(
+      x = depths, n_timepoints = n_timepoints,
+      tmats = transition_matrices, n_bins = n_bins, n_stages = n_stages, 
+      stage_map = stage_map, alpha = alpha, beta = beta, 
+      covariates = covariates, pi_discretization = pi_discretization, 
+      n_pi = n_pi, n_lambda = n_lambda, 
+      lambda_discretization = lambda_discretization
+    )
     
+    # transition matrices for latent stages
+    stx <- stageTxMats(
+      betas = betas_tx, covariates = covariates, n_timepoints = n_timepoints
+    )
+    
+    # sample stages
+    sampled_stages[1:n_timepoints] <- ffbs(
+      L = lmat * stage_supports, B = stx, a0 = a0, n_states = n_stages, 
+      n_timepoints = n_timepoints
+    )
+      
     return(sampled_stages)
   }
 )

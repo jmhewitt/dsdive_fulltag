@@ -1,10 +1,12 @@
+library(nimble)
+
 #
 # support for CTMC model across depth bins
 #
 
 stageTxMats = nimble::nimbleFunction(
   run = function(betas = double(2), covariates = double(2), 
-                 n_timepoints = integer(0)) {
+                 n_timepoints = double(0)) {
     # discrete-time stage transition matrices, conditional on covariates
     # 
     # Parameters: 
@@ -79,13 +81,13 @@ stageTxMats = nimble::nimbleFunction(
   }
 )
 
+
 dstageLik = nimble::nimbleFunction(
-  run = function(x = integer(1), segment_num = integer(0),
-                 segment_info = integer(2), tmats = double(1),
-                 n_bins = integer(0), n_stages = integer(0),
-                 stage_map = integer(1), alpha = double(2), beta = double(2),
+  run = function(x = double(1), n_timepoints = double(0), tmats = double(1),
+                 n_bins = double(0), n_stages = double(0),
+                 stage_map = double(1), alpha = double(2), beta = double(2),
                  covariates = double(2), pi_discretization = double(2),
-                 n_pi = integer(1), n_lambda = integer(1),
+                 n_pi = double(1), n_lambda = double(1),
                  lambda_discretization = double(2)) {
     # distribution for depth bin transitions as a function of latent stages
     # given movement parameters. used as the unnormalized likelihood for 
@@ -96,8 +98,7 @@ dstageLik = nimble::nimbleFunction(
     #
     # Parameters:
     #  x - sequence of observed depth bins
-    #  segment_num - the sattag segment to process
-    #  segment_info - matrix, each row of which describes a segment's support
+    #  n_timepoints - number of observations
     #  tmats - family of pre-computed transition matrices, in flat format
     #  n_bins - the number of depth bins
     #  n_stages - the number of possible stages
@@ -122,18 +123,14 @@ dstageLik = nimble::nimbleFunction(
 
     returnType(double(2))
     
-    res <- matrix(nrow = n_stages, ncol = segment_info[segment_num, 2], 
-                  init = FALSE)
+    res <- matrix(nrow = n_stages, ncol = n_timepoints, init = TRUE)
     
     # only process segments with at least one transition
-    if(segment_info[segment_num,2] > 1) {
+    if(n_timepoints > 1) {
       # process each transition in segment; we go one fewer than the 
       # segment length b/c this accounts for the last transition
-      seg_start = segment_info[segment_num,1]
-      last_tx = segment_info[segment_num,1] + segment_info[segment_num,2] - 2
-      ind_range = seg_start:last_tx
-      for(it in 1:length(ind_range)) {
-        ind <- ind_range[it]
+      for(it in 1:(n_timepoints - 1)) {
+        ind <- it
         # consider movement from all stages
         for(s in 1:n_stages) {
           # extract movement type associated with dive stage
@@ -166,7 +163,7 @@ dstageLik = nimble::nimbleFunction(
       }
       # add a flat likelihood for the final stage transition
       for(i in 1:n_stages) {
-        res[i,segment_info[segment_num, 2]] <- 1
+        res[i,n_timepoints] <- 1
       }
       # end conditional segment processing
     } 
@@ -175,14 +172,13 @@ dstageLik = nimble::nimbleFunction(
   }
 )
 
+
 dbins = nimble::nimbleFunction(
-  run = function(x = integer(1), stages = integer(1), n_segments = integer(0),
-                 segment_info = integer(2), tmats = double(1), 
-                 n_bins = integer(0),
-                 stage_map = integer(1), alpha = double(2), beta = double(2),
-                 covariates = double(2), pi_discretization = double(2), 
-                 n_pi = integer(1), n_lambda = integer(1),
-                 lambda_discretization = double(2),
+  run = function(x = double(1), stages = double(1), n_timepoints = double(0),
+                 stage_map = double(1), n_bins = double(0), tmats = double(1),
+                 alpha = double(2), beta = double(2), covariates = double(2), 
+                 pi_discretization = double(2), n_pi = double(1), 
+                 n_lambda = double(1), lambda_discretization = double(2),
                  log = logical(0, default = 0)) {
     # likelihood for depth bin transitions, conditional on latent stages and 
     # movement parameters (alpha, beta)
@@ -213,47 +209,76 @@ dbins = nimble::nimbleFunction(
     # initialize log-likelihood
     ll <- 0
     
-    # aggregate likelihood over tag segments
-    for(seg_num in 1:n_segments) {
-      # only process segments with at least one transition
-      if(segment_info[seg_num,2] > 1) {
-        # process each transition in segment; we go one fewer than the 
-        # segment length b/c this accounts for the last transition
-        seg_start = segment_info[seg_num,1]
-        last_tx = segment_info[seg_num,1] + segment_info[seg_num,2] - 2
-        for(ind in seg_start:last_tx) {
-          # extract movement type associated with dive stage
-          s <- stages[ind]
-          mtype <- stage_map[s]
-          # compute pi and lambdas
-          pi_val <- ilogit(inprod(alpha[,s], covariates[,ind]))
-          lambda_val <- exp(inprod(beta[,s], covariates[,ind]))
-          # discretize pi and lambdas
-          pi_ind  <- closestIndex(
-            value = pi_val,
-            minval = pi_discretization[mtype, 1], 
-            stepsize = pi_discretization[mtype, 2], 
-            nvals = pi_discretization[mtype, 3]
-          )
-          lambda_ind  <- closestIndex(
-            value = lambda_val,
-            minval = lambda_discretization[mtype, 1], 
-            stepsize = lambda_discretization[mtype, 2], 
-            nvals = lambda_discretization[mtype, 3]
-          )
-          # aggregate likelihood for transition
-          ll <- ll + log(lookupProb(
-            movement_type = mtype, pi_ind = pi_ind, lambda_ind = lambda_ind, 
-            i = x[ind], j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda, 
-            n_bins = n_bins, tmats = tmats
-          ))
-          # end transition processing
-        }
-        # end conditional segment processing
-      } 
-      # end segment processing
+    # only process segments with at least one transition
+    if(n_timepoints > 1) {
+      # process each transition in segment; we go one fewer than the
+      # segment length b/c this accounts for the last transition
+      for(ind in 1:(n_timepoints - 1)) {
+        # extract movement type associated with dive stage
+        s <- stages[ind]
+        mtype <- stage_map[s]
+        # compute pi and lambdas
+        pi_val <- ilogit(inprod(alpha[,s], covariates[,ind]))
+        lambda_val <- exp(inprod(beta[,s], covariates[,ind]))
+        # discretize pi and lambdas
+        pi_ind  <- closestIndex(
+          value = pi_val,
+          minval = pi_discretization[mtype, 1],
+          stepsize = pi_discretization[mtype, 2],
+          nvals = pi_discretization[mtype, 3]
+        )
+        lambda_ind  <- closestIndex(
+          value = lambda_val,
+          minval = lambda_discretization[mtype, 1],
+          stepsize = lambda_discretization[mtype, 2],
+          nvals = lambda_discretization[mtype, 3]
+        )
+        lp <- log(lookupProb(
+          movement_type = mtype, pi_ind = pi_ind, lambda_ind = lambda_ind,
+          i = x[ind], j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda,
+          n_bins = n_bins, tmats = tmats
+        ))
+        ll <- ll + lp
+      }
     }
     
     if(log) { return(ll) } else { return(exp(ll)) }
+  }
+)
+  
+dist_str = paste(
+  'dbins(stages, n_timepoints, stage_map, n_bins, alpha, beta, ',
+        'covariates, tmats, pi_discretization, n_pi, n_lambda, ',
+        'lambda_discretization)',
+  sep = ''
+)
+
+registerDistributions(list(
+  dbins = list(
+    BUGSdist = dist_str,
+    Rdist = dist_str,
+    types = c('value = double(1)', 'stages = double(1)', 
+              'n_timepoints = double(0)', 
+              'stage_map = double(1)', 'n_bins = double(0)', 
+              'alpha = double(2)', 'beta = double(2)', 
+              'covariates = double(2)', 'tmats = double(1)', 
+              'pi_discretization = double(2)', 'n_pi = double(1)',
+              'lambda_discretization = double(2)', 'n_lambda = double(1)'),
+    discrete = TRUE,
+    pqAvail = FALSE
+  )
+))
+
+dflatmat = nimble::nimbleFunction(
+  run = function(x = double(2), log = logical(0, default = 0)) {
+    returnType(double(0))
+    if(log) { return(0) } else { return(1) }
+  }
+)
+
+dflatvec = nimble::nimbleFunction(
+  run = function(x = double(1), log = logical(0, default = 0)) {
+    returnType(double(0))
+    if(log) { return(0) } else { return(1) }
   }
 )
