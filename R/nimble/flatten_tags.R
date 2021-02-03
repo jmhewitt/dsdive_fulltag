@@ -1,5 +1,15 @@
-flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
-                        pi_discretization, lambda_discretization) {
+flatten_tags = function(tag_list, transition_matrices, movement_types,
+                        pi_discretization, lambda_discretization, 
+                        template_bins, init_movement_coefficients,
+                        init_stage_tx_coefficients) {
+  
+  # extract dimensions
+  n_bins = nrow(template_bins)
+  
+  # extract initial coefficients
+  alpha = init_movement_coefficients$alpha
+  beta = init_movement_coefficients$beta
+  betas_tx = init_stage_tx_coefficients
   
   # initialize flattened structures
   nim_pkg = list(
@@ -7,11 +17,11 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
       depths = NULL,
       times = NULL,
       stages = NULL,
-      stage_supports = NULL
+      stage_supports = NULL,
+      transition_matrices = transition_matrices
     ),
     consts = list(
       segments = NULL,
-      transition_matrices = transition_matrices,
       n_bins = n_bins,
       movement_types = movement_types,
       pi_discretization = pi_discretization,
@@ -19,6 +29,15 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
       n_pi = as.integer(pi_discretization[, 'nvals']),
       n_lambda = as.integer(lambda_discretization[, 'nvals']),
       subject_id_labels = NULL
+    ),
+    inits = list(
+      # population-level effects
+      alpha_mu = alpha,
+      beta_mu = beta,
+      betas_tx_mu = betas_tx,
+      alpha_var = matrix(1, nrow = nrow(alpha), ncol = ncol(alpha)),
+      beta_var = matrix(1, nrow = nrow(beta), ncol = ncol(beta)),
+      betas_tx_var = matrix(1, nrow = nrow(betas_tx), ncol = ncol(betas_tx))
     )
   )
   
@@ -59,18 +78,47 @@ flatten_tags = function(tag_list, transition_matrices, n_bins, movement_types,
       # save segment information
       nim_pkg$consts$segments = rbind(
         nim_pkg$consts$segments,
-        c(start_ind = flat_ind, length = end_ind - start_ind + 1, 
-          subject_id = tag_ind)
+        c(start_ind = flat_ind, 
+          length = end_ind - start_ind + 1, 
+          subject_id = tag_ind,
+          end_ind = flat_ind + end_ind - start_ind)
       )
     }
-    
   }
   
+  # add covariates
+  nim_pkg$data$covariates = rbind(
+    intercept = rep(1, length(nim_pkg$data$depths)),
+    depth = template_bins$center[nim_pkg$data$depths],
+    deep_depth = template_bins$center[nim_pkg$data$depths] >= 800,
+    shallow_depth = template_bins$center[nim_pkg$data$depths] < 800 
+  )
+  
   # compute size constants
+  nim_pkg$consts$n_timepoints = length(nim_pkg$data$depths)
+  nim_pkg$consts$n_stage_txs = ncol(nim_pkg$inits$betas_tx_mu)
+  nim_pkg$consts$n_stages = length(nim_pkg$consts$movement_types)
+  nim_pkg$consts$n_txmat_entries = length(nim_pkg$data$transition_matrices)
+  nim_pkg$consts$n_txmat_types = nrow(nim_pkg$consts$pi_discretization)
+  nim_pkg$consts$n_covariates = nrow(nim_pkg$data$covariates)
   nim_pkg$consts$n_segments = nrow(nim_pkg$consts$segments)
   nim_pkg$consts$n_subjects = length(unique(
     nim_pkg$consts$segments[, 'subject_id']
   ))
+  
+  # add initial individual-level random effects
+  nim_pkg$inits$alpha = array(
+    data = alpha, 
+    dim = c(nrow(alpha), ncol(alpha), nim_pkg$consts$n_subjects)
+  )
+  nim_pkg$inits$beta = array(
+    data = beta, 
+    dim = c(nrow(beta), ncol(beta), nim_pkg$consts$n_subjects)
+  )
+  nim_pkg$inits$betas_tx = array(
+    data = betas_tx, 
+    dim = c(nrow(betas_tx), ncol(betas_tx), nim_pkg$consts$n_subjects)
+  )
   
   nim_pkg
 }
