@@ -270,15 +270,33 @@ registerDistributions(list(
 ))
 
 dflatmat = nimble::nimbleFunction(
-  run = function(x = double(2), log = logical(0, default = 0)) {
+  run = function(x = double(2), nrow = double(0), ncol = double(0),
+                 log = logical(0, default = 0)) {
     returnType(double(0))
     if(log) { return(0) } else { return(1) }
   }
 )
 
+rflatmat = nimble::nimbleFunction(
+  run = function(n = integer(0), nrow = double(0), ncol = double(0)) {
+    returnType(double(2))
+    m <- matrix(nrow = nrow, ncol = ncol)
+    return(m)
+  }
+)
+
 dflatvec = nimble::nimbleFunction(
-  run = function(x = double(1), log = logical(0, default = 0)) {
+  run = function(x = double(1), length = double(0),
+                 log = logical(0, default = 0)) {
     returnType(double(0))
     if(log) { return(0) } else { return(1) }
+  }
+)
+
+rflatvec = nimble::nimbleFunction(
+  run = function(n = integer(0), length = double(0)) {
+    returnType(double(1))
+    v <- numeric(length = length)
+    return(v)
   }
 )
