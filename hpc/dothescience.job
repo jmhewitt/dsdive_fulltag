@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#SBATCH --job-name dive_fulltag
+#SBATCH --partition common
+#SBATCH --account gelfandlab
+#SBATCH --mail-type ALL
+#SBATCH --mail-user joshua.hewitt@duke.edu
+#SBATCH --ntasks 1
+#SBATCH --time 96:00:00
+#SBATCH --mem 6GB
+
+date
+START=`date +%s`
+R --no-save --no-restore CMD BATCH make.R ${SLURM_JOB_NAME}.Rout
+END=`date +%s`
+date
+
+ELAPSED=$(( $END - $START ))
+echo "Elapsed time (hrs): $(echo "scale=10; $ELAPSED/3600" | bc)"
