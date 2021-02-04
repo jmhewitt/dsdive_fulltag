@@ -130,7 +130,15 @@ nimble_targets = list(
   
   tar_target(
     name = nim_fit,
-    command = fit(nim_pkg)
+    command = fit(
+      nim_pkg = nim_pkg, 
+      nsamples = 1e4, 
+      nthin = 10, 
+      max_batch_iter = 1e3, 
+      max_batch_time = 30 * 60, 
+      max_batch_mem = 1024^3/2, 
+      sample_dir = mcmc_sample_dir
+    )
   )
   
 )
