@@ -61,7 +61,20 @@ nimble_targets = list(
         ),
         depth = rep(0, 11),
         deep_depth =  rep(0, 11),
-        shallow_depth = rep(0, 11)
+        shallow_depth = rep(0, 11),
+        non_surface_bin = c( # discourage certain stage tx's when not on surface
+          deep_descent__deep_forage = 0,
+          deep_forage__deep_ascent = 0,
+          deep_ascent__deep_descent = -1e2, 
+          deep_ascent__shallow_descent = -1e2,
+          deep_ascent__free_surface = 0,
+          shallow_descent__shallow_ascent = 0,
+          shallow_ascent__deep_descent = -1e2,
+          shallow_ascent__shallow_descent = -1e2,
+          shallow_ascent__free_surface = 0,
+          free_surface__deep_descent = 0,
+          free_surface__shallow_descent = 0
+        )
       )
     }
   ),
@@ -81,7 +94,8 @@ nimble_targets = list(
         )),
         depth = rep(0, 6),
         deep_depth = rep(0, 6),
-        shallow_depth = rep(0, 6)
+        shallow_depth = rep(0, 6),
+        non_surface_bin = rep(0, 11)
       ),
       beta = rbind(
         intercept = log(c(
@@ -94,7 +108,8 @@ nimble_targets = list(
         )),
         depth = rep(0, 6),
         deep_depth = rep(0, 6),
-        shallow_depth = rep(0, 6)
+        shallow_depth = rep(0, 6),
+        non_surface_bin = rep(0, 11)
       )
     )
   ),
