@@ -25,27 +25,38 @@ nimble_targets = list(
       # return multinomial logit coefficients for ideal stage transition matrix
       rbind(
         intercept = c(
-          log(ideal_stage_txmat['deep_descent', 'deep_forage']) - 
+          deep_descent__deep_forage = 
+            log(ideal_stage_txmat['deep_descent', 'deep_forage']) - 
             log(ideal_stage_txmat['deep_descent', 'deep_descent']),
-          log(ideal_stage_txmat['deep_forage', 'deep_ascent']) - 
+          deep_forage__deep_ascent =
+            log(ideal_stage_txmat['deep_forage', 'deep_ascent']) - 
             log(ideal_stage_txmat['deep_forage', 'deep_forage']),
-          log(ideal_stage_txmat['deep_ascent', 'deep_descent']) - 
+          deep_ascent__deep_descent =
+            log(ideal_stage_txmat['deep_ascent', 'deep_descent']) - 
             log(ideal_stage_txmat['deep_ascent', 'deep_ascent']),
-          log(ideal_stage_txmat['deep_ascent', 'shallow_descent']) - 
+          deep_ascent__shallow_descent =
+            log(ideal_stage_txmat['deep_ascent', 'shallow_descent']) - 
             log(ideal_stage_txmat['deep_ascent', 'deep_ascent']),
-          log(ideal_stage_txmat['deep_ascent', 'free_surface']) - 
+          deep_ascent__free_surface =
+            log(ideal_stage_txmat['deep_ascent', 'free_surface']) - 
             log(ideal_stage_txmat['deep_ascent', 'deep_ascent']),
-          log(ideal_stage_txmat['shallow_descent', 'shallow_ascent']) - 
+          shallow_descent__shallow_ascent =
+            log(ideal_stage_txmat['shallow_descent', 'shallow_ascent']) - 
             log(ideal_stage_txmat['shallow_descent', 'shallow_descent']),
-          log(ideal_stage_txmat['shallow_ascent', 'deep_descent']) - 
+          shallow_ascent__deep_descent =
+            log(ideal_stage_txmat['shallow_ascent', 'deep_descent']) - 
             log(ideal_stage_txmat['shallow_ascent', 'shallow_ascent']),
-          log(ideal_stage_txmat['shallow_ascent', 'shallow_descent']) - 
+          shallow_ascent__shallow_descent =
+            log(ideal_stage_txmat['shallow_ascent', 'shallow_descent']) - 
             log(ideal_stage_txmat['shallow_ascent', 'shallow_ascent']),
-          log(ideal_stage_txmat['shallow_ascent', 'free_surface']) - 
+          shallow_ascent__free_surface =
+            log(ideal_stage_txmat['shallow_ascent', 'free_surface']) - 
             log(ideal_stage_txmat['shallow_ascent', 'shallow_ascent']),
-          log(ideal_stage_txmat['free_surface', 'deep_descent']) - 
+          free_surface__deep_descent =
+            log(ideal_stage_txmat['free_surface', 'deep_descent']) - 
             log(ideal_stage_txmat['free_surface', 'free_surface']),
-          log(ideal_stage_txmat['free_surface', 'shallow_descent']) - 
+          free_surface__shallow_descent =
+            log(ideal_stage_txmat['free_surface', 'shallow_descent']) - 
             log(ideal_stage_txmat['free_surface', 'free_surface'])
         ),
         depth = rep(0, 11),
@@ -61,29 +72,29 @@ nimble_targets = list(
     command = list(
       alpha = rbind(
         intercept = qlogis(c(
-          .99, # deep_descent
-          .5,  # deep_forage
-          .01, # deep_ascent
-          .97, # shallow_descent
-          .03, # shallow_ascent
-          .5   # free_surface
+          deep_descent = .99,
+          deep_forage = .5,
+          deep_ascent = .01,
+          shallow_descent = .97,
+          shallow_ascent = .03,
+          free_surface = .5
         )),
-        depth = rep(0, 6), # slopes to ignore depth
-        deep_depth = rep(0, 6), # slopes to ignore deep depth indicator
-        shallow_depth = rep(0, 6) # slopes to ignore shallow depth indicator
+        depth = rep(0, 6),
+        deep_depth = rep(0, 6),
+        shallow_depth = rep(0, 6)
       ),
       beta = rbind(
         intercept = log(c(
-          1.6,  # deep_descent
-          .03,  # deep_forage
-          1.4,  # deep_ascent
-          .6,   # shallow_descent
-          .6,   # shallow_ascent
-          .2    # free_surface
+          deep_descent = 1.6,
+          deep_forage = .03,
+          deep_ascent = 1.4,
+          shallow_descent = .6,
+          shallow_ascent = .6,
+          free_surface = .2
         )),
-        depth = rep(0, 6), # slopes to ignore depth
-        deep_depth = rep(0, 6), # slopes to ignore deep depth indicator
-        shallow_depth = rep(0, 6) # slopes to ignore shallow depth indicator
+        depth = rep(0, 6),
+        deep_depth = rep(0, 6),
+        shallow_depth = rep(0, 6)
       )
     )
   ),
