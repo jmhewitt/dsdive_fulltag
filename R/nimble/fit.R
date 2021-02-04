@@ -125,7 +125,6 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   mcmc_c = compileNimble(mcmc, resetFunctions = TRUE, showCompilerOutput = TRUE,
                          projectName = tar_name())
   
-  
   # size of sampler output for model parameters
   param_samples = as.matrix(mcmc_c$mvSamples)
   param_samples_labels = object_size(colnames(param_samples))
@@ -183,9 +182,10 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   batch_num = 1
   while(remaining_it > 0) {
     # determine number of iterations to run
-    batch_iter = min(remaining_it, batch_size)
+    batch_iter = min(remaining_it, batch_iter)
     # run sampler
-    mcmc_c$run(niter = batch_iter, reset = FALSE, resetMV = TRUE)
+    mcmc_c$run(niter = batch_iter, reset = FALSE, resetMV = TRUE, 
+               progressBar = FALSE)
     # save parameter samples, reducing file size by removing labels
     param_samples = as.matrix(mcmc_c$mvSamples)
     attr(param_samples, 'dimnames') = NULL
