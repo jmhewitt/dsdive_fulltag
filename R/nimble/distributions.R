@@ -1,8 +1,52 @@
-library(nimble)
-
 #
 # support for CTMC model across depth bins
 #
+
+dstages = nimble::nimbleFunction(
+  run = function(x = double(1), betas = double(2), covariates = double(2), 
+                 stage_supports = double(2),
+                 n_timepoints = double(0), log = logical(0, default = 0)) {
+    # likelihood for sequence of latent stages, conditional on covariates and 
+    # transition parameter coefficients
+    #
+    # Parameters:
+    #  x - sequence of stages
+    #  betas - matrix of coefficients for multinomial logit distributions. see 
+    #    documentation for stageTxMats function for more details.
+    #  covariates - matrix of covariates used to generate stage transition 
+    #    matrices.  each column specifies covariates for a timepoint.
+    #  n_timepoints - number of timepoints, each of which will get a stage 
+    #    transition matrix.
+    #  log - if TRUE, then the log-likelihood is returned
+    #
+    # Return:
+    #  the (log-)likelihood value for the sequence of stage transitions
+    
+    
+    returnType(double(0))
+    
+    # initialize log-likelihood
+    ll <- 0
+    
+    # only process segments with at least one transition
+    if(n_timepoints > 1) {
+      # process each transition in segment; we go one fewer than the
+      # segment length b/c this accounts for the last transition
+      for(ind in 1:(n_timepoints - 1)) {
+        # compute stage transition matrix for timepoint
+        stx <- stageTxMats(betas = betas, 
+                           covariates = covariates[, ind, drop = FALSE],
+                           n_timepoints = 1)
+        # # aggregate support for stage
+        # ll <- ll + log(stage_supports[x[ind], ind])
+        # aggregate probability of transition
+        ll <- ll + log(stx[x[ind], x[ind+1], 1])
+      }
+    }
+    
+    if(log) { return(ll) } else { return(exp(ll)) }
+  }
+)
 
 stageTxMats = nimble::nimbleFunction(
   run = function(betas = double(2), covariates = double(2), 
@@ -246,17 +290,31 @@ dbins = nimble::nimbleFunction(
   }
 )
   
-dist_str = paste(
+dist_str_bins = paste(
   'dbins(stages, n_timepoints, stage_map, n_bins, alpha, beta, ',
         'covariates, tmats, pi_discretization, n_pi, n_lambda, ',
         'lambda_discretization)',
   sep = ''
 )
 
-registerDistributions(list(
+dist_str_stages = 'dstages(betas, covariates, stage_supports, n_timepoints)'
+
+
+nimble::registerDistributions(list(
+  
+  dstages = list(
+    BUGSdist = dist_str_stages,
+    Rdist = dist_str_stages,
+    types = c('value = double(1)', 'betas = double(2)', 
+              'covariates = double(2)', 'stage_supports = double(2)',
+              'n_timepoints = double(0)'),
+    discrete = TRUE,
+    pqAvail = FALSE
+  ),
+  
   dbins = list(
-    BUGSdist = dist_str,
-    Rdist = dist_str,
+    BUGSdist = dist_str_bins,
+    Rdist = dist_str_bins,
     types = c('value = double(1)', 'stages = double(1)', 
               'n_timepoints = double(0)', 
               'stage_map = double(1)', 'n_bins = double(0)', 
@@ -267,6 +325,7 @@ registerDistributions(list(
     discrete = TRUE,
     pqAvail = FALSE
   )
+  
 ))
 
 dflatmat = nimble::nimbleFunction(
