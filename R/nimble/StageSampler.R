@@ -1,6 +1,6 @@
 sampler_Stage = nimble::nimbleFunction(
   
-  contains = sampler_BASE,
+  contains = nimble::sampler_BASE,
   
   setup = function(model, mvSaved, target, control) {
     
@@ -8,23 +8,15 @@ sampler_Stage = nimble::nimbleFunction(
     calcNodes <- model$getDependencies(target)
     
     #
-    # define "external" dependencies
-    #
-    
-    # node holding stage transition probability coefficients 
-    betas_tx_node <- extractControlElement(
-      control, 'betas_tx_node', error = 'Must specify betas_tx_node'
-    )
-    
-    # support for latent stage at each timepoint
-    stage_supports <- extractControlElement(
-      control, 'stage_supports', error = 'Must specify stage_supports'
-    )
-    
-    #
     # detect FFBS dependencies induced via depths distribution
     #
     
+    # node holding stage transition probability coefficients 
+    betas_tx_node <- deparse(model$getParamExpr(target, 'betas'))
+    
+    # support for latent stage at each timepoint
+    stage_supports <- deparse(model$getParamExpr(target, 'stage_supports'))
+
     # depth nodes, which constrain filtering distribution for latent stages
     depth_nodes <- calcNodes[which(model$getDistribution(calcNodes) == 'dbins')]
     
@@ -84,7 +76,7 @@ sampler_Stage = nimble::nimbleFunction(
       n_lambda = model[[n_lambda_node]],
       lambda_discretization = model[[lambda_discretization_node]],
       betas_tx = matrix(values(model, betas_tx_node), nrow = n_covariates),
-      stage_supports = stage_supports
+      stage_supports = model[[stage_supports]]
     )
     
     # update log probability
