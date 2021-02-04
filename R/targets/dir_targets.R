@@ -51,6 +51,16 @@ dir_targets = list(
       dir.create(f, recursive = TRUE, showWarnings = FALSE)
       f
     }
+  ),
+  
+  # location for storing mcmc samples
+  tar_target(
+    name = mcmc_sample_dir, 
+    command = {
+      f = file.path('output', 'mcmc')
+      dir.create(f, recursive = TRUE, showWarnings = FALSE)
+      f
+    }
   )
   
 )
