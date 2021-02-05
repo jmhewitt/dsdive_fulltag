@@ -120,6 +120,10 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
                      'alpha_var', 'beta_var'))
   conf$addMonitors2('stages')
   
+  # set thinning
+  conf$setThin(nthin)
+  conf$setThin2(nthin)
+  
   # build and compile sampler
   mcmc = buildMCMC(conf)
   mcmc_c = compileNimble(mcmc, resetFunctions = TRUE, showCompilerOutput = TRUE,
@@ -169,9 +173,16 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     labels = file.path(out_dir,
       paste(tar_name(), '_parameter_samples_column_labels.rds', sep = '')
     ),
+    active_samplers = file.path(out_dir,
+      paste(tar_name(), '_active_samplers.rds', sep = '')
+    ),
     parameter_samples = c(),
     stage_samples = c()
   )
+  
+  # save active sampler list
+  saveRDS(sapply(conf$samplerConfs, function(s) s$target), 
+          file = sampler_files$active_samplers)
   
   # save labels
   saveRDS(colnames(param_samples), file = sampler_files$labels)
@@ -182,10 +193,9 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   batch_num = 1
   while(remaining_it > 0) {
     # determine number of iterations to run
-    batch_iter = min(remaining_it, batch_iter)
+    batch_chunk = min(remaining_it, batch_iter)
     # run sampler
-    mcmc_c$run(niter = batch_iter, reset = FALSE, resetMV = TRUE, 
-               progressBar = FALSE)
+    mcmc_c$run(niter = batch_chunk, reset = FALSE, resetMV = TRUE)
     # save parameter samples, reducing file size by removing labels
     param_samples = as.matrix(mcmc_c$mvSamples)
     attr(param_samples, 'dimnames') = NULL
@@ -202,15 +212,15 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     )
     saveRDS(stage_samples, file = f_stages)
     sampler_files$stage_samples = c(sampler_files$stage_samples, f_stages)
+    # increment counters
+    remaining_it = remaining_it - batch_chunk
+    batch_num = batch_num + 1
     # update progress
     message(paste(
       Sys.time(), ' :: Sampling ', 
       round((total_it - remaining_it) / total_it * 100, 2), 
       '% complete', sep = ''
     ))
-    # increment counters
-    remaining_it = remaining_it - batch_iter
-    batch_num = batch_num + 1
   }
   
   # return list of output files
