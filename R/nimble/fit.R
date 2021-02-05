@@ -117,7 +117,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # set monitors, to partition output
   conf$resetMonitors()
   conf$addMonitors(c('betas_tx_mu', 'betas_tx_var', 'alpha_mu', 'beta_mu', 
-                     'alpha_var', 'beta_var'))
+                     'alpha_var', 'beta_var', 'alpha', 'beta', 'betas_tx'))
   conf$addMonitors2('stages')
   
   # set thinning
