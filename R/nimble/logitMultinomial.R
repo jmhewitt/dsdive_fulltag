@@ -13,7 +13,7 @@ multinomialLogitProbs = nimble::nimbleFunction(
     returnType(double(1))
     
     # eqn. 7.1, with alpha_j assumed to live in betas as an intercept term
-    exp_logits <- exp(c(t(betas) %*% x, 1))
+    exp_logits <- c(exp(t(betas) %*% x), 1)
     
     # eqn. 7.2
     prob <- exp_logits / sum(exp_logits)
