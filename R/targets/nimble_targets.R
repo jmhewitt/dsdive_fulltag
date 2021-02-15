@@ -62,18 +62,25 @@ nimble_targets = list(
         depth = rep(0, 11),
         deep_depth =  rep(0, 11),
         shallow_depth = rep(0, 11),
-        non_surface_bin = c( # discourage certain stage tx's when not on surface
+        non_surface_bin = c( 
           deep_descent__deep_forage = 0,
           deep_forage__deep_ascent = 0,
+          # don't restart a dive at depth
           deep_ascent__deep_descent = -1e2, 
+          # don't switch dive types at depth
           deep_ascent__shallow_descent = -1e2,
-          deep_ascent__free_surface = 0,
+          # don't start free_surface periods at depth
+          deep_ascent__free_surface = -1e2,
           shallow_descent__shallow_ascent = 0,
+          # don't switch dive types at depth
           shallow_ascent__deep_descent = -1e2,
+          # don't restart a dive at depth
           shallow_ascent__shallow_descent = -1e2,
-          shallow_ascent__free_surface = 0,
-          free_surface__deep_descent = 0,
-          free_surface__shallow_descent = 0
+          # don't start free_surface periods at depth
+          shallow_ascent__free_surface = -1e2,
+          # free_surface periods to end at depths
+          free_surface__deep_descent = 1e2,
+          free_surface__shallow_descent = 1e2
         )
       )
     }

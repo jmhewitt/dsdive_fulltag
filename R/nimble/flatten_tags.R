@@ -92,7 +92,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
     depth = template_bins$center[nim_pkg$data$depths],
     deep_depth = template_bins$center[nim_pkg$data$depths] >= 800,
     shallow_depth = template_bins$center[nim_pkg$data$depths] < 800,
-    non_surface_bin = nim_pkg$data$depths != 1
+    non_surface_bin = nim_pkg$data$depths > 2
   )
   
   # compute size constants
