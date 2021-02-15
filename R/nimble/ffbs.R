@@ -4,6 +4,17 @@ ffbs = nimble::nimbleFunction(
     # Forward-filtering backwards-sampling, as described in Rao and Teh (2013),
     # Algorithm 4.
     # 
+    # We depart slightly from Rao and Teh slightly in how we interpret the 
+    # matrix B_t.  We say that B_t represents the distributions s.t. 
+    # P(S_t = s' | S_{t-1} = s) = B_{s,s'}^t.  The distinction is important 
+    # because, in our application, we work with models for which covariates at 
+    # time t influence the transition at time t, vs. how Rao and Teh
+    # do it---which is more standard---where covariates at time t influence 
+    # the next transition, at time t+1.
+    # 
+    # the net impact on the algorithm implementation is that we change the 
+    # indexing of how we use the B matrices.
+    # 
     # Parameters:
     #   L - matrix of likelihoods, where each column is L^t.
     #   B - array of transition matrices, where each array entry B[,,i] is a
@@ -18,13 +29,16 @@ ffbs = nimble::nimbleFunction(
     
     returnType(integer(1))
     
+    
+    # Prob. in s' at t = \sum{over states s} (prob in s at t-1 * prob s->s')
+    
     # initialize forward-filtering distributions
     a <- matrix(nrow = n_states, ncol = n_timepoints, init = FALSE)
     a[,1] <- a0
     
     # forward-filter
     for(t in 2:n_timepoints) {
-      a[,t] <- t(B[,,t-1]) %*% (a[,t-1] * L[,t-1])
+      a[,t] <- t(B[,,t]) %*% (a[,t-1] * L[,t-1])
       a[,t] <- a[,t] / sum(a[,t])
     }
     
@@ -34,11 +48,11 @@ ffbs = nimble::nimbleFunction(
     # backwards-sample
     b <- a[,n_timepoints] * L[,n_timepoints]
     s[n_timepoints] <- rcat(n = 1, prob = b)
-    for(i in 1:(n_timepoints-1)) {  
+    for(i in 1:(n_timepoints-1)) {
       # nimble does not compile backwards-loops, but this is what we need
       t <- n_timepoints - i 
       # backward sample
-      b <- a[,t] * L[,t] * B[,s[t+1],t]
+      b <- a[,t] * L[,t] * B[,s[t+1],t+1]
       s[t] <- rcat(n = 1, prob = b)
     }
       

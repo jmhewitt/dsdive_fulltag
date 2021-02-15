@@ -22,7 +22,6 @@ dstages = nimble::nimbleFunction(
     # Return:
     #  the (log-)likelihood value for the sequence of stage transitions
     
-    
     returnType(double(0))
     
     # initialize log-likelihood
@@ -32,14 +31,16 @@ dstages = nimble::nimbleFunction(
     if(n_timepoints > 1) {
       # process each transition in segment; we go one fewer than the
       # segment length b/c this accounts for the last transition
-      for(ind in 1:(n_timepoints - 1)) {
+      for(ind in 2:n_timepoints) {
         # # aggregate support for stage
         # ll <- ll + log(stage_supports[x[ind], ind])
-        # compute stage transition distribution for timepoint
-        stx <- stageTxVec(stageFrom = x[ind], betas = betas, 
+        # compute stage transition distribution for timepoint:
+        #   the stage s_{ij}(t_k) is drawn using covariates at time t_k, and 
+        #   the stage is Markov wrt. the previous stage
+        stx <- stageTxVec(stageFrom = x[ind-1], betas = betas, 
                           covariates = covariates[, ind])
         # aggregate probability of transition
-        ll <- ll + log(stx[ x[ind+1] ])
+        ll <- ll + log(stx[x[ind]])
       }
     }
     
@@ -168,7 +169,6 @@ stageTxMats = nimble::nimbleFunction(
   }
 )
 
-
 dstageLik = nimble::nimbleFunction(
   run = function(x = double(1), n_timepoints = double(0), tmats = double(1),
                  n_bins = double(0), n_stages = double(0),
@@ -182,6 +182,12 @@ dstageLik = nimble::nimbleFunction(
     # likelihood for the final stage in the target segment has a uniform 
     # distribution since no "final" transition is observed, which would provide
     # information for learning the final stage.
+    #
+    # the output quantifies the evidence for the value of stage s_{ij}(t_k) 
+    # given an observation of the depth bin it influences \ell_{ij}(t_k+1), 
+    # and is useful for forward-filtering backward-sampling of the stage
+    # process.  so, here, the covariates are associated with the start of a
+    # movement interval.
     #
     # Parameters:
     #  x - sequence of observed depth bins
@@ -216,8 +222,7 @@ dstageLik = nimble::nimbleFunction(
     if(n_timepoints > 1) {
       # process each transition in segment; we go one fewer than the 
       # segment length b/c this accounts for the last transition
-      for(it in 1:(n_timepoints - 1)) {
-        ind <- it
+      for(ind in 1:(n_timepoints - 1)) {
         # consider movement from all stages
         for(s in 1:n_stages) {
           # extract movement type associated with dive stage
@@ -239,7 +244,7 @@ dstageLik = nimble::nimbleFunction(
             nvals = lambda_discretization[mtype, 3]
           )
           # aggregate likelihood for transition
-          res[s,it] <- lookupProb(
+          res[s,ind] <- lookupProb(
             movement_type = mtype, pi_ind = pi_ind, lambda_ind = lambda_ind, 
             i = x[ind], j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda, 
             n_bins = n_bins, tmats = tmats
@@ -248,7 +253,7 @@ dstageLik = nimble::nimbleFunction(
         }
         # end processing observation
       }
-      # add a flat likelihood for the final stage transition
+      # add a flat likelihood for the final stage distribution
       for(i in 1:n_stages) {
         res[i,n_timepoints] <- 1
       }
@@ -258,7 +263,6 @@ dstageLik = nimble::nimbleFunction(
     return(res)
   }
 )
-
 
 dbins = nimble::nimbleFunction(
   run = function(x = double(1), stages = double(1), n_timepoints = double(0),
