@@ -42,10 +42,12 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
       n_pi = nim_pkg$consts$n_pi,
       n_lambda = nim_pkg$consts$n_lambda, 
       lambda_discretization = nim_pkg$consts$lambda_discretization, 
-      betas_tx = nim_pkg$inits$betas_tx[,,1], 
+      betas_tx = nim_pkg$inits$betas_tx_mu, 
       stage_supports = nim_pkg$data$stage_supports[,inds]
     )
   }
+  
+  saveRDS(nim_pkg$data$stages, file = 'output/init_stages.rds')
   
   # define and compile model
   model = nimbleModel(code = modelCode, constants = nim_pkg$consts, 
@@ -56,22 +58,22 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # initialize MCMC config
   conf = configureMCMC(model)
   
-  # remove all samplers for forage period descent parameters
+  # remove all movement parameter samplers for stages w/fixed descent parameters
   stage_ind = which(
-    colnames(nim_pkg$inits$alpha_mu) == 'deep_forage'
+    colnames(nim_pkg$inits$alpha_mu) %in% c('deep_forage', 'free_surface')
   )
   for(i in 1:nim_pkg$consts$n_covariates) {
     conf$removeSampler(
       paste('alpha_mu[', i, ', ', stage_ind, ']', sep ='')
     )
-    conf$removeSampler(
-      paste('alpha_var[', i, ', ', stage_ind, ']', sep ='')
-    )
-    for(j in 1:nim_pkg$consts$n_subjects) {
-      conf$removeSampler(
-        paste('alpha[', i, ', ', stage_ind, ', ', j, ']', sep ='')
-      )
-    }
+    # conf$removeSampler(
+    #   paste('alpha_var[', i, ', ', stage_ind, ']', sep ='')
+    # )
+    # for(j in 1:nim_pkg$consts$n_subjects) {
+    #   conf$removeSampler(
+    #     paste('alpha[', i, ', ', stage_ind, ', ', j, ']', sep ='')
+    #   )
+    # }
   }
   
   # remove samplers for movement parameter effects not being estimated
@@ -80,10 +82,10 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     for(j in 1:nim_pkg$consts$n_stages) {
       conf$removeSampler(paste('alpha_mu[', i, ', ', j, ']', sep = ''))
       conf$removeSampler(paste('beta_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('alpha_var[', i, ', ', j, ']', sep = ''))
+      # conf$removeSampler(paste('alpha_var[', i, ', ', j, ']', sep = ''))
       conf$removeSampler(paste('beta_var[', i, ', ', j, ']', sep = ''))
       for(k in 1:nim_pkg$consts$n_subjects) {
-        conf$removeSampler(paste('alpha[', i, ', ', j, ', ', k, ']', sep = ''))
+        # conf$removeSampler(paste('alpha[', i, ', ', j, ', ', k, ']', sep = ''))
         conf$removeSampler(paste('beta[', i, ', ', j, ', ', k, ']', sep = ''))
       }
     }
@@ -114,15 +116,18 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     )
   }
   
-  # set monitors, to partition output
+  # reset monitors, to partition output
   conf$resetMonitors()
   conf$addMonitors(c('betas_tx_mu', 'betas_tx_var', 'alpha_mu', 'beta_mu', 
-                     'alpha_var', 'beta_var', 'alpha', 'beta', 'betas_tx'))
+                     'beta_var', 'beta', 'betas_tx'))
   conf$addMonitors2('stages')
   
   # set thinning
   conf$setThin(nthin)
   conf$setThin2(nthin)
+  
+  # view final sampler configuration
+  print(conf)
   
   # build and compile sampler
   mcmc = buildMCMC(conf)

@@ -27,11 +27,14 @@ modelCode = nimble::nimbleCode({
       # priors for population-level coefficients and variability
       alpha_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
       beta_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
-      alpha_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
+      # alpha_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
       beta_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
       # hierarchical layer for individual-level coefficients
       for(k in 1:n_subjects) {
-        alpha[i,j,k] ~ dnorm(mean = alpha_mu[i,j], var = alpha_var[i,j])
+        # transfer population-level effects as fixed effects
+        alpha[i,j,k] <- alpha_mu[i,j]
+        # individual-level random effects
+        # alpha[i,j,k] ~ dnorm(mean = alpha_mu[i,j], var = alpha_var[i,j])
         beta[i,j,k] ~ dnorm(mean = beta_mu[i,j], var = beta_var[i,j])
       }
     }
