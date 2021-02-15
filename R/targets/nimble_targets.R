@@ -95,7 +95,7 @@ nimble_targets = list(
         depth = rep(0, 6),
         deep_depth = rep(0, 6),
         shallow_depth = rep(0, 6),
-        non_surface_bin = rep(0, 11)
+        non_surface_bin = rep(0, 6)
       ),
       beta = rbind(
         intercept = log(c(
@@ -109,7 +109,7 @@ nimble_targets = list(
         depth = rep(0, 6),
         deep_depth = rep(0, 6),
         shallow_depth = rep(0, 6),
-        non_surface_bin = rep(0, 11)
+        non_surface_bin = rep(0, 6)
       )
     )
   ),
