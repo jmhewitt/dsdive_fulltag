@@ -26,16 +26,16 @@ buildInfinitesimalGeneratorEntries = nimble::nimbleFunction(
                                       dsub = numeric(M-1, init = FALSE),
                                       dsuper = numeric(M-1, init = FALSE))
 
-    # only allow (downward) transitions from shallowest bin in stages 1, 2, 4
-    if(stage == 1 | stage == 2 | stage == 4) {
+    # only allow (downward) transitions from shallowest bin in descent stages
+    if(stage == 1 | stage == 2 | stage == 4 | stage == 6) {
       rate <- lambda / widths[1]
       entries$diag[1] <- -rate
       entries$dsuper[1] <- rate
     }
 
-    # only allow surfacing from second bin to occur in stages 3 and 4
+    # disallow surfacing from second bin to stages 1, 2, 4
     rate <- lambda / widths[2]
-    if(stage == 1 | stage == 2) {
+    if(stage == 1 | stage ==  2 | stage == 4) {
       entries$diag[2] <- -rate
       entries$dsuper[2] <- rate
       entries$dsub[1] <- 0
