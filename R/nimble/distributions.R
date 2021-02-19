@@ -70,9 +70,9 @@ dstages = nimble::nimbleFunction(
         #   the stage s_{ij}(t_k) is drawn using covariates at time t_k, and 
         #   the stage is Markov wrt. the previous stage
         stx <- stageTxVec(stageFrom = x[ind-1], betas = betas, 
-                          covariates = covariates[, ind])
+                          covariates = covariates[, ind], log = TRUE)
         # aggregate probability of transition
-        ll <- ll + log(stx[x[ind]])
+        ll <- ll + stx[x[ind]]
       }
     }
     
@@ -82,7 +82,7 @@ dstages = nimble::nimbleFunction(
 
 stageTxVec = nimble::nimbleFunction(
   run = function(stageFrom = double(0), betas = double(2), 
-                 covariates = double(1)) {
+                 covariates = double(1), log = logical(0)) {
     # discrete-time stage transition vector, conditional on covariates and 
     # the stage being transitioned from
     # 
@@ -106,6 +106,7 @@ stageTxVec = nimble::nimbleFunction(
     #    logit(free_surface->shallow_descent)
     #   covariates - vector of covariates used to generate stage transition 
     #     probabilities.
+    #   log - if TRUE, returns an approximation to the log probabilities
     # 
     # Return:
     #   vector of stage transition probabilities order of transition-to 
@@ -123,36 +124,36 @@ stageTxVec = nimble::nimbleFunction(
     
     if(stageFrom == 1) {
       p <- multinomialLogitProbs(betas = betas[, 1, drop = FALSE], 
-                                 x = covariates)
+                                 x = covariates, log = log)
       m[2] <- p[1]  # deep_descent -> deep_forage
       m[1] <- p[2]  # deep_descent -> deep_descent
     } else if(stageFrom == 2) {
       p <- multinomialLogitProbs(betas = betas[, 2, drop = FALSE], 
-                                 x = covariates)
+                                 x = covariates, log = log)
       m[3] <- p[1]  # deep_forage -> deep_ascent
       m[2] <- p[2]  # deep_forage -> deep_forage
     } else if(stageFrom == 3) {
       p <- multinomialLogitProbs(betas = betas[, 3:5, drop = FALSE], 
-                                 x = covariates)
+                                 x = covariates, log = log)
       m[1] <- p[1]  # deep_ascent -> deep_descent
       m[4] <- p[2]  # deep_ascent -> shallow_descent
       m[6] <- p[3]  # deep_ascent -> free_surface
       m[3] <- p[4]  # deep_ascent -> deep_ascent
     } else if(stageFrom == 4) {
       p <- multinomialLogitProbs(betas = betas[, 6, drop = FALSE], 
-                                 x = covariates)
+                                 x = covariates, log = log)
       m[5] <- p[1]  # shallow_descent -> shallow_ascent
       m[4] <- p[2]  # shallow_descent -> shallow_descent
     } else if(stageFrom == 5) {
       p <- multinomialLogitProbs(betas = betas[, 7:9, drop = FALSE], 
-                                 x = covariates)
+                                 x = covariates, log = log)
       m[1] <- p[1]  # shallow_ascent -> deep_descent
       m[4] <- p[2]  # shallow_ascent -> shallow_descent
       m[6] <- p[3]  # shallow_ascent -> free_surface
       m[5] <- p[4]  # shallow_ascent -> shallow_ascent
     } else if(stageFrom == 6) {
       p <- multinomialLogitProbs(betas = betas[, 10:11, drop = FALSE], 
-                                 x = covariates)
+                                 x = covariates, log = log)
       m[1] <- p[1]  # free_surface -> deep_descent
       m[4] <- p[2]  # free_surface -> shallow_descent
       m[6] <- p[3]  # free_surface -> free_surface
@@ -193,7 +194,7 @@ stageTxMats = nimble::nimbleFunction(
     for(i in 1:n_timepoints) {
       for(j in 1:6) {
         m[j,,i] <- stageTxVec(stageFrom = j, betas = betas, 
-                              covariates = covariates[,i])
+                              covariates = covariates[,i], log = FALSE)
       }
     }
     
