@@ -1,6 +1,9 @@
 library(targets)
 
-tar_make()
+# library(nimble)
+# source('_targets.R')
 
-tar_read(tag_info)
-tar_destroy()
+# tar_make()
+
+# run workflow in current session, allowing for debugging breakpoints
+tar_make(callr_function = NULL)
