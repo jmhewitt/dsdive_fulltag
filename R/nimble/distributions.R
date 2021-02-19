@@ -2,6 +2,38 @@
 # support for CTMC model across depth bins
 #
 
+dcovariates = nimble::nimbleFunction(
+  run = function(x = double(2), time_in_stage_row = double(0), 
+                 sizes = double(1), probs = double(1), 
+                 nrow = double(0), ncol = double(0),
+                 log = logical(0, default = 0)) {
+    # dummy, flat likelihood for covariates.  mostly used to specify 
+    # model relationships used to dynamically update covariates through sampling
+    #
+    # Parameters:
+    #  x - sequence of covariate vectors, one timepoint per column
+    #  stages - sequence of stages
+    #  time_in_stage_row - row in which time-in-stage covariate is stored
+    #  size - stage-specific sizes of negative binomial distributions that 
+    #    control the semi-markov stage transitions
+    #  prob - stage-specific success probs of negative binomial distributions
+    #    that control the semi-markov stage transitions
+    #  log - if TRUE, then the log-likelihood is returned
+    returnType(double(0))
+    if(log) { return(0) } else { return(1) }
+  }
+)
+
+rcovariates = nimble::nimbleFunction(
+  run = function(n = integer(0), time_in_stage_row = double(0), 
+                 sizes = double(1), probs = double(1), 
+                 nrow = double(0), ncol = double(0)) {
+    returnType(double(2))
+    m <- matrix(nrow = nrow, ncol = ncol)
+    return(m)
+  }
+)
+
 dstages = nimble::nimbleFunction(
   run = function(x = double(1), betas = double(2), covariates = double(2), 
                  stage_supports = double(2),
