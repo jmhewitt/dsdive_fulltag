@@ -15,9 +15,9 @@ model_discretization_target = list(
 
     # directional preferences, by movement structure (i.e., stage)
     pi = matrix(
-      c(0, .01, 51,
+      c(0.5, .01, 51,
         0.5, 1, 1,
-        0.5, .01, 51,
+        0.0, .01, 51,
         0, .01, 101),
       ncol = 3, byrow = TRUE,
       dimnames = list(
@@ -38,6 +38,7 @@ model_discretization_target = list(
 
       # range of model parameters to consider under each dive construction
       movement_types = c('descent', 'foraging', 'ascent', 'free')
+      stages = c(1, 2, 3, 6)
       params = lapply(movement_types, function(mv_type) {
         expand.grid(
           pi = seq(
@@ -65,7 +66,7 @@ model_discretization_target = list(
             widths = bin_widths
           ))
         })
-      }, params, 1:length(movement_types), SIMPLIFY = FALSE)))
+      }, params, stages, SIMPLIFY = FALSE)))
     }
   )
 
