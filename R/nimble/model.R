@@ -52,8 +52,8 @@ modelCode = nimble::nimbleCode({
     # the more efficient way to introduce large numbers of consts into model
     stage_supports[
       1:n_stages, segments[seg_num,1]:segments[seg_num,4]
-    ] ~ dflatmat(nrow = n_stages, ncol = 
-                   segments[seg_num,4] - segments[seg_num,1] + 1)
+    ] ~ dflatmat(nrow = n_stages, 
+                 ncol = segments[seg_num,4] - segments[seg_num,1] + 1)
     
     # likelihood for latent stages
     stages[segments[seg_num,1]:segments[seg_num,4]] ~ dstages(
