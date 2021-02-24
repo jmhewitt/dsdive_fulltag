@@ -3,11 +3,9 @@ modelCode = nimble::nimbleCode({
   # introduce tx. matrix entries wrt a "dummy" distribution as this is the more 
   # efficient way to introduce large amounts of reference data into the model
   transition_matrices[1:n_txmat_entries] ~ dflatvec(length = n_txmat_entries)
-  
-  # TODO: add covariates s.t. we only see certain types of transitions at surface
+    
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
   # latent stage transition model random effects and population-level parameters
-  for(i in 1:n_covariates) {
     for(j in 1:n_stage_txs) {
       # priors for population-level coefficients and variability
       betas_tx_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
@@ -25,8 +23,8 @@ modelCode = nimble::nimbleCode({
   for(i in 1:n_covariates) {
     for(j in 1:n_stages) {
       # priors for population-level coefficients and variability
-      alpha_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
-      beta_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
+      alpha_mu[i,j] ~ dnorm(mean = 0, sd = 1e2) # controls descent prob's
+      beta_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)  # controls vertical speeds
       # alpha_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
       beta_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
       # hierarchical layer for individual-level coefficients
