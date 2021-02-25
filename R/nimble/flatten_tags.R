@@ -18,6 +18,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
       times = NULL,
       stages = NULL,
       stage_supports = NULL,
+      covariates = NULL,
       transition_matrices = transition_matrices
     ),
     consts = list(
@@ -75,6 +76,33 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
         tag$stage_support[,seg_inds]
       )
       nim_pkg$data$times = c(nim_pkg$data$times, tag$times[seg_inds])
+      # build and add covariates
+      covariates = rbind(
+        intercept = rep(1, length(seg_inds)),
+        depth =  tag$depths[seg_inds],
+        deep_depth = tag$depths[seg_inds] >= 800,
+        shallow_depth = tag$depths[seg_inds] < 800,
+        non_surface_bin = tag$depth.bin[seg_inds] > 1,
+        surface_bin = tag$depth.bin[seg_inds] == 1,
+        time_since_surface = rep(0, length(seg_inds)),
+        all_shallow_depths_since_surface = rep(0, length(seg_inds))
+      )
+      covariates['time_since_surface',] =  (
+        1 + time_in_state(covariates['non_surface_bin',], ncol(covariates))
+      ) * covariates['non_surface_bin',]
+      all_shallow = TRUE
+      for(i in 1:ncol(covariates)) {
+        if(covariates['surface_bin',i] == TRUE) {
+          all_shallow = TRUE
+        } else if(covariates['deep_depth',i] == TRUE) {
+          all_shallow = FALSE
+        }
+        covariates['all_shallow_depths_since_surface',i] = all_shallow
+      }
+      nim_pkg$data$covariates = cbind(
+        nim_pkg$data$covariates,
+        covariates
+      )
       # save segment information
       nim_pkg$consts$segments = rbind(
         nim_pkg$consts$segments,
@@ -86,16 +114,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
     }
   }
   
-  # add covariates
-  nim_pkg$data$covariates = rbind(
-    intercept = rep(1, length(nim_pkg$data$depths)),
-    depth = template_bins$center[nim_pkg$data$depths],
-    deep_depth = template_bins$center[nim_pkg$data$depths] >= 800,
-    shallow_depth = template_bins$center[nim_pkg$data$depths] < 800,
-    non_surface_bin = nim_pkg$data$depths > 2
-  )
-  
-  # compute size constants
+  # compute size, etc. constants
   nim_pkg$consts$n_timepoints = length(nim_pkg$data$depths)
   nim_pkg$consts$n_stage_txs = ncol(nim_pkg$inits$betas_tx_mu)
   nim_pkg$consts$n_stages = length(nim_pkg$consts$movement_types)
