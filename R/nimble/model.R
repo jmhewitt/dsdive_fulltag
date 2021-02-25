@@ -6,14 +6,16 @@ modelCode = nimble::nimbleCode({
     
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
   # latent stage transition model random effects and population-level parameters
-  for(j in 1:n_stage_txs) {
-    # priors for population-level coefficients and variability
-    betas_tx_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
-    betas_tx_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-    # hierarchical layer for individual-level coefficients
-    for(k in 1:n_subjects) {
-      betas_tx[i, j, k] ~ dnorm(mean = betas_tx_mu[i,j], 
-                                var = betas_tx_var[i,j])
+  for(i in 1:n_covariates) {
+    for(j in 1:n_stage_txs) {
+      # priors for population-level coefficients and variability
+      betas_tx_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
+      betas_tx_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
+      # hierarchical layer for individual-level coefficients
+      for(k in 1:n_subjects) {
+        betas_tx[i, j, k] ~ dnorm(mean = betas_tx_mu[i,j], 
+                                  var = betas_tx_var[i,j])
+      }
     }
   }
   
