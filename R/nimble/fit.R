@@ -34,7 +34,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # initialize MCMC config
   conf = configureMCMC(model)
   
-  # remove all movement parameter samplers for stages w/fixed descent parameters
+  # remove all descent prob. samplers for stages w/fixed descent parameters
   stage_ind = which(
     colnames(nim_pkg$inits$alpha_mu) %in% c('deep_forage', 'free_surface')
   )
@@ -52,7 +52,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     # }
   }
   
-  # remove samplers for movement parameter effects not being estimated
+  # do not estimate effects of covariates on descent prob and speed params.
   covariate_inds = which(rownames(nim_pkg$data$covariates) != 'intercept')
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stages) {
@@ -67,7 +67,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     }
   }
   
-  # remove samplers for stage transition coefficients not being estimated
+  # do not estimate effects of covariates on stage tx params.
   covariate_inds = which(rownames(nim_pkg$data$covariates) != 'intercept')
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stage_txs) {
