@@ -94,9 +94,16 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   
   # reset monitors, to partition output
   conf$resetMonitors()
-  conf$addMonitors(c('betas_tx_mu', 'betas_tx_var', 'alpha_mu', 'beta_mu', 
-                     'beta_var', 'beta', 'betas_tx'))
+  # store stage samples separately from all other parameters
   conf$addMonitors2('stages')
+  standard_params = setdiff(
+    unique(gsub(
+      pattern = "\\[.*\\]", replacement = '', 
+      x = sapply(conf$getSamplers(), function(s) s$target)
+    )),
+    'stages'
+  )
+  conf$addMonitors(standard_params)
   
   # set thinning
   conf$setThin(nthin)
