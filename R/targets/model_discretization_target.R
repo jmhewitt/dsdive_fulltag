@@ -1,7 +1,8 @@
 model_discretization_target = list(
 
   # discretization of parameter space
-  tar_target(parameter_discretization, list(
+  tar_target(name = parameter_discretization, 
+             command = list(
 
     # vertical speeds, by movement structure (i.e., stage)
     lambda = matrix(
@@ -38,7 +39,7 @@ model_discretization_target = list(
 
       # range of model parameters to consider under each dive construction
       movement_types = c('descent', 'foraging', 'ascent', 'free')
-      stages = c(1, 2, 3, 6)
+      stages = rep(6,4)
       params = lapply(movement_types, function(mv_type) {
         expand.grid(
           pi = seq(
