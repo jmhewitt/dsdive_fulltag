@@ -9,15 +9,15 @@ nimble_targets = list(
             'shallow_ascent', 'free_surface')
       ideal_stage_txmat = matrix(0, nrow = 6, ncol = 6, 
                                  dimnames = list(rownames = o, colnames = o))
-      ideal_stage_txmat['deep_descent', 'deep_forage'] = 1/15
+      ideal_stage_txmat['deep_descent', 'deep_forage'] = 1/5
       ideal_stage_txmat['deep_forage', 'deep_ascent'] = 1/20
       ideal_stage_txmat['deep_ascent', 'deep_descent'] = 1/15 * 1/5 * 95/100
       ideal_stage_txmat['deep_ascent', 'shallow_descent'] = 1/15 * 4/5
       ideal_stage_txmat['deep_ascent', 'free_surface'] = 1/15 * 1/5 * 5/100
-      ideal_stage_txmat['shallow_descent', 'shallow_ascent'] = 1/7
-      ideal_stage_txmat['shallow_ascent', 'deep_descent'] = 1/7 * 1/5 * 95/100
-      ideal_stage_txmat['shallow_ascent', 'shallow_descent'] = 1/7 * 4/5
-      ideal_stage_txmat['shallow_ascent', 'free_surface'] = 1/7 * 1/5 * 5/100
+      ideal_stage_txmat['shallow_descent', 'shallow_ascent'] = 1/5
+      ideal_stage_txmat['shallow_ascent', 'deep_descent'] = 1/5 * 1/5 * 95/100
+      ideal_stage_txmat['shallow_ascent', 'shallow_descent'] = 1/5 * 4/5
+      ideal_stage_txmat['shallow_ascent', 'free_surface'] = 1/5 * 1/5 * 5/100
       ideal_stage_txmat['free_surface', 'deep_descent'] = 4/5 * 9/10 
       ideal_stage_txmat['free_surface', 'shallow_descent'] = 1/5 * 9/10
       diag(ideal_stage_txmat) = 1 - rowSums(ideal_stage_txmat)
@@ -81,6 +81,36 @@ nimble_targets = list(
           # free_surface periods to end at depths
           free_surface__deep_descent = 1e2,
           free_surface__shallow_descent = 1e2
+        ),
+        surface_bin = c( 
+          deep_descent__deep_forage = 0,
+          deep_forage__deep_ascent = 0,
+          # end ascent phase at surface
+          deep_ascent__deep_descent = 1e2, 
+          deep_ascent__shallow_descent = 1e2,
+          deep_ascent__free_surface = 1e2,
+          shallow_descent__shallow_ascent = 0,
+          # end ascent phase at surface
+          shallow_ascent__deep_descent = 1e2,
+          shallow_ascent__shallow_descent = 1e2,
+          shallow_ascent__free_surface = 1e2,
+          free_surface__deep_descent = 0,
+          free_surface__shallow_descent = 0
+        ),
+        time_since_surface = rep(0, 11),
+        all_shallow_depths_since_surface = c( 
+          deep_descent__deep_forage = 0,
+          # don't start ending a deep dive before a deep depth is reached
+          deep_forage__deep_ascent = -1e2,
+          deep_ascent__deep_descent = 0, 
+          deep_ascent__shallow_descent = 0,
+          deep_ascent__free_surface = 0,
+          shallow_descent__shallow_ascent = 0,
+          shallow_ascent__deep_descent = 0,
+          shallow_ascent__shallow_descent = 0,
+          shallow_ascent__free_surface = 0,
+          free_surface__deep_descent = 0,
+          free_surface__shallow_descent = 0
         )
       )
     }
@@ -102,7 +132,10 @@ nimble_targets = list(
         depth = rep(0, 6),
         deep_depth = rep(0, 6),
         shallow_depth = rep(0, 6),
-        non_surface_bin = rep(0, 6)
+        non_surface_bin = rep(0, 6),
+        surface_bin = rep(0, 6),
+        time_since_surface = rep(0, 6),
+        all_shallow_depths_since_surface = rep(0, 6)
       ),
       beta = rbind(
         intercept = log(c(
@@ -116,7 +149,10 @@ nimble_targets = list(
         depth = rep(0, 6),
         deep_depth = rep(0, 6),
         shallow_depth = rep(0, 6),
-        non_surface_bin = rep(0, 6)
+        non_surface_bin = rep(0, 6),
+        surface_bin = rep(0, 6),
+        time_since_surface = rep(0, 6),
+        all_shallow_depths_since_surface = rep(0, 6)
       )
     )
   ),
