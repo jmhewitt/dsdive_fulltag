@@ -23,30 +23,6 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # Return: 
   #  a list containing file names of sampler outputs
   
-  # better initialization for latent stages
-  ffbs_stages_c = compileNimble(ffbs_stages)
-  for(i in 1:nim_pkg$consts$n_segments) {
-    seg_start = nim_pkg$consts$segments[i, 'start_ind']
-    seg_end = seg_start + nim_pkg$consts$segments[i, 'length'] - 1
-    inds = seg_start:seg_end
-    nim_pkg$data$stages[inds] = ffbs_stages_c(
-      depths = nim_pkg$data$depths[inds], 
-      n_timepoints = nim_pkg$consts$segments[i, 'length'], 
-      transition_matrices = nim_pkg$data$transition_matrices, 
-      n_bins = nim_pkg$consts$n_bins,
-      n_stages = length(nim_pkg$consts$movement_types),  
-      stage_map = nim_pkg$consts$movement_types, 
-      alpha = nim_pkg$inits$alpha_mu, beta = nim_pkg$inits$beta_mu, 
-      covariates = nim_pkg$data$covariates[,inds], 
-      pi_discretization = nim_pkg$consts$pi_discretization, 
-      n_pi = nim_pkg$consts$n_pi,
-      n_lambda = nim_pkg$consts$n_lambda, 
-      lambda_discretization = nim_pkg$consts$lambda_discretization, 
-      betas_tx = nim_pkg$inits$betas_tx_mu, 
-      stage_supports = nim_pkg$data$stage_supports[,inds]
-    )
-  }
-  
   saveRDS(nim_pkg$data$stages, file = 'output/init_stages.rds')
   
   # define and compile model
