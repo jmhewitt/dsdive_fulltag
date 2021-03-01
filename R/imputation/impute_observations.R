@@ -150,34 +150,6 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
   # assign (remaining) obs not associated with dives to unrestricted movement
   stage_support[, colSums(stage_support) == 0] = 1
   
-  # identify long surface runs
-  surface_runs = rle(imputed$bin == 1)
-  long_surface_runs = data.frame(
-    surface_run = c(surface_runs$values, FALSE),
-    run_length = c(surface_runs$lengths, 0),
-    start_ind = cumsum(c(1, surface_runs$lengths)) 
-  ) %>% 
-    dplyr::filter(surface_run == TRUE, run_length > surface_run_length) %>% 
-    dplyr::select(run_length, start_ind) %>% 
-    # get indices of the non-endpoint observations
-    dplyr::mutate(
-      interior_start = start_ind + 1,
-      interior_end = start_ind + run_length - 2
-    )
-  
-  # restrict the "insides" of surface runs to be free_surface periods
-  if(nrow(long_surface_runs) > 0) {
-    for(i in 1:nrow(long_surface_runs)) {
-      run_inds = seq(
-        from = long_surface_runs[i,'interior_start'],
-        to = long_surface_runs[i,'interior_end'],
-        by = 1
-      )
-      stage_support[, run_inds] = 0
-      stage_support['free_surface', run_inds] = 1
-    }
-  }
-  
   # remove last observations before gap, and first observations after gap.
   # this step should be done after initially assigning stage supports so that
   # no stage support information is lost.  we only want to exclude data from 
