@@ -91,6 +91,22 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
       imputed$data_gap[gap_times] = TRUE
     }
   }
+  
+  #
+  # compute covariates for day/night and lunar illumination
+  #
+
+  # enrich data with celestial covariates
+  imputed$daytime = daytime(
+    date = imputed$time, 
+    lat = tag$proximal_loc['lat'], 
+    lon = tag$proximal_loc['lon']
+  )
+  imputed$moonlit = moonlit(
+    date = imputed$time, 
+    lat = tag$proximal_loc['lat'], 
+    lon = tag$proximal_loc['lon']
+  )
 
   
   #
@@ -232,10 +248,29 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
     (imputed$data_gap == FALSE) & is.na(imputed$stage)
   ] = stages['free_surface']
   
+  # munge time class covariate information for plotting
+  imputed$time_class = factor(unlist(apply(imputed, 1, function(r) {
+    if(r['daytime'] == TRUE) {
+      'Daylight'
+    } else {
+      if(r['moonlit'] == TRUE) {
+        'Moonlit'
+      } else {
+        'Night'
+      }
+    }
+  })))
+  
   # plot tag with imputed labels
   pl = ggplot(imputed %>% 
                 mutate(stage = factor(stage, labels = names(stages))), 
               aes(x = time, y = depth, col = stage)) + 
+    # underlay time class bands
+    geom_rect(mapping = aes(xmin = time - 30, xmax = time + 30, 
+                            ymin = 0, 
+                            ymax = sum(template_bins[nrow(template_bins),]),
+                            fill = time_class),
+              alpha = .09, inherit.aes = FALSE) + 
     # cee time
     geom_vline(xintercept = tag$exposure_time, lty = 3, alpha = .6) + 
     # imputed trajectory as path
@@ -248,12 +283,15 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
     geom_point() + 
     # deep depth threshold
     geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
-    # formatting
+    # formatting 
     # scale_color_brewer(type = 'qual', palette = 'Dark2') + 
     scale_color_manual(
       values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
                  shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
                  deep_forage = '#d95f02', free_surface = '#e7298a')
+    ) + 
+    scale_fill_manual(
+      values = c(Daylight = '#ffc26c', Moonlit = '#75baff', Night = '#000000')
     ) + 
     scale_y_reverse('Depth (m)') + 
     scale_x_datetime(date_breaks = '12 hours', 
@@ -273,6 +311,8 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
     depth.bin = imputed$bin,
     depths = imputed$depth,
     times = imputed$time,
+    daytime = imputed$daytime,
+    moonlit = imputed$moonlit,
     stages = imputed$stage,
     stage_support = stage_support,
     data_gaps = imputed$data_gap,

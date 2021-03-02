@@ -1,5 +1,5 @@
 load_raw = function(depth_files, template_bins, tag_info, dive_labels,
-                    deep_depth_threshold) {
+                    deep_depth_threshold, lon_lat_mean) {
   
   mapply(function(depth_file, labels) {
     
@@ -51,6 +51,12 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
         ))
       )
     
+    # enrich data with celestial covariates
+    d$daytime = daytime(date = d$Date, lat = lon_lat_mean['lat'], 
+                        lon = lon_lat_mean['lon'])
+    d$moonlit = moonlit(date = d$Date, lat = lon_lat_mean['lat'], 
+                        lon = lon_lat_mean['lon'])
+    
     # package results
     list(
       # get name of tagged individual
@@ -59,6 +65,9 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
       depth.bin = d$depth.bin,
       depths = d$depth.standardized,
       times = d$Date,
+      # celestial covariates
+      daytime = d$daytime,
+      moonlit = d$moonlit,
       # dive segmentation
       diveIds = d$diveId,
       diveTypes = diveTypes,
@@ -66,7 +75,9 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
       exposure_time = exposure_time,
       exposed = exposed,
       baseline = baseline,
-      baseline_end = baseline_end
+      baseline_end = baseline_end,
+      # proximal location, near which data are collected
+      proximal_loc = lon_lat_mean
     )
   }, depth_files, dive_labels, SIMPLIFY = FALSE)
   

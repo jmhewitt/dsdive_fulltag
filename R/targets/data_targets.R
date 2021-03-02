@@ -1,5 +1,8 @@
 data_targets = list(
   
+  # nominal location where data is collected
+  tar_target(cape_hatteras_loc, c('lon' = -75.54, 'lat' = 35.23)),
+  
   # seconds between depth observations
   tar_target(sattag_timestep, 300),
   
@@ -40,7 +43,8 @@ data_targets = list(
     name = raw_sattags,
     command = load_raw(depth_files = depth_files, 
                        template_bins = template_bins, tag_info = tag_info, 
-                       dive_labels = dive_labels, deep_depth_threshold = 800)
+                       dive_labels = dive_labels, deep_depth_threshold = 800, 
+                       lon_lat_mean = cape_hatteras_loc)
   )
   
 )
