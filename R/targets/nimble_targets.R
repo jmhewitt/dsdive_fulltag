@@ -167,7 +167,11 @@ nimble_targets = list(
       pi_discretization = parameter_discretization$pi, 
       lambda_discretization = parameter_discretization$lambda,
       init_movement_coefficients = init_movement_coefficients,
-      init_stage_tx_coefficients = init_stage_tx_coefficients
+      init_stage_tx_coefficients = init_stage_tx_coefficients,
+      stages_tx_from = stages_tx_from,
+      stages = stages
+    )
+  ),
     )
   ),
   

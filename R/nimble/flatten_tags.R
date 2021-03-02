@@ -1,7 +1,7 @@
 flatten_tags = function(tag_list, transition_matrices, movement_types,
                         pi_discretization, lambda_discretization, 
                         template_bins, init_movement_coefficients,
-                        init_stage_tx_coefficients) {
+                        init_stage_tx_coefficients, stages_tx_from, stages) {
   
   # extract dimensions
   n_bins = nrow(template_bins)
@@ -29,7 +29,8 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
       lambda_discretization = lambda_discretization,
       n_pi = as.integer(pi_discretization[, 'nvals']),
       n_lambda = as.integer(lambda_discretization[, 'nvals']),
-      subject_id_labels = NULL
+      subject_id_labels = NULL,
+      betas_tx_stage_from = as.integer(stages_tx_from)
     ),
     inits = list(
       # population-level effects
@@ -117,7 +118,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
   # compute size, etc. constants
   nim_pkg$consts$n_timepoints = length(nim_pkg$data$depths)
   nim_pkg$consts$n_stage_txs = ncol(nim_pkg$inits$betas_tx_mu)
-  nim_pkg$consts$n_stages = length(nim_pkg$consts$movement_types)
+  nim_pkg$consts$n_stages = length(stages)
   nim_pkg$consts$n_txmat_entries = length(nim_pkg$data$transition_matrices)
   nim_pkg$consts$n_txmat_types = nrow(nim_pkg$consts$pi_discretization)
   nim_pkg$consts$n_covariates = nrow(nim_pkg$data$covariates)
@@ -140,5 +141,21 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
     dim = c(nrow(betas_tx), ncol(betas_tx), nim_pkg$consts$n_subjects)
   )
   
+  # initial group-level intercept contribution for stage transition params.
+  nim_pkg$inits$betas_tx_stage_offset = matrix(
+    data = 0, nrow = nim_pkg$consts$n_covariates, ncol = nim_pkg$consts$n_stages
+  )
+  
+  # add information about key stages and covariates
+  nim_pkg$consts$intercept_covariate = which(
+    rownames(nim_pkg$data$covariates) == 'intercept'
+  )
+  nim_pkg$consts$ascent_like_stages = stages[
+    c('deep_ascent', 'shallow_ascent', 'free_surface')
+  ]
+  nim_pkg$consts$n_ascent_like_stages = length(
+    nim_pkg$consts$ascent_like_stages
+  )
+
   nim_pkg
 }

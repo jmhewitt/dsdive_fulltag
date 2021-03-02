@@ -81,6 +81,22 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     }
   }
   
+  # use blocked samplers for stage transition effects between stages
+  for(stage in nim_pkg$consts$ascent_like_stages) {
+    # stage transition effects associated with stage
+    stage_tx_inds = which(nim_pkg$consts$betas_tx_stage_from == stage)
+    # replace intercept random effect samplers with blocked samplers
+    for(k in 1:nim_pkg$consts$n_subjects) {
+      # identify nodes
+      tgt = paste('betas_tx[', nim_pkg$consts$intercept_covariate, ', ', 
+                  stage_tx_inds, ', ', k, ']', sep = '')
+      # remove default samplers
+      conf$removeSamplers(tgt)
+      # add block RW samplers
+      conf$addSampler(target = tgt, type = 'RW_block')
+    }
+  }
+  
   # latent stage vector samplers
   conf$removeSampler('stages')
   for(seg_ind in 1:nim_pkg$consts$n_segments) {
@@ -99,7 +115,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   standard_params = setdiff(
     unique(gsub(
       pattern = "\\[.*\\]", replacement = '', 
-      x = sapply(conf$getSamplers(), function(s) s$target)
+      x = unlist(sapply(conf$getSamplers(), function(s) s$target))
     )),
     'stages'
   )

@@ -43,7 +43,7 @@ dive_segmentation_targets = list(
   tar_target(
     name = movement_types,
     command = c('deep_descent' = 1, 'deep_forage' = 2, 'deep_ascent' = 3,
-                'shallow_descent' =1, 'shallow_ascent' = 3, 'free_surface' = 4)
+                'shallow_descent' = 1, 'shallow_ascent' = 3, 'free_surface' = 4)
   ),
   
   # factor by which to increase temporal resolution during imputation
