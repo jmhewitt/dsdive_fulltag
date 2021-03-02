@@ -25,8 +25,6 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # Return: 
   #  a list containing file names of sampler outputs
   
-  saveRDS(nim_pkg$data$stages, file = 'output/init_stages.rds')
-  
   # define and compile model
   model = nimbleModel(code = modelCode, constants = nim_pkg$consts, 
                       data = nim_pkg$data, inits = nim_pkg$inits, 
@@ -120,6 +118,11 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
       # add block RW samplers
       conf$addSampler(target = tgt, type = 'AF_slice')
     }
+  }
+  
+  # don't estimate population-level effects if so requested 
+  if(nim_pkg$consts$population_effects == FALSE) {
+    conf$removeSamplers(c('betas_tx_mu', 'betas_tx_var', 'beta_mu', 'beta_var'))
   }
   
   # latent stage vector samplers

@@ -1,7 +1,8 @@
 flatten_tags = function(tag_list, transition_matrices, movement_types,
                         pi_discretization, lambda_discretization, 
                         template_bins, init_movement_coefficients,
-                        init_stage_tx_coefficients, stages_tx_from, stages) {
+                        init_stage_tx_coefficients, stages_tx_from, stages,
+                        population_effects) {
   
   # extract dimensions
   n_bins = nrow(template_bins)
@@ -30,7 +31,8 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
       n_pi = as.integer(pi_discretization[, 'nvals']),
       n_lambda = as.integer(lambda_discretization[, 'nvals']),
       subject_id_labels = NULL,
-      betas_tx_stage_from = as.integer(stages_tx_from)
+      betas_tx_stage_from = as.integer(stages_tx_from),
+      population_effects = population_effects
     ),
     inits = list(
       # population-level effects
@@ -162,6 +164,16 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
   nim_pkg$consts$n_ascent_like_stages = length(
     nim_pkg$consts$ascent_like_stages
   )
+  
+  # initial parameters become priors if population-level effects aren't est'd.
+  if(!population_effects) {
+    nim_pkg$inits$betas_tx_mu = 0 * nim_pkg$inits$betas_tx_mu
+    nim_pkg$inits$beta_mu = 0 * nim_pkg$inits$beta_mu
+    nim_pkg$inits$beta_var = matrix(1e2, nrow = nrow(beta), ncol = ncol(beta))
+    nim_pkg$inits$betas_tx_var = matrix(
+      1e2, nrow = nrow(betas_tx), ncol = ncol(betas_tx)
+    )
+  }
 
   nim_pkg
 }

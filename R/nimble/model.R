@@ -5,6 +5,24 @@ modelCode = nimble::nimbleCode({
   transition_matrices[1:n_txmat_entries] ~ dflatvec(length = n_txmat_entries)
   
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
+  # latent stage transition model population-level parameters
+  for(i in 1:n_covariates) {
+    for(j in 1:n_stage_txs) {
+      betas_tx_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
+      betas_tx_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
+    }
+  }
+  
+  # TODO: soft-code hyper priors to allow sensitivity studies, etc.
+  # depth bin transition model population-level parameters
+  for(i in 1:n_covariates) {
+    for(j in 1:n_stages) {
+      beta_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)  # controls vertical speeds
+      beta_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
+    }
+  }
+  
+  # TODO: soft-code hyper priors to allow sensitivity studies, etc.
   # offsets to center multinomial logit tx. effects for ascent stage transitions
   for(i in 1:n_ascent_like_stages) {
     betas_tx_stage_offset[intercept_covariate, ascent_like_stages[i]] ~ dnorm(
@@ -13,32 +31,31 @@ modelCode = nimble::nimbleCode({
   }
   
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # latent stage transition model random effects and population-level parameters
+  # depth bin transition model population-level parameters
+  for(i in 1:n_covariates) {
+    for(j in 1:n_stages) {
+      alpha_mu[i,j] ~ dnorm(mean = 0, sd = 1e2) # controls descent prob's
+      # alpha_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
+    }
+  }
+  
+  # latent stage transition model random effects
   for(i in 1:n_covariates) {
     for(j in 1:n_stage_txs) {
-      # priors for population-level coefficients and variability
-      betas_tx_mu[i,j] ~ dnorm(
-        mean = betas_tx_stage_offset[i, betas_tx_stage_from[j]], sd = 1e2
-      )
-      betas_tx_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-      # hierarchical layer for individual-level coefficients
       for(k in 1:n_subjects) {
-        betas_tx[i, j, k] ~ dnorm(mean = betas_tx_mu[i,j], 
-                                  var = betas_tx_var[i,j])
+        betas_tx[i, j, k] ~ dnorm(
+          mean = betas_tx_stage_offset[i, betas_tx_stage_from[j]] + 
+            betas_tx_mu[i,j], 
+          var = betas_tx_var[i,j]
+        )
       }
     }
   }
   
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # depth bin transition model random effects and population-level parameters
+  # depth bin transition model random effects
   for(i in 1:n_covariates) {
     for(j in 1:n_stages) {
-      # priors for population-level coefficients and variability
-      alpha_mu[i,j] ~ dnorm(mean = 0, sd = 1e2) # controls descent prob's
-      beta_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)  # controls vertical speeds
-      # alpha_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-      beta_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-      # hierarchical layer for individual-level coefficients
       for(k in 1:n_subjects) {
         # transfer population-level effects as fixed effects
         alpha[i,j,k] <- alpha_mu[i,j]
