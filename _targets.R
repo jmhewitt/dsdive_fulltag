@@ -3,7 +3,7 @@ library(targets)
 # set packages to load
 tar_option_set(
   packages = c('dplyr', 'lubridate', 'ggplot2', 'ggthemes', 'stringr', 
-               'nimble', 'expm', 'pryr')
+               'nimble', 'expm', 'pryr', 'suncalc')
 )
 
 ## load R files and workflows
