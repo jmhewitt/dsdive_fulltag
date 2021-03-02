@@ -1,5 +1,10 @@
 nimble_targets = list(
   
+  # covariates that should not be estimated as these are used to 
+  # encode definitions of various aspects of diving behavior
+  tar_target(structural_covariates, c('non_surface_bin', 'surface_bin', 
+                                      'all_shallow_depths_since_surface')),
+  
   # initial population-level regression coefficients for stage transitions
   tar_target(
     name = init_stage_tx_coefficients,
@@ -111,8 +116,27 @@ nimble_targets = list(
           shallow_ascent__free_surface = 0,
           free_surface__deep_descent = 0,
           free_surface__shallow_descent = 0
-        )
+        ),
+        daytime = rep(0, 11),
+        moonlit = rep(0, 11)
       )
+    }
+  ),
+  
+  # associate the dive stage from which the stage tx. coefficients leave from
+  tar_target(
+    name = stages_tx_from,
+    command = {
+      effect_names = colnames(init_stage_tx_coefficients)
+      res = sapply(
+        X = strsplit(x = effect_names, split = '__'), 
+        FUN = function(stages_from_to) {
+          # get stage number associated stage string
+          stages[ stages_from_to[[1]] ]
+        }
+      )
+      names(res) = effect_names
+      res
     }
   ),
   
@@ -135,7 +159,9 @@ nimble_targets = list(
         non_surface_bin = rep(0, 6),
         surface_bin = rep(0, 6),
         time_since_surface = rep(0, 6),
-        all_shallow_depths_since_surface = rep(0, 6)
+        all_shallow_depths_since_surface = rep(0, 6),
+        daytime = rep(0, 6),
+        moonlit = rep(0, 6)
       ),
       beta = rbind(
         intercept = log(c(
@@ -152,7 +178,9 @@ nimble_targets = list(
         non_surface_bin = rep(0, 6),
         surface_bin = rep(0, 6),
         time_since_surface = rep(0, 6),
-        all_shallow_depths_since_surface = rep(0, 6)
+        all_shallow_depths_since_surface = rep(0, 6),
+        daytime = rep(0, 6),
+        moonlit = rep(0, 6)
       )
     )
   ),
@@ -184,7 +212,8 @@ nimble_targets = list(
       max_batch_iter = 1e3, 
       max_batch_time = 30 * 60, 
       max_batch_mem = 1024^3/2, 
-      sample_dir = mcmc_sample_dir
+      sample_dir = mcmc_sample_dir,
+      structural_covariates = structural_covariates
     )
   )
   

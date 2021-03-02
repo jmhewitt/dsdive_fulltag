@@ -86,7 +86,9 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
         non_surface_bin = tag$depth.bin[seg_inds] > 1,
         surface_bin = tag$depth.bin[seg_inds] == 1,
         time_since_surface = rep(0, length(seg_inds)),
-        all_shallow_depths_since_surface = rep(0, length(seg_inds))
+        all_shallow_depths_since_surface = rep(0, length(seg_inds)),
+        daytime = tag$daytime[seg_inds],
+        moonlit = tag$moonlit[seg_inds]
       )
       covariates['time_since_surface',] =  (
         1 + time_in_state(covariates['non_surface_bin',], ncol(covariates))

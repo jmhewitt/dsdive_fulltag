@@ -1,6 +1,6 @@
 fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf, 
                max_batch_time = Inf, max_batch_mem = 1024^3,
-               sample_dir) {
+               sample_dir, structural_covariates) {
   # Build an MCMC sampler to approximate posterior inference.  Sampler will 
   # run in batches, periodically dumping samples to disk.  The time between 
   # dumps depends on the number of samples in each batch, and this is set to
@@ -19,6 +19,8 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   #  max_batch_iter - maximum number of samples per batch
   #  max_batch_mem - maximum size of samples per batch (bytes), default is 1 GiB
   #  sample_dir - directory in which to save sample files
+  #  structural_covariates - list of covariates for which effects should not 
+  #    be estimated
   # 
   # Return: 
   #  a list containing file names of sampler outputs
@@ -52,23 +54,45 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     # }
   }
   
-  # do not estimate effects of covariates on descent prob and speed params.
+  # do not allow covariates to influence descent probs
   covariate_inds = which(rownames(nim_pkg$data$covariates) != 'intercept')
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stages) {
       conf$removeSampler(paste('alpha_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('beta_mu[', i, ', ', j, ']', sep = ''))
       # conf$removeSampler(paste('alpha_var[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('beta_var[', i, ', ', j, ']', sep = ''))
       for(k in 1:nim_pkg$consts$n_subjects) {
         # conf$removeSampler(paste('alpha[', i, ', ', j, ', ', k, ']', sep = ''))
+      }
+    }
+  }
+  
+  # do not estimate effects of static covariates on speed
+  static_covariates = c(
+    structural_covariates, 'depth', 'deep_depth', 'shallow_depth', 
+    'time_since_surface'
+  )
+  covariate_inds = which(
+    rownames(nim_pkg$data$covariates) %in% static_covariates
+  )
+  for(i in covariate_inds) {
+    for(j in 1:nim_pkg$consts$n_stages) {
+      conf$removeSampler(paste('beta_mu[', i, ', ', j, ']', sep = ''))
+      conf$removeSampler(paste('beta_var[', i, ', ', j, ']', sep = ''))
+      for(k in 1:nim_pkg$consts$n_subjects) {
         conf$removeSampler(paste('beta[', i, ', ', j, ', ', k, ']', sep = ''))
       }
     }
   }
   
+  # do not estimate effects of static covariates on stage tx params
   # do not estimate effects of covariates on stage tx params.
-  covariate_inds = which(rownames(nim_pkg$data$covariates) != 'intercept')
+  static_covariates = c(
+    structural_covariates, 'depth', 'deep_depth', 'shallow_depth', 
+    'time_since_surface'
+  )
+  covariate_inds = which(
+    rownames(nim_pkg$data$covariates) %in% static_covariates
+  )
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stage_txs) {
       conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
