@@ -147,6 +147,10 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
   nim_pkg$inits$betas_tx_stage_offset = matrix(
     data = 0, nrow = nim_pkg$consts$n_covariates, ncol = nim_pkg$consts$n_stages
   )
+  colnames(nim_pkg$inits$betas_tx_stage_offset) = names(stages)
+  rownames(nim_pkg$inits$betas_tx_stage_offset) = rownames(
+    nim_pkg$data$covariates
+  )
   
   # add information about key stages and covariates
   nim_pkg$consts$intercept_covariate = which(
