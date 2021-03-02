@@ -54,8 +54,10 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     # }
   }
   
-  # do not allow covariates to influence descent probs
-  covariate_inds = which(rownames(nim_pkg$data$covariates) != 'intercept')
+  # do not allow most covariates to influence descent probs
+  covariate_inds = which(
+    !(rownames(nim_pkg$data$covariates) %in% c('intercept', 'depth'))
+  )
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stages) {
       conf$removeSampler(paste('alpha_mu[', i, ', ', j, ']', sep = ''))
@@ -68,7 +70,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   
   # do not estimate effects of static covariates on speed
   static_covariates = c(
-    structural_covariates, 'depth', 'deep_depth', 'shallow_depth', 
+    structural_covariates, 'deep_depth', 'shallow_depth', 
     'time_since_surface'
   )
   covariate_inds = which(
@@ -85,9 +87,8 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   }
   
   # do not estimate effects of static covariates on stage tx params
-  # do not estimate effects of covariates on stage tx params.
   static_covariates = c(
-    structural_covariates, 'depth', 'deep_depth', 'shallow_depth', 
+    structural_covariates, 'deep_depth', 'shallow_depth', 
     'time_since_surface'
   )
   covariate_inds = which(
