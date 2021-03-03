@@ -116,7 +116,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
       # remove default samplers
       conf$removeSamplers(tgt)
       # add block RW samplers
-      conf$addSampler(target = tgt, type = 'AF_slice')
+      conf$addSampler(target = tgt, type = 'RW_block')
     }
   }
   
