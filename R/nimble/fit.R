@@ -208,9 +208,13 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     active_samplers = file.path(out_dir,
       paste(tar_name(), '_active_samplers.rds', sep = '')
     ),
+    pkg = file.path(out_dir, paste(tar_name(), '_nim_pkg.rds', sep = '')),
     parameter_samples = c(),
     stage_samples = c()
   )
+  
+  # save a copy of the input data
+  saveRDS(nim_pkg, file = sampler_files$pkg)
   
   # save active sampler list
   saveRDS(sapply(conf$samplerConfs, function(s) s$target), 
