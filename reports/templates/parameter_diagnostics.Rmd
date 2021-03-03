@@ -27,7 +27,7 @@ tar_load(nim_pkg)
 ```
 
 ```{r set_burn}
-burn = -(1:10)
+burn = 1:10
 ```
 
 ```{r parameter_groups}
