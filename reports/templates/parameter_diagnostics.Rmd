@@ -142,6 +142,32 @@ invisible(mapply(
 ))
 ```
 
+```{r ess_table_alpha_mu}
+# effective sizes (ESS's) for alpha_mu parameters
+e = effectiveSize(param_samples[-burn, sampler_groups$alpha_mu])
+
+# extract matrix index descriptions for parameters
+arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
+  as.numeric(unlist(strsplit(gsub('[A-z\\[\\]]*', '', tgt), ',')))
+}))
+
+# initialize container to store ESS's with their parameter labels
+m = nim_pkg$inits$alpha_mu * NA
+
+# push ESS's into storage container
+for(i in 1:nrow(arr_inds)) {
+  m[arr_inds[i,1], arr_inds[i,2]] = e[i]
+}
+
+# remove unpopulated rows, and round ESS's to nearest integer
+nz_rows = apply(m, 1, function(x) any(is.finite(x)))
+nz_cols = apply(m, 2, function(x) any(is.finite(x)))
+m = round(m[nz_rows, nz_cols])
+
+# more compact printing
+knitr::kable(t(m), digits = 0, caption = 'ESS for alpha_mu', booktabs = TRUE)
+```
+
 ```{r ess_table_beta_mu}
 # effective sizes (ESS's) for betas_tx_mu parameters
 e = effectiveSize(param_samples[-burn, sampler_groups$beta_mu])
