@@ -2,8 +2,7 @@ library(targets)
 library(future)
 library(future.batchtools)
 
-plan(batchtools_slurm, template = file.path("hpc", "slurm_batchtools.tmpl"),
-     workers = 10)
+plan(batchtools_slurm, template = file.path("hpc", "slurm_batchtools.tmpl"))
 
 # set packages to load
 tar_option_set(
