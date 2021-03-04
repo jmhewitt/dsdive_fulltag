@@ -22,12 +22,19 @@ modelCode = nimble::nimbleCode({
     }
   }
   
+  # # TODO: soft-code hyper priors to allow sensitivity studies, etc.
+  # # offsets to center multinomial logit tx. effects for ascent stage transitions
+  # for(i in 1:n_ascent_like_stages) {
+  #   betas_tx_stage_offset[intercept_covariate, ascent_like_stages[i]] ~ dnorm(
+  #     mean = 0, sd = 1e2
+  #   )
+  # }
+  
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # offsets to center multinomial logit tx. effects for ascent stage transitions
-  for(i in 1:n_ascent_like_stages) {
-    betas_tx_stage_offset[intercept_covariate, ascent_like_stages[i]] ~ dnorm(
-      mean = 0, sd = 1e2
-    )
+  for(i in 1:n_covariates) {
+    for(j in 1:n_stages) {
+      betas_tx_stage_offset[i,j] ~ dnorm(mean = 0, sd = 1e2)
+    }
   }
   
   # TODO: soft-code hyper priors to allow sensitivity studies, etc.
@@ -43,11 +50,11 @@ modelCode = nimble::nimbleCode({
   for(i in 1:n_covariates) {
     for(j in 1:n_stage_txs) {
       for(k in 1:n_subjects) {
-        betas_tx[i, j, k] ~ dnorm(
-          mean = betas_tx_stage_offset[i, betas_tx_stage_from[j]] + 
-            betas_tx_mu[i,j], 
-          var = betas_tx_var[i,j]
+        betas_tx_eps[i, j, k] ~ dnorm(
+          mean = betas_tx_mu[i,j], var = betas_tx_var[i,j]
         )
+        betas_tx[i, j, k] <- betas_tx_stage_offset[i, betas_tx_stage_from[j]] + 
+          betas_tx_eps[i, j, k]
       }
     }
   }

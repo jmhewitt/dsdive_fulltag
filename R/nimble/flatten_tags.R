@@ -146,13 +146,27 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
   )
   
   # initial group-level intercept contribution for stage transition params.
-  nim_pkg$inits$betas_tx_stage_offset = matrix(
-    data = 0, nrow = nim_pkg$consts$n_covariates, ncol = nim_pkg$consts$n_stages
-  )
+  nim_pkg$inits$betas_tx_stage_offset = t(apply(betas_tx, 1, function(x) {
+    aggregate(x, list(nim_pkg$consts$betas_tx_stage_from), mean)[,'x']
+  }))
   colnames(nim_pkg$inits$betas_tx_stage_offset) = names(stages)
   rownames(nim_pkg$inits$betas_tx_stage_offset) = rownames(
     nim_pkg$data$covariates
   )
+  
+  # adjust means for stage offsets/intercepts
+  nim_pkg$inits$betas_tx_mu = 
+    nim_pkg$inits$betas_tx_stage_offset[,nim_pkg$consts$betas_tx_stage_from] - 
+    nim_pkg$inits$betas_tx_mu
+  colnames(nim_pkg$inits$betas_tx_mu) = colnames(betas_tx)
+  
+  nim_pkg$inits$betas_tx_eps = array(
+    data = nim_pkg$inits$betas_tx_mu, 
+    dim = c(nrow(nim_pkg$inits$betas_tx_mu), ncol(nim_pkg$inits$betas_tx_mu), 
+            nim_pkg$consts$n_subjects)
+  )
+  rownames(nim_pkg$inits$betas_tx_eps) = rownames(nim_pkg$inits$betas_tx_mu)
+  colnames(nim_pkg$inits$betas_tx_eps) = colnames(nim_pkg$inits$betas_tx_mu)
   
   # add information about key stages and covariates
   nim_pkg$consts$intercept_covariate = which(

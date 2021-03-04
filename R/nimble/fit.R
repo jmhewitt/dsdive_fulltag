@@ -93,32 +93,48 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     rownames(nim_pkg$data$covariates) %in% static_covariates
   )
   for(i in covariate_inds) {
+    for(j in 1:nim_pkg$consts$n_stages) {
+      conf$removeSampler(paste('betas_tx_stage_offset[', i, ', ', j, ']', 
+                               sep =''))
+    }
     for(j in 1:nim_pkg$consts$n_stage_txs) {
       conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
       conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
       for(k in 1:nim_pkg$consts$n_subjects) {
         conf$removeSampler(
-          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
+          paste('betas_tx_eps[', i, ', ', j, ', ', k, ']', sep = '')
         )
       }
     }
   }
   
-  # use blocked samplers for stage transition effects between stages
-  for(stage in nim_pkg$consts$ascent_like_stages) {
-    # stage transition effects associated with stage
-    stage_tx_inds = which(nim_pkg$consts$betas_tx_stage_from == stage)
-    # replace intercept random effect samplers with blocked samplers
-    for(k in 1:nim_pkg$consts$n_subjects) {
-      # identify nodes
-      tgt = paste('betas_tx[', nim_pkg$consts$intercept_covariate, ', ', 
-                  stage_tx_inds, ', ', k, ']', sep = '')
-      # remove default samplers
-      conf$removeSamplers(tgt)
-      # add block RW samplers
-      conf$addSampler(target = tgt, type = 'RW_block')
+  # for identifiability, don't estimate deviations from stage tx offsets for 
+  # stages with only one viable transition.  this deconflicts population-level
+  # means while leaving random effects untouched.
+  stage_tx_inds = which(
+    !(nim_pkg$consts$betas_tx_stage_from %in% nim_pkg$consts$ascent_like_stages)
+  )
+  for(i in 1:nim_pkg$consts$n_covariates) {
+    for(j in stage_tx_inds) {
+      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
     }
   }
+  
+  # # use blocked samplers for stage transition effects between stages
+  # for(stage in nim_pkg$consts$ascent_like_stages) {
+  #   # stage transition effects associated with stage
+  #   stage_tx_inds = which(nim_pkg$consts$betas_tx_stage_from == stage)
+  #   # replace intercept random effect samplers with blocked samplers
+  #   for(k in 1:nim_pkg$consts$n_subjects) {
+  #     # identify nodes
+  #     tgt = paste('betas_tx_eps[', nim_pkg$consts$intercept_covariate, ', ', 
+  #                 stage_tx_inds, ', ', k, ']', sep = '')
+  #     # remove default samplers
+  #     conf$removeSamplers(tgt)
+  #     # add block RW samplers
+  #     conf$addSampler(target = tgt, type = 'RW_block')
+  #   }
+  # }
   
   # don't estimate population-level effects if so requested 
   if(nim_pkg$consts$population_effects == FALSE) {
