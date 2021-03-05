@@ -67,7 +67,7 @@ nimble_targets = list(
         depth = rep(0, 11),
         deep_depth =  rep(0, 11),
         shallow_depth = rep(0, 11),
-        non_surface_bin = c( 
+        non_surface_bin = 0 * c( 
           deep_descent__deep_forage = 0,
           deep_forage__deep_ascent = 0,
           # don't restart a dive at depth
@@ -87,7 +87,7 @@ nimble_targets = list(
           free_surface__deep_descent = 1e2,
           free_surface__shallow_descent = 1e2
         ),
-        surface_bin = c( 
+        surface_bin = 0 * c( 
           deep_descent__deep_forage = 0,
           deep_forage__deep_ascent = 0,
           # end ascent phase at surface
@@ -103,7 +103,7 @@ nimble_targets = list(
           free_surface__shallow_descent = 0
         ),
         time_since_surface = rep(0, 11),
-        all_shallow_depths_since_surface = c( 
+        all_shallow_depths_since_surface = 0 * c( 
           deep_descent__deep_forage = 0,
           # don't start ending a deep dive before a deep depth is reached
           deep_forage__deep_ascent = -1e2,
