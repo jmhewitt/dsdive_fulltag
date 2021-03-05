@@ -54,7 +54,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   
   # do not allow most covariates to influence descent probs
   covariate_inds = which(
-    !(rownames(nim_pkg$data$covariates) %in% c('intercept'))
+    !(rownames(nim_pkg$data$covariates) %in% c('intercept', 'depth'))
   )
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stages) {
@@ -69,7 +69,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # do not estimate effects of static covariates on speed
   static_covariates = c(
     structural_covariates, 'deep_depth', 'shallow_depth', 
-    'time_since_surface', 'depth'
+    'time_since_surface'
   )
   covariate_inds = which(
     rownames(nim_pkg$data$covariates) %in% static_covariates
@@ -87,38 +87,34 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # do not estimate effects of static covariates on stage tx params
   static_covariates = c(
     structural_covariates, 'deep_depth', 'shallow_depth', 
-    'time_since_surface', 'depth'
+    'time_since_surface'
   )
   covariate_inds = which(
     rownames(nim_pkg$data$covariates) %in% static_covariates
   )
   for(i in covariate_inds) {
-    for(j in 1:nim_pkg$consts$n_stages) {
-      conf$removeSampler(paste('betas_tx_stage_offset[', i, ', ', j, ']', 
-                               sep =''))
-    }
     for(j in 1:nim_pkg$consts$n_stage_txs) {
       conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
       conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
       for(k in 1:nim_pkg$consts$n_subjects) {
         conf$removeSampler(
-          paste('betas_tx_eps[', i, ', ', j, ', ', k, ']', sep = '')
+          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
         )
       }
     }
   }
   
-  # for identifiability, don't estimate deviations from stage tx offsets for 
-  # stages with only one viable transition.  this deconflicts population-level
-  # means while leaving random effects untouched.
-  stage_tx_inds = which(
-    !(nim_pkg$consts$betas_tx_stage_from %in% nim_pkg$consts$ascent_like_stages)
-  )
-  for(i in 1:nim_pkg$consts$n_covariates) {
-    for(j in stage_tx_inds) {
-      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
-    }
-  }
+  # # for identifiability, don't estimate deviations from stage tx offsets for 
+  # # stages with only one viable transition.  this deconflicts population-level
+  # # means while leaving random effects untouched.
+  # stage_tx_inds = which(
+  #   !(nim_pkg$consts$betas_tx_stage_from %in% nim_pkg$consts$ascent_like_stages)
+  # )
+  # for(i in 1:nim_pkg$consts$n_covariates) {
+  #   for(j in stage_tx_inds) {
+  #     conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
+  #   }
+  # }
   
   # # use blocked samplers for stage transition effects between stages
   # for(stage in nim_pkg$consts$ascent_like_stages) {
