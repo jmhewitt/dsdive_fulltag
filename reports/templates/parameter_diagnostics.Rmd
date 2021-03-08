@@ -93,7 +93,7 @@ scaled_trace = function(samples, base_alpha = 1) {
   
   ggplot(df, aes(x = iter, y = val, group = var)) + 
     geom_hline(yintercept = 0) + 
-    geom_line(alpha = base_alpha/ncol(samples)) + 
+    geom_line(alpha = base_alpha/sqrt(ncol(samples))) + 
     xlab('Iteration') + 
     ylab('Scaled parameter') +
     theme_few() + 
