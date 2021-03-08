@@ -83,7 +83,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
       # build and add covariates
       covariates = rbind(
         intercept = rep(1, length(seg_inds)),
-        depth =  log(tag$depths[seg_inds]),
+        depth =  tag$depths[seg_inds],
         deep_depth = tag$depths[seg_inds] >= 800,
         shallow_depth = tag$depths[seg_inds] < 800,
         non_surface_bin = tag$depth.bin[seg_inds] > 1,
