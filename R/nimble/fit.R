@@ -69,7 +69,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # do not estimate effects of static covariates on speed
   static_covariates = c(
     structural_covariates, 'deep_depth', 'shallow_depth', 
-    'time_since_surface', 'depth'
+    'time_since_surface'
   )
   covariate_inds = which(
     rownames(nim_pkg$data$covariates) %in% static_covariates
@@ -87,7 +87,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # do not estimate effects of static covariates on stage tx params
   static_covariates = c(
     structural_covariates, 'deep_depth', 'shallow_depth', 
-    'time_since_surface', 'depth'
+    'time_since_surface'
   )
   covariate_inds = which(
     rownames(nim_pkg$data$covariates) %in% static_covariates
