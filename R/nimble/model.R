@@ -65,6 +65,12 @@ modelCode = nimble::nimbleCode({
     ] ~ dflatmat(nrow = n_covariates, 
                  ncol = segments[seg_num,4] - segments[seg_num,1] + 1)
     
+    # introduce surface bin indicators wrt a "dummy" distribution as this is 
+    # the more efficient way to introduce large numbers of covariates into model
+    surface_bin[segments[seg_num,1]:segments[seg_num,4]] ~ dflatvec(
+      length = segments[seg_num,4] - segments[seg_num,1] + 1
+    )
+    
     # introduce support for latent stages wrt a "dummy" distribution as this is 
     # the more efficient way to introduce large numbers of consts into model
     stage_supports[
@@ -81,6 +87,7 @@ modelCode = nimble::nimbleCode({
       stage_supports = stage_supports[
         1:n_stages, segments[seg_num,1]:segments[seg_num,4]
       ],
+      surface_bin = surface_bin[segments[seg_num,1]:segments[seg_num,4]],
       n_timepoints = segments[seg_num,2]
     )
     

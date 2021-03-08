@@ -54,7 +54,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   
   # do not allow most covariates to influence descent probs
   covariate_inds = which(
-    !(rownames(nim_pkg$data$covariates) %in% c('intercept', 'depth'))
+    !(rownames(nim_pkg$data$covariates) %in% c('intercept'))
   )
   for(i in covariate_inds) {
     for(j in 1:nim_pkg$consts$n_stages) {
@@ -97,6 +97,57 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
       conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
       conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
       for(k in 1:nim_pkg$consts$n_subjects) {
+        conf$removeSampler(
+          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
+        )
+      }
+    }
+  }
+  
+  # identifiability constraint: depth doesn't influence surface-level stage tx.
+  covariate_inds = which(
+    rownames(nim_pkg$data$covariates) %in% c('depth')
+  )
+  stage_tx_inds = which(
+    grepl(pattern = '(deep_ascent|shallow_ascent|free_surface)__', 
+          x = colnames(nim_pkg$inits$betas_tx_mu))
+  )
+  for(i in covariate_inds) {
+    for(j in 1:stage_tx_inds) {
+      # set variables to identity
+      model_c[[paste('betas_tx_mu[', i, ', ', j, ']', sep = '')]] = 0
+      model_c[[paste('betas_tx_var[', i, ', ', j, ']', sep = '')]] = 1
+      # remove samplers
+      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
+      conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
+      for(k in 1:nim_pkg$consts$n_subjects) {
+        # set variable to identity
+        model_c[[paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')]] = 0
+        # remove sampler
+        conf$removeSampler(
+          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
+        )
+      }
+    }
+  }
+  
+  # restricted stage tx model: don't estimate deprecated effects
+  stage_tx_inds = which(
+    colnames(nim_pkg$inits$betas_tx_mu) %in% 
+      c('deep_ascent__deep_descent', 'shallow_ascent__deep_descent')
+  )
+  for(i in 1:nim_pkg$consts$n_covariates) {
+    for(j in 1:stage_tx_inds) {
+      # set variables to identity
+      model_c[[paste('betas_tx_mu[', i, ', ', j, ']', sep = '')]] = 0
+      model_c[[paste('betas_tx_var[', i, ', ', j, ']', sep = '')]] = 1
+      # remove samplers
+      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
+      conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
+      for(k in 1:nim_pkg$consts$n_subjects) {
+        # set variables to identity
+        model_c[[paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')]] = 0
+        # remove samplers
         conf$removeSampler(
           paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
         )

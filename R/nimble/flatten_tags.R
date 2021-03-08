@@ -20,6 +20,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
       stages = NULL,
       stage_supports = NULL,
       covariates = NULL,
+      surface_bin = NULL,
       transition_matrices = transition_matrices
     ),
     consts = list(
@@ -108,6 +109,10 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
         nim_pkg$data$covariates,
         covariates
       )
+      nim_pkg$data$surface_bin = c(
+        nim_pkg$data$surface_bin,
+        tag$depth.bin[seg_inds] == 1
+      )
       # save segment information
       nim_pkg$consts$segments = rbind(
         nim_pkg$consts$segments,
@@ -136,14 +141,20 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
     data = alpha, 
     dim = c(nrow(alpha), ncol(alpha), nim_pkg$consts$n_subjects)
   )
+  rownames(nim_pkg$inits$alpha) = rownames(alpha)
+  colnames(nim_pkg$inits$alpha) = colnames(alpha)
   nim_pkg$inits$beta = array(
     data = beta, 
     dim = c(nrow(beta), ncol(beta), nim_pkg$consts$n_subjects)
   )
+  rownames(nim_pkg$inits$beta) = rownames(beta)
+  colnames(nim_pkg$inits$beta) = colnames(beta)
   nim_pkg$inits$betas_tx = array(
     data = betas_tx, 
     dim = c(nrow(betas_tx), ncol(betas_tx), nim_pkg$consts$n_subjects)
   )
+  rownames(nim_pkg$inits$betas_tx) = rownames(betas_tx)
+  colnames(nim_pkg$inits$betas_tx) = colnames(betas_tx)
   
   # # initial group-level intercept contribution for stage transition params.
   # nim_pkg$inits$betas_tx_stage_offset = t(apply(betas_tx, 1, function(x) {

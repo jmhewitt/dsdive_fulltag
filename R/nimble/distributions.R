@@ -36,7 +36,7 @@ rcovariates = nimble::nimbleFunction(
 
 dstages = nimble::nimbleFunction(
   run = function(x = double(1), betas = double(2), covariates = double(2), 
-                 stage_supports = double(2),
+                 stage_supports = double(2), surface_bin = double(1),
                  n_timepoints = double(0), log = logical(0, default = 0)) {
     # likelihood for sequence of latent stages, conditional on covariates and 
     # transition parameter coefficients
@@ -47,6 +47,7 @@ dstages = nimble::nimbleFunction(
     #    documentation for stageTxMats function for more details.
     #  covariates - matrix of covariates used to generate stage transition 
     #    matrices.  each column specifies covariates for a timepoint.
+    #   surface_bin - vector of indicators for whether animal is in surface bin
     #  n_timepoints - number of timepoints, each of which will get a stage 
     #    transition matrix.
     #  log - if TRUE, then the log-likelihood is returned
@@ -70,7 +71,9 @@ dstages = nimble::nimbleFunction(
         #   the stage s_{ij}(t_k) is drawn using covariates at time t_k, and 
         #   the stage is Markov wrt. the previous stage
         stx <- stageTxVec(stageFrom = x[ind-1], betas = betas, 
-                          covariates = covariates[, ind], log = TRUE)
+                          covariates = covariates[, ind], 
+                          surface_bin = surface_bin[ind],
+                          log = TRUE)
         # aggregate probability of transition
         ll <- ll + stx[x[ind]]
       }
@@ -82,7 +85,8 @@ dstages = nimble::nimbleFunction(
 
 stageTxVec = nimble::nimbleFunction(
   run = function(stageFrom = double(0), betas = double(2), 
-                 covariates = double(1), log = logical(0)) {
+                 covariates = double(1), surface_bin = double(0), 
+                 log = logical(0)) {
     # discrete-time stage transition vector, conditional on covariates and 
     # the stage being transitioned from
     # 
@@ -93,19 +97,21 @@ stageTxVec = nimble::nimbleFunction(
     #    allowed state transitions.  the columns should define coeffs. for
     #    logit(stage_from->stage_to) = log(pi_stage_to/pi_stage_from) in the 
     #    following order:
-    #    logit(deep_descent->deep_forage), 
-    #    logit(deep_forage->deep_ascent), 
-    #    logit(deep_ascent->deep_descent),
-    #    logit(deep_ascent->shallow_descent), 
-    #    logit(deep_ascent->free_surface),
-    #    logit(shallow_descent->shallow_ascent), 
-    #    logit(shallow_ascent->deep_descent), 
-    #    logit(shallow_ascent->shallow_descent), 
-    #    logit(shallow_ascent->free_surface),
-    #    logit(free_surface->deep_descent), 
-    #    logit(free_surface->shallow_descent)
+    #    1)  logit(deep_descent->deep_forage), 
+    #    2)  logit(deep_forage->deep_ascent), 
+    #    3)  logit(deep_ascent->deep_descent),        (DEPRECATED)
+    #    4)  logit(deep_ascent->shallow_descent), 
+    #    5)  logit(deep_ascent->free_surface),
+    #    6)  logit(shallow_descent->shallow_ascent), 
+    #    7)  logit(shallow_ascent->deep_descent),     (DEPRECATED)
+    #    8)  logit(shallow_ascent->shallow_descent), 
+    #    9)  logit(shallow_ascent->free_surface),
+    #    10) logit(free_surface->deep_descent),
+    #    11) logit(free_surface->shallow_descent)
     #   covariates - vector of covariates used to generate stage transition 
     #     probabilities.
+    #   surface_bin - TRUE if stage transition is from a surface bin.
+    #     deep_descent becomes the baseline transition category from surface.
     #   log - if TRUE, returns an approximation to the log probabilities
     # 
     # Return:
@@ -133,30 +139,53 @@ stageTxVec = nimble::nimbleFunction(
       m[3] <- p[1]  # deep_forage -> deep_ascent
       m[2] <- p[2]  # deep_forage -> deep_forage
     } else if(stageFrom == 3) {
-      p <- multinomialLogitProbs(betas = betas[, 3:5, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[1] <- p[1]  # deep_ascent -> deep_descent
-      m[4] <- p[2]  # deep_ascent -> shallow_descent
-      m[6] <- p[3]  # deep_ascent -> free_surface
-      m[3] <- p[4]  # deep_ascent -> deep_ascent
+      if(surface_bin == TRUE) {
+        # must leave ascent stages at surface, deep_descent is ref. cat.
+        p <- multinomialLogitProbs(betas = betas[, 4:5, drop = FALSE], 
+                                   x = covariates, log = log)
+        m[4] <- p[1]  # deep_ascent -> shallow_descent
+        m[6] <- p[2]  # deep_ascent -> free_surface
+        m[1] <- p[3]  # deep_ascent -> deep_descent
+      } else {
+        # cannot leave ascent stages below surface
+        m[3] <- 1   # deep_ascent -> deep_ascent
+      }
     } else if(stageFrom == 4) {
       p <- multinomialLogitProbs(betas = betas[, 6, drop = FALSE], 
                                  x = covariates, log = log)
       m[5] <- p[1]  # shallow_descent -> shallow_ascent
       m[4] <- p[2]  # shallow_descent -> shallow_descent
     } else if(stageFrom == 5) {
-      p <- multinomialLogitProbs(betas = betas[, 7:9, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[1] <- p[1]  # shallow_ascent -> deep_descent
-      m[4] <- p[2]  # shallow_ascent -> shallow_descent
-      m[6] <- p[3]  # shallow_ascent -> free_surface
-      m[5] <- p[4]  # shallow_ascent -> shallow_ascent
+      if(surface_bin == TRUE) {
+        # must leave ascent stages at surface, deep_descent is ref. cat.
+        p <- multinomialLogitProbs(betas = betas[, 8:9, drop = FALSE], 
+                                   x = covariates, log = log)
+        m[4] <- p[1]  # shallow_ascent -> shallow_descent
+        m[6] <- p[2]  # shallow_ascent -> free_surface
+        m[1] <- p[3]  # shallow_ascent -> deep_descent
+      } else {
+        # cannot leave ascent stages below surface
+        m[5] <- 1 # shallow_ascent -> shallow_ascent
+      }
     } else if(stageFrom == 6) {
       p <- multinomialLogitProbs(betas = betas[, 10:11, drop = FALSE], 
                                  x = covariates, log = log)
-      m[1] <- p[1]  # free_surface -> deep_descent
-      m[4] <- p[2]  # free_surface -> shallow_descent
-      m[6] <- p[3]  # free_surface -> free_surface
+      if(surface_bin == TRUE) {
+        m[1] <- p[1]  # free_surface -> deep_descent
+        m[4] <- p[2]  # free_surface -> shallow_descent
+        m[6] <- p[3]  # free_surface -> free_surface
+      } else {
+        # must leave free_surface below surface
+        if(log) {
+         cdtl_mass <- logAdd(log_a = p[1], log_b = p[2])
+         m[1] <- p[1] - cdtl_mass
+         m[4] <- p[2] - cdtl_mass
+        } else {
+          cdtl_mass = p[1] + p[2]
+          m[1] <- p[1] / cdtl_mass
+          m[4] <- p[2] / cdtl_mass
+        }
+      }
     }
     
     return(m)
@@ -164,7 +193,7 @@ stageTxVec = nimble::nimbleFunction(
 )
 
 stageTxMats = nimble::nimbleFunction(
-  run = function(betas = double(2), covariates = double(2), 
+  run = function(betas = double(2), covariates = double(2), surface_bin = double(1),
                  n_timepoints = double(0)) {
     # discrete-time stage transition matrices, conditional on covariates
     # 
@@ -174,6 +203,7 @@ stageTxMats = nimble::nimbleFunction(
     #    coefficient matrix.
     #   covariates - matrix of covariates used to generate stage transition 
     #     matrices.  each column specifies covariates for a timepoint.
+    #   surface_bin - vector of indicators for whether animal is in surface bin
     #   n_timepoints - number of timepoints, each of which will get a stage 
     #     transition matrix.
     # 
@@ -194,7 +224,9 @@ stageTxMats = nimble::nimbleFunction(
     for(i in 1:n_timepoints) {
       for(j in 1:6) {
         m[j,,i] <- stageTxVec(stageFrom = j, betas = betas, 
-                              covariates = covariates[,i], log = FALSE)
+                              covariates = covariates[,i], 
+                              surface_bin = surface_bin[i], 
+                              log = FALSE)
       }
     }
     
@@ -377,7 +409,8 @@ dist_str_bins = paste(
   sep = ''
 )
 
-dist_str_stages = 'dstages(betas, covariates, stage_supports, n_timepoints)'
+dist_str_stages = 
+  'dstages(betas, covariates, stage_supports, surface_bin, n_timepoints)'
 
 
 nimble::registerDistributions(list(
@@ -387,7 +420,7 @@ nimble::registerDistributions(list(
     Rdist = dist_str_stages,
     types = c('value = double(1)', 'betas = double(2)', 
               'covariates = double(2)', 'stage_supports = double(2)',
-              'n_timepoints = double(0)'),
+              'surface_bin = double(1)', 'n_timepoints = double(0)'),
     discrete = TRUE,
     pqAvail = FALSE
   ),
