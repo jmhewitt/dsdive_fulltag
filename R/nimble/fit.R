@@ -113,7 +113,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
           x = colnames(nim_pkg$inits$betas_tx_mu))
   )
   for(i in covariate_inds) {
-    for(j in 1:stage_tx_inds) {
+    for(j in stage_tx_inds) {
       # set variables to identity
       model_c[[paste('betas_tx_mu[', i, ', ', j, ']', sep = '')]] = 0
       model_c[[paste('betas_tx_var[', i, ', ', j, ']', sep = '')]] = 1
@@ -137,7 +137,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
       c('deep_ascent__deep_descent', 'shallow_ascent__deep_descent')
   )
   for(i in 1:nim_pkg$consts$n_covariates) {
-    for(j in 1:stage_tx_inds) {
+    for(j in stage_tx_inds) {
       # set variables to identity
       model_c[[paste('betas_tx_mu[', i, ', ', j, ']', sep = '')]] = 0
       model_c[[paste('betas_tx_var[', i, ', ', j, ']', sep = '')]] = 1
