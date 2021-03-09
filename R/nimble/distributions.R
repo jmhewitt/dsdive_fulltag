@@ -193,8 +193,8 @@ stageTxVec = nimble::nimbleFunction(
 )
 
 stageTxMats = nimble::nimbleFunction(
-  run = function(betas = double(2), covariates = double(2), surface_bin = double(1),
-                 n_timepoints = double(0)) {
+  run = function(betas = double(2), covariates = double(2), 
+                 surface_bin = double(1), n_timepoints = double(0)) {
     # discrete-time stage transition matrices, conditional on covariates
     # 
     # Parameters: 
