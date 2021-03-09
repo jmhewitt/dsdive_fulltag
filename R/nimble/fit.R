@@ -190,14 +190,14 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   
   # latent stage vector samplers
   conf$removeSampler('stages')
-  # for(seg_ind in 1:nim_pkg$consts$n_segments) {
-  #   start_ind = nim_pkg$consts$segments[seg_ind, 'start_ind']
-  #   end_ind = start_ind + nim_pkg$consts$segments[seg_ind, 'length'] - 1
-  #   conf$addSampler(
-  #     target = paste('stages[', start_ind, ':', end_ind, ']', sep = ''),
-  #     type = 'Stage'
-  #   )
-  # }
+  for(seg_ind in 1:nim_pkg$consts$n_segments) {
+    start_ind = nim_pkg$consts$segments[seg_ind, 'start_ind']
+    end_ind = start_ind + nim_pkg$consts$segments[seg_ind, 'length'] - 1
+    conf$addSampler(
+      target = paste('stages[', start_ind, ':', end_ind, ']', sep = ''),
+      type = 'Stage'
+    )
+  }
   
   # reset monitors, to partition output
   conf$resetMonitors()
