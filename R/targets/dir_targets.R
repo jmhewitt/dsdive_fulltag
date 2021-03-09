@@ -13,6 +13,16 @@ dir_targets = list(
     }
   ),
   
+  # location to store extracted and imputed depth bins
+  tar_target(
+    name = posterior_stages_dir, 
+    command = {
+      f = file.path('output', 'posterior_imputations')
+      dir.create(f, recursive = TRUE, showWarnings = FALSE)
+      f
+    }
+  ),
+  
   # location to store depth bin imputation diagnostics
   tar_target(
     name = imputed_plot_dir, 
