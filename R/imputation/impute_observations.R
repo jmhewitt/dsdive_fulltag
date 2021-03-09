@@ -271,6 +271,8 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
                             ymax = sum(template_bins[nrow(template_bins),]),
                             fill = time_class),
               alpha = .09, inherit.aes = FALSE) + 
+    # baseline end time
+    geom_vline(xintercept = tag$baseline_end, lty = 1, alpha = .3) + 
     # cee time
     geom_vline(xintercept = tag$exposure_time, lty = 3, alpha = .6) + 
     # imputed trajectory as path
