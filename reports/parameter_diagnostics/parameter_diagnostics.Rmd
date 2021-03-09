@@ -5,35 +5,39 @@ output:
     toc: yes
 header-includes:
   - \usepackage{booktabs}
+params:
+    tgt_dir: nim_fit_individual
 ---
 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, cache = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, cache = FALSE, 
+                      dev = 'png', dpi = 300)
 ```
 
 ```{r paths}
 paths = list(
   # location of mcmc output files
-  path_out = 'output/mcmc/nim_fit',
+  # path_out = 'output/mcmc/nim_fit ',
+  # path_out = 'output/mcmc/nim_fit_individual_2ac8c401/',
+  path_out = file.path('output', 'mcmc', params$tgt_dir),
   # identifying characteristics of key output files
-  active_samplers = 'nim_fit_active_samplers.rds',
-  param_sample_pattern = 'nim_fit_parameter_samples_[0-9]+',
-  param_sample_column_labels = 'nim_fit_parameter_samples_column_labels.rds'
+  active_samplers = '*active_samplers.rds',
+  param_sample_pattern = '*parameter_samples_[0-9]+',
+  param_sample_column_labels = '*parameter_samples_column_labels.rds'
 )
 ```
 
 ```{r mcmc_input}
-tar_load(nim_pkg)
-```
-
-```{r set_burn}
-burn = 1:10
+nim_pkg = readRDS(dir(path = paths$path_out, pattern = 'pkg', 
+                      full.names = TRUE))
 ```
 
 ```{r parameter_groups}
 # load targets of active samplers
-active_samplers = unlist(readRDS(file.path(paths$path_out,
-                                           paths$active_samplers)))
+active_samplers = unlist(readRDS(
+  dir(path = paths$path_out, pattern = paths$active_samplers, full.names = TRUE)
+))
 
 # identify common parameter names, excluding stages
 parameter_families = setdiff(
@@ -61,12 +65,23 @@ param_samples = do.call(rbind, lapply(param_sample_files, function(f) {
   readRDS(f)
 }))
 
-colnames(param_samples) = readRDS(file.path(paths$path_out, 
-                                            paths$param_sample_column_labels))
+colnames(param_samples) = readRDS(
+  dir(path = paths$path_out, pattern = paths$param_sample_column_labels, 
+      full.names = TRUE)
+)
 
 rm(param_sample_files)
 ```
 
+```{r set_burn}
+burn = 1:100
+```
+
+# Animals analyzed 
+
+```{r animmal_ids}
+print(nim_pkg$consts$subject_id_labels)
+```
 
 # Convergence diagnostics
 
@@ -170,7 +185,9 @@ knitr::kable(t(m), digits = 0, caption = 'ESS for alpha_mu', booktabs = TRUE)
 
 ```{r ess_table_beta_mu}
 # effective sizes (ESS's) for betas_tx_mu parameters
-e = effectiveSize(param_samples[-burn, sampler_groups$beta_mu])
+tgt = ifelse('beta_mu' %in% names(sampler_groups), 'beta_mu', 'beta')
+
+e = effectiveSize(param_samples[-burn, sampler_groups[[tgt]]])
 
 # extract matrix index descriptions for parameters
 arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
@@ -189,12 +206,16 @@ for(i in 1:nrow(arr_inds)) {
 m = round(m[complete.cases(m),])
 
 # more compact printing
-knitr::kable(t(m), digits = 0, caption = 'ESS for beta_mu', booktabs = TRUE)
+knitr::kable(t(m), digits = 0, caption = paste('ESS for', tgt, sep = ' '), 
+             booktabs = TRUE)
 ```
 
 ```{r ess_table_betas_tx_mu}
 # effective sizes (ESS's) for betas_tx_mu parameters
-e = effectiveSize(param_samples[-burn, sampler_groups$betas_tx_mu])
+tgt = ifelse('betas_tx_mu' %in% names(sampler_groups), 'betas_tx_mu', 
+             'betas_tx')
+
+e = effectiveSize(param_samples[-burn, sampler_groups[[tgt]]])
 
 # extract matrix index descriptions for parameters
 arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
@@ -210,10 +231,44 @@ for(i in 1:nrow(arr_inds)) {
 }
 
 # remove unpopulated rows, and round ESS's to nearest integer
-m = round(m[complete.cases(m),])
+# remove unpopulated rows, and round ESS's to nearest integer
+nz_rows = apply(m, 1, function(x) any(is.finite(x)))
+nz_cols = apply(m, 2, function(x) any(is.finite(x)))
+m = round(m[nz_rows, nz_cols])
 
 # more compact printing
-knitr::kable(t(m), digits = 0, booktabs = TRUE, caption = 'ESS for betas_tx_mu')
+knitr::kable(t(m), digits = 0, booktabs = TRUE, 
+             caption = paste('ESS for', tgt, sep = ' '))
+```
+
+```{r ess_table_betas_tx_stage_offset, eval = FALSE}
+# effective sizes (ESS's) for betas_tx_mu parameters
+if('betas_tx_stage_offset' %in% names(sampler_groups)) {
+  e = effectiveSize(param_samples[-burn, sampler_groups$betas_tx_stage_offset])
+
+# extract matrix index descriptions for parameters
+arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
+  as.numeric(unlist(strsplit(gsub('[A-z\\[\\]]*', '', tgt), ',')))
+}))
+
+# initialize container to store ESS's with their parameter labels
+m = nim_pkg$inits$betas_tx_stage_offset * NA
+
+# push ESS's into storage container
+for(i in 1:nrow(arr_inds)) {
+  m[arr_inds[i,1], arr_inds[i,2]] = e[i]
+}
+
+# remove unpopulated rows, and round ESS's to nearest integer
+# remove unpopulated rows, and round ESS's to nearest integer
+nz_rows = apply(m, 1, function(x) any(is.finite(x)))
+nz_cols = apply(m, 2, function(x) any(is.finite(x)))
+m = round(m[nz_rows, nz_cols])
+
+# more compact printing
+knitr::kable(t(m), digits = 0, booktabs = TRUE, 
+             caption = 'ESS for betas_tx_stage_offsets')
+}
 ```
 
 
@@ -263,13 +318,11 @@ pt_ests = function(samples, dimnames) {
 ```
 
 ```{r pt_ests, dependson='pt_ests_fn', fig.width=8, fig.height=8}
-sub_groups = sampler_groups[sort(c('alpha_mu', 'beta_mu', 'betas_tx_mu', 
-                                   'betas_tx_stage_offset'))]
-
-colnames(nim_pkg$inits[['betas_tx_stage_offset']]) = names(tar_read(stages))
-rownames(nim_pkg$inits[['betas_tx_stage_offset']]) = rownames(
-  nim_pkg$data$covariates
-)
+if('beta_mu' %in% names(sampler_groups)) {
+  sub_groups = sampler_groups[sort(c('alpha_mu', 'beta_mu', 'betas_tx_mu'))]
+} else {
+  sub_groups = sampler_groups[sort(c('alpha_mu', 'beta', 'betas_tx'))]
+}
 
 invisible(mapply(
   function(g, name) {
@@ -283,43 +336,4 @@ invisible(mapply(
   name = names(sub_groups),
   SIMPLIFY = FALSE
 ))
-```
-
-
-# Exploring model issues
-
-```{r shallow_ascents, eval = FALSE}
-tgt_inds = which(
-  nim_pkg$consts$betas_tx_stage_from == 
-    nim_pkg$consts$ascent_like_stages['deep_ascent']
-)
-tgt = paste('betas_tx_mu[', nim_pkg$consts$intercept_covariate, ', ', tgt_inds,
-            ']', sep = '')
-
-colnames(nim_pkg$inits$betas_tx_mu)[tgt_inds]
-
-plot(mcmc(param_samples[,tgt]))
-
-# looks like the issue might be that 2 out of the 3 parameters are highly correlated
-cor(mcmc(param_samples[,tgt]))
-
-
-tgt_inds = which(
-  nim_pkg$consts$betas_tx_stage_from == 
-    nim_pkg$consts$ascent_like_stages['shallow_ascent']
-)
-tgt = paste('betas_tx_mu[', nim_pkg$consts$intercept_covariate, ', ', tgt_inds,
-            ']', sep = '')
-
-colnames(nim_pkg$inits$betas_tx_mu)[tgt_inds]
-
-plot(mcmc(param_samples[,tgt]))
-
-plot(mcmc(rowSums(param_samples[,tgt])))
-
-x = rowSums(param_samples[,tgt])
-plot(mcmc(x[x > -30]))
-
-# looks like the issue might be that 2 out of the 3 parameters are highly correlated
-cor(mcmc(param_samples[,tgt]))
 ```
