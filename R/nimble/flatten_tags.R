@@ -64,14 +64,30 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
     # first indices of observations to analyze
     segment_starts = cumsum(c(1, tag_segments$lengths))
     
+    # last index of baseline period
+    baseline_end_ind = max(which(tag$times < tag$baseline_end))
+    
+    # last pre-exposure index
+    last_pre_exposure_ind = max(which(tag$times < tag$exposure_time))
+      
     # flatten data
     for(seg_ind in valid_segments) {
       # next available index in nimble package
       flat_ind = length(nim_pkg$data$depths) + 1
-      # indices of data segment
+      # start index of data segment
       start_ind = segment_starts[seg_ind]
-      end_ind = segment_starts[seg_ind + 1] - 1
+      # skip segment if it begins after the baseline period
+      if(tag$times[start_ind] >= tag$baseline_end) {
+        next
+      }
+      # only analyze baseline portions of tag
+      end_ind = min(segment_starts[seg_ind + 1] - 1, baseline_end_ind)
+      # indices to analyze
       seg_inds = seq(from = start_ind, to = end_ind, by = 1)
+      # skip tag if there are no transitions to analyze
+      if(length(seg_inds) == 1) {
+        next
+      }
       # copy data to package
       nim_pkg$data$depths = c(nim_pkg$data$depths, tag$depth.bin[seg_inds])
       nim_pkg$data$stages = c(nim_pkg$data$stages, tag$stages[seg_inds])
