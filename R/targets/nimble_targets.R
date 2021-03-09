@@ -103,7 +103,7 @@ nimble_targets = list(
           free_surface__shallow_descent = 0
         ),
         time_since_surface = rep(0, 11),
-        all_shallow_depths_since_surface = 0 * c( 
+        all_shallow_depths_since_surface = c( 
           deep_descent__deep_forage = 0,
           # don't start ending a deep dive before a deep depth is reached
           deep_forage__deep_ascent = -1e2,
