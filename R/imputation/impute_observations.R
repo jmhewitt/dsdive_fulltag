@@ -166,10 +166,10 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
   # assign (remaining) obs not associated with dives to unrestricted movement
   stage_support[, colSums(stage_support) == 0] = 1
   
-  # remove last observations before gap, and first observations after gap.
-  # this step should be done after initially assigning stage supports so that
-  # no stage support information is lost.  we only want to exclude data from 
-  # estimation.
+  # remove last non-surface observations before gap, and first non-surface 
+  # observations after gap.  this step should be done after initially assigning 
+  # stage supports so that no stage support information is lost.  we only want 
+  # to exclude data from estimation.
   if(nrow(gap_ranges) > 0) {
     for(i in 1:nrow(gap_ranges)) {
       # remove last observations before data gap
