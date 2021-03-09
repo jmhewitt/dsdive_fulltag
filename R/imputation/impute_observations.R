@@ -128,7 +128,7 @@ impute_observations = function(tag, endpoints, timestep, imputation_factor,
       # disallow ascent movement before midpoint, also allow the possibility of 
       # coming out of a deep dive
       stage_support[
-        c('deep_ascent', 'shallow_descent', 'free_surface'),
+        c('deep_ascent', 'shallow_descent', 'free_surface', 'deep_descent'),
         dive_inds[descent_inds]
       ] = 1
       stage_support[
