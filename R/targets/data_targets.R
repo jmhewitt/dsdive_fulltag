@@ -30,10 +30,10 @@ data_targets = list(
                        colClasses = 'factor') %>%
         dplyr::mutate(
           baseline_end = parse_date_time(
-            x = baseline_end, orders = 'mdy HMS', tz = 'UTC'
+            x = baseline_end, orders = 'mdy IMS p', tz = 'UTC'
           ),
           cee_start = parse_date_time(
-            x = cee_start, orders = 'mdy HMS', tz = 'UTC'
+            x = cee_start, orders = 'mdy IMS p', tz = 'UTC'
           )
         )
   ),
