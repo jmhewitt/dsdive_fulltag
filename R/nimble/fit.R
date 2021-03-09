@@ -84,6 +84,30 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     }
   }
   
+  # do not estimate depth effect on speed for free_surface periods
+  stage_inds = which(
+    colnames(nim_pkg$inits$beta_mu) %in% 'free_surface'
+  )
+  covariate_inds = which(
+    rownames(nim_pkg$data$covariates) %in% 'depth'
+  )
+  for(i in covariate_inds) {
+    for(j in stage_inds) {
+      # set parameters to identity
+      model_c[[paste('beta_mu[', i, ', ', j, ']', sep = '')]] = 0
+      model_c[[paste('beta_var[', i, ', ', j, ']', sep = '')]] = 1
+      # remove samplers
+      conf$removeSampler(paste('beta_mu[', i, ', ', j, ']', sep = ''))
+      conf$removeSampler(paste('beta_var[', i, ', ', j, ']', sep = ''))
+      for(k in 1:nim_pkg$consts$n_subjects) {
+        # set parameters to identity
+        model_c[[paste('beta[', i, ', ', j, ', ', k, ']', sep = '')]] = 0
+        # remove samplers
+        conf$removeSampler(paste('beta[', i, ', ', j, ', ', k, ']', sep = ''))
+      }
+    }
+  }
+  
   # do not estimate effects of static covariates on stage tx params
   static_covariates = c(
     structural_covariates, 'deep_depth', 'shallow_depth', 
