@@ -16,6 +16,9 @@ sampler_Stage = nimble::nimbleFunction(
     
     # support for latent stage at each timepoint
     stage_supports <- deparse(model$getParamExpr(target, 'stage_supports'))
+    
+    # nodes containing indicators for when animal is on surface
+    surface_bin <- deparse(model$getParamExpr(target, 'surface_bin'))
 
     # depth nodes, which constrain filtering distribution for latent stages
     depth_nodes <- calcNodes[which(model$getDistribution(calcNodes) == 'dbins')]
@@ -42,6 +45,7 @@ sampler_Stage = nimble::nimbleFunction(
     lambda_discretization_node <- deparse(
       model$getParamExpr(depth_nodes, 'lambda_discretization')
     )
+    
     
     #
     # derived dimensions
@@ -76,7 +80,8 @@ sampler_Stage = nimble::nimbleFunction(
       n_lambda = model[[n_lambda_node]],
       lambda_discretization = model[[lambda_discretization_node]],
       betas_tx = matrix(values(model, betas_tx_node), nrow = n_covariates),
-      stage_supports = model[[stage_supports]]
+      stage_supports = model[[stage_supports]],
+      surface_bin = model[[surface_bin]]
     )
     
     # update log probability

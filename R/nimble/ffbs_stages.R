@@ -6,7 +6,7 @@ ffbs_stages = nimble::nimbleFunction(
                  covariates = double(2), pi_discretization = double(2),
                  n_pi = double(1), n_lambda = double(1),
                  lambda_discretization = double(2), betas_tx = double(2),
-                 stage_supports = double(2)) {
+                 stage_supports = double(2), surface_bin = double(1)) {
     # use forward-filtering backwards-sampling to impute stages
     #
     # Parameters:
@@ -32,6 +32,7 @@ ffbs_stages = nimble::nimbleFunction(
     #   stageTxMats for complex description of the required format.
     #  stage_supports - matrix, each column of which specifies support for 
     #   latent stage distribution at each timepoint
+    #   surface_bin - vector of indicators for whether animal is in surface bin
     
     returnType(double(1))
     
@@ -58,7 +59,8 @@ ffbs_stages = nimble::nimbleFunction(
     
     # transition matrices for latent stages
     stx <- stageTxMats(
-      betas = betas_tx, covariates = covariates, n_timepoints = n_timepoints
+      betas = betas_tx, covariates = covariates, surface_bin = surface_bin,
+      n_timepoints = n_timepoints
     )
     
     # sample stages
