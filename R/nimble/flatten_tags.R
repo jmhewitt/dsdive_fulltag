@@ -2,7 +2,7 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
                         pi_discretization, lambda_discretization, 
                         template_bins, init_movement_coefficients,
                         init_stage_tx_coefficients, stages_tx_from, stages,
-                        population_effects) {
+                        population_effects, validation_pct = 0) {
   
   # extract dimensions
   n_bins = nrow(template_bins)
@@ -84,7 +84,13 @@ flatten_tags = function(tag_list, transition_matrices, movement_types,
       end_ind = min(segment_starts[seg_ind + 1] - 1, baseline_end_ind)
       # indices to analyze
       seg_inds = seq(from = start_ind, to = end_ind, by = 1)
-      # skip tag if there are no transitions to analyze
+      # if using as a validation dataset, only train using the first portion
+      if(validation_pct > 0) {
+        train_subset = 1:ceiling(validation_pct * length(seg_inds))
+        seg_inds = seg_inds[train_subset]
+        end_ind = tail(seg_inds, 1)
+      }
+      # skip segment if there are no transitions to analyze
       if(length(seg_inds) == 1) {
         next
       }

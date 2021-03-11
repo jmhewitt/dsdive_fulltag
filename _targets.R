@@ -29,5 +29,6 @@ c(
   dive_segmentation_targets,
   model_discretization_target,
   nimble_targets,
+  validation_targets,
   report_targets
 )
