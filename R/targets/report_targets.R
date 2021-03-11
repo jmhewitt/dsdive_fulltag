@@ -30,6 +30,22 @@ report_targets = list(
     ), 
     pattern = map(sample_dirs),
     deployment = 'worker', 
+  ),
+  
+  # posterior for final pre-exposure stage
+  tarchetypes::tar_render_rep(
+    name = final_pre_exposure_stages,
+    path = 'reports/cee_predictions/cee_predictions.Rmd',
+    params = data.frame(
+      tgt_dir = basename(sample_dirs),
+      output_file = paste(
+        'cee_predictions_',
+        basename(sample_dirs),
+        '.pdf',
+        sep = ''
+      )
+    ),
+    deployment = 'worker'
   )
   
 )

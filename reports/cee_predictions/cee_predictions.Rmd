@@ -1,0 +1,201 @@
+---
+title: "Posterior diagnostics for CEE predictions"
+output: 
+  pdf_document: 
+    toc: yes
+header-includes:
+  - \usepackage{booktabs}
+params:
+    tgt_dir: nim_fit
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, cache = FALSE, 
+                      dev = 'png', dpi = 300)
+```
+
+```{r paths}
+paths = list(
+  # location of mcmc output files
+  path_out = file.path('output', 'mcmc', params$tgt_dir),
+  # identifying characteristics of key output files
+  active_samplers = '*active_samplers.rds',
+  stage_sample_pattern = 'stage_samples_[0-9]+',
+  param_sample_pattern = 'parameter_samples_[0-9]+',
+  param_sample_column_labels = '*parameter_samples_column_labels.rds'
+)
+```
+
+```{r mcmc_input}
+nim_pkg = readRDS(dir(path = paths$path_out, pattern = 'pkg', 
+                      full.names = TRUE))
+```
+
+```{r parameter_groups}
+# load targets of active samplers
+active_samplers = unlist(readRDS(
+  dir(path = paths$path_out, pattern = paths$active_samplers, full.names = TRUE)
+))
+
+# identify common parameter names, excluding stages
+parameter_families = setdiff(
+  unique(gsub(pattern = '\\[.*\\]', replacement = '', x = active_samplers)),
+  'stages'
+)
+
+# associate actively sampled targets with the common parameter names
+sampler_groups = lapply(parameter_families, function(pfam) {
+  grep(pattern = paste(pfam, '\\[', sep = ''), 
+       x = active_samplers, value = TRUE)
+})
+names(sampler_groups) = parameter_families
+sampler_groups = sampler_groups[order(names(sampler_groups))]
+
+rm(active_samplers, parameter_families)
+```
+
+```{r output_files}
+param_sample_files = dir(path = paths$path_out, 
+                         pattern = paths$param_sample_pattern,
+                         full.names = TRUE)
+
+param_samples = do.call(rbind, lapply(param_sample_files, function(f) {
+  readRDS(f)
+}))
+
+colnames(param_samples) = readRDS(
+  dir(path = paths$path_out, pattern = paths$param_sample_column_labels, 
+      full.names = TRUE)
+)
+
+rm(param_sample_files)
+```
+
+```{r stage_files}
+# identify stage sample files
+stage_sample_files = dir(path = paths$path_out,
+                         pattern = paths$stage_sample_pattern,
+                         full.names = TRUE)
+
+# aggregate posterior stage samples
+stage_summary = matrix(as.integer(0), 
+                       nrow = nim_pkg$consts$n_stages, 
+                       ncol = nim_pkg$consts$n_timepoints)
+for(f in stage_sample_files) {
+  stage_samples = readRDS(f)
+  stage_summary = stage_summary + apply(stage_samples, 2, function(samples) {
+    tabulate(bin = samples, nbins = nim_pkg$consts$n_stages)
+  })
+}
+rownames(stage_summary) = names(nim_pkg$consts$movement_types)
+
+# normalize posteriors
+stage_summary = stage_summary / colSums(stage_summary)[1]
+
+rm(stage_samples)
+```
+
+```{r set_burn}
+burn = 1:1000
+```
+
+# Animals analyzed 
+
+```{r animmal_ids}
+print(nim_pkg$consts$subject_id_labels)
+```
+
+# Posterior stage distribution of final pre-exposure observations
+
+## Principal results
+
+Animals Zc093, Zc095, Zc096, and Zc097 were all in shallow water when they were 
+exposed.  Subsequently, each of the animals was observed to complete a deep 
+dive.  Were these deep dives a response to the sonar exposure?  I argue the 
+model's posterior predictive distribution can give insight into this question.
+
+The model is fit to baseline data, which includes all data up to the time of 
+sonar exposure (except for Zc069 due to incidental exposure, but this is 
+irrelevant for this discussion).  So, the model provides a posterior 
+distribution for the dive stage of the final pre-exposure observation.  Since 
+the dive is incomplete before the exposure, the posterior distribution can be 
+interpreted as a posterior predictive distribution for the in-progress dive. 
+By contradiction, if the dive were fully observed, then the dive type would be 
+exactly known in the posterior because we would directly observe if the animal 
+descends below 800m or not (our cutoff used to decide between deep/shallow 
+dives), and our model would yield the correct posterior probability because a) 
+our model only allows one to enter a deep_foraging stage from a deep_descent
+stage, and b) our model does not allow dive type transitions under the surface.
+
+The table below shows the posterior distribution for the dive stage immediately 
+before exposure.  For the animals of interest (Zc093, Zc095, Zc096, and Zc097), 
+there is low (Zc093) or very low (Zc095, Zc096, and Zc097) posterior probability
+that the animals were beginning a deep dive.  So, the posterior distributions 
+appear to support the hypothesis that whales are likely to initiate a deep dive 
+in response to sonar exposure.  Informally reviewing the raw dive profiles (see 
+the 12' pdfs) finds these results encouraging because Zc093 appears to initiate 
+a deep dive too soon after a previous deep dive.  The issue is much less 
+extreme, but somewhat suggestive with the other animals.  Additionally, the 
+dive profiles for the other exposed animals seem to be shallower or slower than 
+for other baseline deep dives.
+
+
+## Assessing strength of evidence
+
+But, how much faith should we place in the posterior probabilities?  Are the 
+probabilities realistic, or will the posterior distributions look like this for
+early, shallow portions of any dive?  Validating 
+that the predictive cumulative distribution function is calibrated (in the 
+sense of Gneiting, Balabdaoui, and Raftery, 2007) is one way to do this. 
+However, I don't know how to do this.  Gneiting et al. limit their discussion 
+to continuous (vs discrete) distributions because they rely on properties of 
+the inverse probability transform for continuous distributions to assess 
+calibration.  I am not sure they discuss calibration for discrete distributions.
+
+So, what are our  options for validating posterior predictive probabilities of 
+a discrete  distribution?  Is there a standard approach that I'm missing? 
+Do we reframe the problem as a classification problem, and discuss false 
+positive rates?  Are there ideas from causal inference that might be useful 
+here?  What is a helpful form of evidence we can offer that the model's 
+predictions are reasonable?
+
+At any rate, I anticipate that we can start to approach the validation problem 
+by working with withheld dives, the forward-filtering backward sampling 
+(FFBS) algorithm we use to estimate stages, and the posterior samples for model 
+parameters.  From the baseline training data, withhold the second half of all 
+dives for validation.  Then, for the depths and covariates of each withheld 
+dive $x_1,\dots,x_n$, use the 
+FFBS algorithm with the posterior parameter samples to sequentially predict the 
+stages of the depth observations.  Begin by predicting the stages of the first 
+two depth observations of each dive $x_{1,1:2},\dots,x_{n,1:2}$.  Then predict
+the stages of the first three depth observations, $x_{1,1:3},\dots,x_{n,1:3}$,
+and so.  
+
+The exercise above yields the posterior predictive distribution for a dive's 
+stages when the first 1,2,3, etc. observations are available from the 
+dive.  This is analogous to computing a family of $n$-step ahead predictive 
+distributions for classical time series data.  But the challenge remains.  What
+tool do we use to quantify the reliability or accuracy of these distributions so
+that we may assess their validity?
+
+
+
+```{r final_stage}
+post_stages = do.call(rbind, lapply(1:nim_pkg$consts$n_subjects, 
+                                    function(subj_ind) {
+  # identify all segments associated with subject
+  subj_segs = which(nim_pkg$consts$segments[,'subject_id'] == subj_ind)
+  # find last index of last segment of subject
+  last_ind = nim_pkg$consts$segments[tail(subj_segs, 1), 'end_ind']
+  # posterior distribution of final segment of subject
+  data.frame(subject = nim_pkg$consts$subject_id_labels[subj_ind],
+             t(stage_summary[,last_ind]))
+}))
+
+knitr::kable(post_stages, digits = 2, 
+             caption = 'Posterior distribution for stage of final observation', 
+             booktabs = TRUE)
+```
+
+
