@@ -66,6 +66,40 @@ validation_targets = list(
     ),
     pattern = map(nim_pkg_individual_val), 
     deployment = 'worker'
+  ),
+  
+  tar_target(
+    name = validation_dives,
+    command = extract_validation_dives(
+      tag_list = imputed_dive,
+      validation_pct = 0.5
+  )),
+  
+  
+  # batch settings for validation dives
+  tar_target(validation_dive_batch_size, 10),
+  tar_target(
+    name = validation_batch_starts, 
+    command = seq(
+      from = 1, 
+      to = length(validation_dives$data$dives), 
+      length.out = 100
+    )
+  ),
+  tar_target(val_timepoints, seq(from = 5, to = 30, by = 5)),
+  
+  tar_target(
+    name = validate_dive_preds,
+    command = validate_dive_predictions(
+      post_output_dir = file.path('output', 'mcmc', 'nim_fit_val'),
+      validation_dives = validation_dives$data$dives[
+        validation_batch_starts + 0:(validation_dive_batch_size -1)
+      ],
+      burn = 1e3,
+      n_timepoints = val_timepoints
+    ),
+    pattern = cross(val_timepoints, validation_batch_starts),
+    deployment = 'worker'
   )
   
 )
