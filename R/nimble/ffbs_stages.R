@@ -72,3 +72,7 @@ ffbs_stages = nimble::nimbleFunction(
     return(sampled_stages)
   }
 )
+
+if(!exists('ffbs_stages')) {
+  ffbs_stages_c = nimble::compileNimble(ffbs_stages)
+}
