@@ -49,7 +49,8 @@ validation_targets = list(
       sample_dir = mcmc_sample_dir,
       structural_covariates = structural_covariates
     ),
-    deployment = 'worker'
+    deployment = 'worker', 
+    cue = tar_cue(mode = 'never')
   ),
   
   tar_target(
@@ -65,7 +66,8 @@ validation_targets = list(
       structural_covariates = structural_covariates
     ),
     pattern = map(nim_pkg_individual_val), 
-    deployment = 'worker'
+    deployment = 'worker',
+    cue = tar_cue(mode = 'never')
   ),
   
   tar_target(
