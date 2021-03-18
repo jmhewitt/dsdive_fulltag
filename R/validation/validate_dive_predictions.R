@@ -3,6 +3,10 @@ validate_dive_predictions = function(post_output_dir, validation_dives, burn,
   # Parameters:
   #  n_timepoints - number of samples from dive to use in prediction
   
+  if(!exists('ffbs_stages_c')) {
+    ffbs_stages_c = nimble::compileNimble(ffbs_stages)
+  }
+  
   # define paths to MCMC output
   paths = list(
     # location of mcmc output files
