@@ -115,7 +115,8 @@ extract_validation_dives = function(tag_list, template_bins,
           covariates = covariates[,dive_inds],
           surface_bin = surface_bin[dive_inds],
           true_deep = any(covariates['deep_depth', dive_inds] == 1),
-          tag = tag$tag
+          tag = tag$tag,
+          dive_start_time = times[dive_inds][1]
         )
       })
       # remove NULL output from validation package

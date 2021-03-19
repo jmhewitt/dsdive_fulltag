@@ -119,7 +119,8 @@ validate_dive_predictions = function(post_output_dir, validation_dives, burn,
     n_timepoints = n_timepoints,
     prob_deep = as.numeric(prob_deep),
     true_deep = sapply(validation_dives, function(x) x$true_deep),
-    tag = sapply(validation_dives, function(x) x$tag)
+    tag = sapply(validation_dives, function(x) x$tag),
+    dive_start_time = sapply(validation_dives, function(x) x$dive_start_time)
   )
   
   # dump backup
