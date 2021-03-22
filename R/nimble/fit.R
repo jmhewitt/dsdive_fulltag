@@ -192,14 +192,19 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # }
   
   # use blocked samplers for stage transition effects between stages
+  covariate_inds = which(
+    rownames(nim_pkg$data$covariates) %in% c('intercept', 'daytime', 'moonlit')
+  )
   for(stage in nim_pkg$consts$ascent_like_stages) {
     # stage transition effects associated with stage
     stage_tx_inds = which(nim_pkg$consts$betas_tx_stage_from == stage)
-    # replace intercept random effect samplers with blocked samplers
+    # replace intercept and offset random effect samplers with blocked samplers
     for(k in 1:nim_pkg$consts$n_subjects) {
       # identify all potentially relevant nodes
-      tgt = paste('betas_tx[', nim_pkg$consts$intercept_covariate, ', ',
-                  stage_tx_inds, ', ', k, ']', sep = '')
+      tgt = do.call(c, lapply(covariate_inds, function(covariate_ind) {
+          paste('betas_tx[', covariate_ind, ', ',
+                stage_tx_inds, ', ', k, ']', sep = '')
+        }))
       # restrict target nodes to subset of actively sampled nodes 
       tgt = tgt[tgt %in% sapply(conf$samplerConfs, function(s) s$target)]
       # replace default samplers with block RW samplers if appropriate
