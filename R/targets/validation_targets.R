@@ -104,6 +104,26 @@ validation_targets = list(
     ),
     pattern = cross(val_timepoints, validation_batch_starts),
     deployment = 'worker'
+  ),
+    
+  tar_target(val_dive_length_timepoints, seq(from = 5, to = 60, by = 5)),
+  
+  tar_target(
+    name = validate_dive_length_predictions,
+    command = validate_dive_length_predictions(
+      post_output_dir = file.path('output', 'mcmc', 'nim_fit_val'),
+      validation_dives = validation_dives$data$dives[
+        validation_batch_starts + 0:(validation_dive_batch_size -1)
+      ],
+      burn = 1e3,
+      n_timepoints = val_dive_length_timepoints,
+      timestep = sattag_timestep/imputation_factor, 
+      lon = cape_hatteras_loc['lon'],
+      lat = cape_hatteras_loc['lat'],
+      template_bins = template_bins
+    ),
+    pattern = cross(val_dive_length_timepoints, validation_batch_starts),
+    deployment = 'worker'
   )
   
 )
