@@ -66,6 +66,10 @@ validate_dive_length_predictions = function(
     if(length(d$depths) < n_timepoints) {
       return(NA)
     }
+    # to reduce computational requirements: skip processing if dive was not deep
+    if(d$true_deep == FALSE) {
+      return(NA)
+    }
     # get modeled tag id 
     tag_id = which(d$tag == nim_pkg$consts$subject_id_labels)
     # build local identifiers for model parameters
