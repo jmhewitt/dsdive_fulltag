@@ -97,14 +97,14 @@ validate_dive_predictions = function(post_output_dir, validation_dives, burn,
         stage_map = nim_pkg$consts$movement_types, 
         alpha = matrix(theta[alpha_nodes], nrow = nim_pkg$consts$n_covariates), 
         beta = matrix(theta[beta_nodes], nrow = nim_pkg$consts$n_covariates),
-        covariates = d$covariates[,inds], 
+        covariates = d$covariates[, inds, drop = FALSE], 
         pi_discretization = nim_pkg$consts$pi_discretization,
         n_pi = nim_pkg$consts$n_pi, 
         n_lambda =nim_pkg$consts$n_lambda,  
         lambda_discretization = nim_pkg$consts$lambda_discretization, 
         betas_tx = matrix(theta[betas_tx_nodes], 
                           nrow = nim_pkg$consts$n_covariates), 
-        stage_supports = d$stage_supports[,inds],
+        stage_supports = d$stage_supports[, inds, drop = FALSE],
         surface_bin = d$surface_bin[inds]
       )
       # return final prediction for stage
