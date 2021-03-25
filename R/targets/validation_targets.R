@@ -88,7 +88,9 @@ validation_targets = list(
       length.out = 100
     )
   ),
-  tar_target(val_timepoints, seq(from = 5, to = 30, by = 5)),
+  
+  # tar_target(val_timepoints, seq(from = 5, to = 30, by = 5)),
+  tar_target(val_timepoints, seq(from = 1, to = 15, by = 1)),
   
   tar_target(
     name = validate_dive_preds,
