@@ -30,5 +30,6 @@ c(
   model_discretization_target,
   nimble_targets,
   validation_targets,
+  cee_targets,
   report_targets
 )
