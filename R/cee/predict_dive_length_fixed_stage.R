@@ -1,4 +1,4 @@
-predict_dive_length = function(
+predict_dive_length_fixed_stage = function(
   post_output_dir, tag, burn, timestep, lon, lat, template_bins, fixed_stage
 ) {
   
