@@ -172,12 +172,13 @@ ggplot(validation_output, aes(x = true_deep, y = prob_deep)) +
   theme_few()
 ```
 
-```{r classification_accuracy, fig.cap='\\label{fig:classification_accuracy} Error rate for non-deep predictions based on classification threshold and number of observations used to make prediction.'}
+```{r classification_accuracy, fig.cap='\\label{fig:classification_accuracy} Error rate for non-deep predictions based on classification threshold and number of observations used to make prediction.', warning=FALSE}
 library(ggplot2)
 library(ggthemes)
 library(dplyr)
 
 classification_accuracies = function(n_pred_obs, cutoff) {
+  
   
   df = validation_output %>% 
     mutate(pred_deep = prob_deep > cutoff) %>% 
@@ -185,15 +186,40 @@ classification_accuracies = function(n_pred_obs, cutoff) {
 
   prediction.table = table(pred_deep = df$pred_deep, true_deep = df$true_deep)
 
-  true_pos = prediction.table[2,2]
-  false_neg = prediction.table[1,2]
-  true_neg = prediction.table[1,1]
-  false_pos = prediction.table[2,1]
-    
+  if(all('TRUE' %in% rownames(prediction.table),
+         'TRUE' %in% colnames(prediction.table))) {
+    true_pos = prediction.table['TRUE', 'TRUE']
+  } else {
+    true_pos = 0
+  }
+  
+  if(all('FALSE' %in% rownames(prediction.table),
+         'TRUE' %in% colnames(prediction.table))) {
+    false_neg = prediction.table['FALSE', 'TRUE']
+  } else {
+    false_neg = 0
+  }
+  
+  if(all('FALSE' %in% rownames(prediction.table),
+         'FALSE' %in% colnames(prediction.table))) {
+    true_neg = prediction.table['FALSE', 'FALSE']
+  } else {
+    true_neg = 0
+  }
+  
+  if(all('TRUE' %in% rownames(prediction.table),
+         'FALSE' %in% colnames(prediction.table))) {
+    false_pos = prediction.table['TRUE', 'FALSE']
+  } else {
+    false_pos = 0
+  }
+
   c(sensitivity = true_pos / (true_pos + false_neg),
     specificity = true_neg / (true_neg + false_pos),
     neg_predictive_value = true_neg / (true_neg + false_neg),
-    false_omission_rate = false_neg / (true_neg + false_neg))
+    false_omission_rate = false_neg / (true_neg + false_neg),
+    false_neg = false_neg,
+    true_neg = true_neg)
 }
 
 classification_configs = expand.grid(
@@ -214,12 +240,13 @@ ggplot(df, aes(x = n_pred_obs, y = false_omission_rate, col = factor(cutoff))) +
   geom_line() + 
   scale_color_brewer('Classification threshold', 
                      type = 'seq', palette = 'BuPu') + 
-  scale_x_continuous(breaks = seq(from = 0, to = 30, by = 5)) + 
+  scale_x_continuous(breaks = unique(df$n_pred_obs)) + 
+  scale_y_continuous(breaks = c(0,.05,.1,.2,.4,.6,.8)) +
   xlab('Prediction timepoints') + 
   ylab('P(Deep dive | Predicted not deep)') + 
-  ylim(0,.12)+
   theme_few() + 
-  theme(panel.border = element_blank())
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_line(colour = 'grey95'))
 ```
 
 ```{r mcmc_input}
@@ -295,8 +322,6 @@ rm(stage_samples)
 burn = 1:1000
 ```
 
-
-
 ```{r final_stage}
 post_stages = do.call(rbind, lapply(1:nim_pkg$consts$n_subjects, 
                                     function(subj_ind) {
@@ -313,5 +338,39 @@ knitr::kable(post_stages, digits = 2,
              caption = '\\label{tab:final_stage} Posterior distribution for stage of final observation', 
              booktabs = TRUE)
 ```
+
+```{r time_in_final_dive}
+final_dive_time = do.call(rbind, lapply(1:nim_pkg$consts$n_subjects, 
+                                    function(subj_ind) {
+  # identify all segments associated with subject
+  subj_segs = which(nim_pkg$consts$segments[,'subject_id'] == subj_ind)
+  # indices of final segment
+  final_seg_inds = seq(
+    from = nim_pkg$consts$segments[tail(subj_segs, 1), 'start_ind'],
+    to = nim_pkg$consts$segments[tail(subj_segs, 1), 'end_ind']
+  )
+  # use run length encoding to determine length of times on surface and at depth
+  dive_periods = rle(nim_pkg$data$surface_bin[final_seg_inds])
+  # final surface/depth state and time in state
+  data.frame(
+    subject = nim_pkg$consts$subject_id_labels[subj_ind],
+    context = factor(
+      x = tail(dive_periods$values, 1), 
+      levels = c(FALSE, TRUE), 
+      labels = c('Mid-dive', 'On surface')
+    ),
+    nobs = tail(dive_periods$lengths, 1)
+  )
+}))
+
+
+knitr::kable(
+  final_dive_time,
+  caption = '\\label{tab:final_stage_times} Exposure context specifying whether animals were exposed during a dive or on the surface, as well as how many 1-minute observations are associated with the context.', 
+  booktabs = TRUE
+)
+```
+
+
 
 

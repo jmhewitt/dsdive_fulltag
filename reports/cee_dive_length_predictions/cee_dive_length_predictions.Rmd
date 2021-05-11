@@ -1,0 +1,292 @@
+---
+title: "CEE slower dive ascent predictions and validation"
+author: Josh
+date: 5 April 2021
+output: 
+  pdf_document: 
+    toc: yes
+header-includes:
+  - \usepackage{booktabs}
+params:
+    tgt_dir: nim_fit
+    tgt_dir_val: nim_fit_val
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, cache = TRUE, 
+                      dev = 'png', dpi = 300)
+```
+
+```{r paths}
+paths = list(
+  # location of mcmc output files
+  path_out = file.path('output', 'mcmc', params$tgt_dir),
+  path_out_val = file.path('output', 'mcmc', params$tgt_dir_val),
+  # identifying characteristics of key output files
+  active_samplers = '*active_samplers.rds',
+  stage_sample_pattern = 'stage_samples_[0-9]+',
+  param_sample_pattern = 'parameter_samples_[0-9]+',
+  param_sample_column_labels = '*parameter_samples_column_labels.rds',
+  validation_output = 'validate_dive_length_predictions',
+  length_prediction_pattern = 'dive_length_predictions',
+  hypothetical_length_prediction_pattern = 
+    'dive_length_predictions_hypothetical_stage'
+)
+```
+
+```{r load_validation_output}
+library(dplyr)
+library(scoringRules)
+library(coda)
+
+validation_output_files = dir(
+  path = paths$path_out_val, pattern = paths$validation_output, full.names = TRUE
+)
+
+# load output and remove entries without complete information
+validation_output = do.call(rbind, lapply(validation_output_files, function(f) {
+  r = readRDS(f)[[1]]
+  if(is.null(r)) {
+    NULL
+  } else {
+    burn = 1:1e3
+    valid_inds = which(sapply(r$true_deep, isTRUE) & 
+                         is.finite(r$true_remaining_time))
+    if(any(valid_inds)) {
+      do.call(rbind, lapply(valid_inds, function(ind) {
+        samples = r$remaining_time_samples[[ind]][-burn]
+        d = density(samples)
+        post_mode = d$x[which.max(d$y)]
+        hpds = HPDinterval(mcmc(samples))
+        data.frame(
+          tag = r$tag[ind],
+          n_timepoints = r$n_timepoints,
+          true_remaining_time = r$true_remaining_time[ind],
+          post_mode = post_mode,
+          post_mean = mean(samples),
+          post_var = var(samples),
+          crps = crps_sample(
+            y = r$true_remaining_time[ind], dat = samples
+          ),
+          crps_centered = crps_sample(
+            y = abs(r$true_remaining_time[ind] - post_mode), 
+            dat = abs(samples - post_mode)
+          )
+        ) %>% mutate(
+         mse_mean = (post_mean - true_remaining_time)^2,
+         mae_mean = abs(post_mean - true_remaining_time),
+         mse_mode = (post_mode - true_remaining_time)^2,
+         mae_mode = abs(post_mode - true_remaining_time),
+        )
+      }))
+    } else {
+      NULL
+    } 
+  }
+}))
+
+rm(validation_output_files)
+```
+
+
+
+```{r validation_design}
+# distribution of deep validation dives by prediction horizon
+knitr::kable(
+  table("Tag" = validation_output$tag,
+      "Pre-Exposure Observations" = validation_output$n_timepoints), 
+  caption = '\\label{tab:n_val_dives} Number of deep validation dives used to assess the posterior distribution for dive stage when the first 5, 10, 15, ..., 30 1-minute observations are analyzed from each dive.'
+)
+```
+
+```{r validation_distributions, fig.cap='\\label{fig:validation_distributions} As more data is used to predict deep dives, error about remaining time in dive decreases.'}
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(ggpubr)
+
+pl1 = validation_output %>% 
+  group_by(n_timepoints) %>% 
+  summarise(crps = mean(crps)) %>% 
+ggplot(aes(x = factor(n_timepoints), y = crps/60)) + 
+  geom_point() + 
+  xlab('Number of prediction timepoints') + 
+  ylab('CRPS (minutes)') +
+  theme_few() +
+  theme(panel.border = element_blank())
+
+pl1_5 = validation_output %>% 
+  group_by(n_timepoints) %>% 
+  summarise(crps_centered = mean(crps_centered)) %>% 
+ggplot(aes(x = factor(n_timepoints), y = crps_centered/60)) + 
+  geom_point() + 
+  xlab('Number of prediction timepoints') + 
+  ylab('Centered CRPS (minutes)') +
+  theme_few() +
+  theme(panel.border = element_blank())
+
+pl2 = validation_output %>% 
+  group_by(n_timepoints) %>%
+  summarise(mae = mean(mae_mode / 60)) %>%
+ggplot(aes(x = factor(n_timepoints), y =mae)) + 
+  geom_point() + 
+  xlab('Number of prediction timepoints') + 
+  ylab('MAE of MAP (minutes)') + 
+  theme_few() + 
+  theme(panel.border = element_blank())
+
+pl3 = validation_output %>% 
+  group_by(n_timepoints) %>% 
+  summarise(rmse = sqrt(mean(mse_mean/60^2))) %>%
+ggplot(aes(x = factor(n_timepoints), y = rmse)) + 
+  geom_point() + 
+  xlab('Number of prediction timepoints') + 
+  ylab('RMSE of posterior mode (minutes)') + 
+  theme_few() + 
+  theme(panel.border = element_blank())
+  
+ggarrange(pl1, pl2, pl1_5, pl3, nrow = 2, ncol = 2)
+```
+
+
+```{r mcmc_input}
+nim_pkg = readRDS(dir(path = paths$path_out, pattern = 'pkg', 
+                      full.names = TRUE))
+```
+
+```{r parameter_groups}
+# load targets of active samplers
+active_samplers = unlist(readRDS(
+  dir(path = paths$path_out, pattern = paths$active_samplers, full.names = TRUE)
+))
+
+# identify common parameter names, excluding stages
+parameter_families = setdiff(
+  unique(gsub(pattern = '\\[.*\\]', replacement = '', x = active_samplers)),
+  'stages'
+)
+
+# associate actively sampled targets with the common parameter names
+sampler_groups = lapply(parameter_families, function(pfam) {
+  grep(pattern = paste(pfam, '\\[', sep = ''), 
+       x = active_samplers, value = TRUE)
+})
+names(sampler_groups) = parameter_families
+sampler_groups = sampler_groups[order(names(sampler_groups))]
+
+rm(active_samplers, parameter_families)
+```
+
+
+```{r time_pred_files}
+# identify stage sample files
+length_pred_sample_files = dir(path = paths$path_out,
+                               pattern = paths$length_prediction_pattern,
+                               full.names = TRUE)
+
+# load files
+length_preds = lapply(length_pred_sample_files, readRDS)
+
+rm(length_pred_sample_files)
+```
+
+```{r actual_times}
+library(coda)
+
+# load raw data
+targets::tar_load(imputed_dive)
+
+# extract tag names for raw data
+tag_names = sapply(imputed_dive, function(x) x$tag)
+
+# summarize predictive distribution against actual remaining time in dive
+true_length_preds = do.call(rbind, lapply(length_preds, function(preds) {
+  # retrieve tag data
+  tag_data = imputed_dive[[which(preds[[1]]$tag == tag_names)]]
+  # find time at which the exposed dive ends
+  exposed = preds[[1]]$pre_cee_time < tag_data$times
+  first_exposed_surface_ind = min(which(tag_data$depth.bin[exposed] == 1))
+  cee_dive_end = tag_data$times[exposed][first_exposed_surface_ind]
+  # length of dive after exposure (seconds)
+  duration = as.numeric(cee_dive_end) - as.numeric(preds[[1]]$pre_cee_time)
+  # predictive density and summaries
+  d = density(preds[[1]]$remaining_time_samples)
+  pred_mode = d$x[which.max(d$y)]/60
+  hpds = HPDinterval(mcmc(preds[[1]]$remaining_time_samples))
+  # summarize predictive distribution, and truth
+  data.frame(
+    tag = preds[[1]]$tag,
+    pred_mean = mean(preds[[1]]$remaining_time_samples)/60,
+    pred_mode = pred_mode,
+    hpd.lower = hpds[,'lower']/60,
+    hpd.upper = hpds[,'upper']/60,
+    truth = duration/60,
+    F_truth = ecdf(preds[[1]]$remaining_time_samples)(duration),
+    p_abs_centered = 1 - 
+      ecdf(abs(preds[[1]]$remaining_time_samples - pred_mode))(
+        abs(duration - pred_mode)
+      )
+  )
+}))
+
+true_length_preds
+```
+
+```{r time_pred_files_hypothetical}
+# identify stage sample files
+hypothetical_length_pred_sample_files = dir(
+  path = paths$path_out,
+  pattern = paths$hypothetical_length_prediction_pattern,
+  full.names = TRUE
+)
+
+# load files
+hypothetical_length_preds = lapply(hypothetical_length_pred_sample_files, 
+                                   readRDS)
+
+rm(hypothetical_length_pred_sample_files)
+```
+
+```{r hypothetical_times}
+library(coda)
+
+# load raw data
+targets::tar_load(imputed_dive)
+
+# extract tag names for raw data
+tag_names = sapply(imputed_dive, function(x) x$tag)
+
+# summarize predictive distribution against actual remaining time in dive
+hypothetical_length_preds = do.call(rbind, lapply(hypothetical_length_preds, 
+                                                  function(preds) {
+  # retrieve tag data
+  tag_data = imputed_dive[[which(preds[[1]]$tag == tag_names)]]
+  # find time at which the exposed dive ends
+  exposed = preds[[1]]$pre_cee_time < tag_data$times
+  first_exposed_surface_ind = min(which(tag_data$depth.bin[exposed] == 1))
+  cee_dive_end = tag_data$times[exposed][first_exposed_surface_ind]
+  # length of dive after exposure (seconds)
+  duration = as.numeric(cee_dive_end) - as.numeric(preds[[1]]$pre_cee_time)
+  # predictive density and summaries
+  d = density(preds[[1]]$remaining_time_samples)
+  pred_mode = d$x[which.max(d$y)]/60
+  hpds = HPDinterval(mcmc(preds[[1]]$remaining_time_samples))
+  # summarize predictive distribution, and truth
+  data.frame(
+    tag = preds[[1]]$tag,
+    pred_mean = mean(preds[[1]]$remaining_time_samples)/60,
+    pred_mode = pred_mode,
+    hpd.lower = hpds[,'lower']/60,
+    hpd.upper = hpds[,'upper']/60,
+    truth = duration/60,
+    F_truth = ecdf(preds[[1]]$remaining_time_samples)(duration),
+    p_abs_centered = 1 - 
+      ecdf(abs(preds[[1]]$remaining_time_samples - pred_mode))(
+        abs(duration - pred_mode)
+      )
+  )
+}))
+
+hypothetical_length_preds
+```
