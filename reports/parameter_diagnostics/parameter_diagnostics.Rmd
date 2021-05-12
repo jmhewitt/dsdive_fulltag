@@ -252,6 +252,9 @@ sub_groups = list(
   ),
   moonlit = grep(
     pattern = 'beta_tx\\[3,.*', x = sampler_groups$beta_tx, value = TRUE
+  ),
+  prop_recent_deep = grep(
+    pattern = 'beta_tx\\[4,.*', x = sampler_groups$beta_tx, value = TRUE
   )
 )
   
