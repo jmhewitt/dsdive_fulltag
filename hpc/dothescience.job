@@ -7,7 +7,6 @@
 #SBATCH --mail-user joshua.hewitt@duke.edu
 #SBATCH --ntasks 1
 #SBATCH --time 96:00:00
-#SBATCH --mem 6GB
 
 date
 START=`date +%s`

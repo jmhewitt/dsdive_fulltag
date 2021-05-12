@@ -51,7 +51,6 @@ if (!"account" %in% names(resources)) {
 #SBATCH --error=<%= log.file %>
 #SBATCH --time=<%= ceiling(resources$walltime / 60) %>
 #SBATCH --ntasks=1
-#SBATCH --mem 6GB
 #SBATCH --account=<%= resources$account %>
 <%= if (!is.null(resources$partition)) sprintf(paste0("#SBATCH --partition='", resources$partition, "'")) %>
 <%= if (array.jobs) sprintf("#SBATCH --array=1-%i", nrow(jobs)) else "" %>
