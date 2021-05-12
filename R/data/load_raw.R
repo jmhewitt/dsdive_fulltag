@@ -1,5 +1,5 @@
 load_raw = function(depth_files, template_bins, tag_info, dive_labels,
-                    deep_depth_threshold, lon_lat_mean) {
+                    deep_depth_threshold, lon_lat_mean, timestep) {
   
   mapply(function(depth_file, labels) {
     
@@ -7,6 +7,16 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
     d = read.csv(file.path(depth_file))
     d$Date = as.POSIXct(d$Date, origin = '1970-01-01 00:00.00 UTC', tz = 'UTC')
     
+    # forward difference: time elapsed from one observation to the next
+    time_increments = difftime(
+      time2 = d$Date[1:(length(d$Date)-1)], 
+      time1 = d$Date[2:length(d$Date)], 
+      units = 'secs'
+    )
+    
+    # identify (inclusive) time ranges for data gaps
+    d$gap_after = c(time_increments > timestep, FALSE)
+
     # map all depths to standardized bins
     d$depth.bin = sapply(d$Depth, function(depth) {
       which.min(abs(depth - template_bins$center))
@@ -61,6 +71,8 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
     list(
       # get name of tagged individual
       tag = tag_id,
+      # data gap markers
+      gap_after = d$gap_after,
       # standardized depths and times
       depth.bin = d$depth.bin,
       depths = d$depth.standardized,
