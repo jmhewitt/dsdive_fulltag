@@ -49,7 +49,8 @@ nimble_targets = list(
       init_movement_coefficients = list(lambda = rep(1,3)), 
       transition_matrices = transition_matrices, 
       n_pi = length(parameter_discretization$pi), 
-      tag_list = raw_sattags
+      tag_list = raw_sattags,
+      depth_threshold = deep_dive_depth
     )
   ),
   

@@ -7,6 +7,10 @@ sampler_Stage = nimble::nimbleFunction(
     # for nimble samplers: nodes impacted by update
     calcNodes <- model$getDependencies(target)
     
+    # nodes containing stage transition parameters and covariates
+    betas_tx_nodes <- deparse(model$getParamExpr(target, 'beta_tx'))
+    covariates_nodes <- deparse(model$getParamExpr(target, 'covariates'))
+    
     #
     # detect FFBS dependencies induced via depths distribution
     #
@@ -17,9 +21,8 @@ sampler_Stage = nimble::nimbleFunction(
     # number of depth bins model is defined over
     n_bins <- model$getParamExpr(depth_nodes, 'n_bins')
     
-    # node containing depth bin and stage transition matrices
+    # node containing depth bin transition matrices
     transition_matrices <- deparse(model$getParamExpr(depth_nodes, 'tmats'))
-    txmat_stages_nodes <- deparse(model$getParamExpr(target, 'txmat'))
     
     # node containing modeled lambda values
     lambda_inds_nodes <- deparse(model$getParamExpr(depth_nodes, 'lambda_inds'))
@@ -28,7 +31,7 @@ sampler_Stage = nimble::nimbleFunction(
     stage_defs_nodes <- deparse(model$getParamExpr(depth_nodes, 'stage_defs'))
     n_pi <- model$getParamExpr(depth_nodes, 'n_pi')
     n_lambda <- model$getParamExpr(depth_nodes, 'n_lambda')
-
+    
     
     #
     # derived dimensions
@@ -39,6 +42,8 @@ sampler_Stage = nimble::nimbleFunction(
     
     # number of latent stages to sample
     n_timepoints <- length(model[[depth_nodes]])
+    
+    n_covariates <- nrow(model[[covariates_nodes]])
   
   },
   
@@ -55,7 +60,10 @@ sampler_Stage = nimble::nimbleFunction(
       n_pi = n_pi,
       n_lambda = n_lambda,
       transition_matrices = model[[transition_matrices]],
-      txmat_stages = model[[txmat_stages_nodes]]
+      betas_tx = array(values(model, betas_tx_nodes), 
+                       dim = c(n_covariates, n_stages, n_stages - 1)),
+      covariates = model[[covariates_nodes]]
+      
     )
     
     # update log probability

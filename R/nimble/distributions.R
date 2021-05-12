@@ -35,14 +35,15 @@ rcovariates = nimble::nimbleFunction(
 )
 
 dstages = nimble::nimbleFunction(
-  run = function(x = double(1), txmat = double(2),
+  run = function(x = double(1), beta_tx = double(3), covariates = double(2),
                  n_timepoints = double(0), log = logical(0, default = 0)) {
     # likelihood for sequence of latent stages, conditional on 
     # transition parameter coefficients
     #
     # Parameters:
     #  x - sequence of stages
-    #  txmat - stage transition matrix
+    #  beta_tx - coefs. to define stage transition matrix via multinomial logits
+    #  covariates - covariates used to define stage transition matrix
     #  n_timepoints - number of timepoints, each of which will get a stage 
     #    transition matrix.
     #  log - if TRUE, then the log-likelihood is returned
@@ -60,12 +61,88 @@ dstages = nimble::nimbleFunction(
       # process each transition in segment; we go one fewer than the
       # segment length b/c this accounts for the last transition
       for(ind in 2:n_timepoints) {
+        # compute stage transition distribution for timepoint:
+        #   the stage s_{ij}(t_k) is drawn using covariates at time t_k, and 
+        #   the stage is Markov wrt. the previous stage
+        stx <- stageTxVec(stageFrom = x[ind-1], betas = beta_tx, 
+                          covariates = covariates[, ind], 
+                          log = TRUE)
         # aggregate probability of transition
-        ll <- ll + log(txmat[x[ind-1], x[ind]])
+        ll <- ll + stx[x[ind]]
+        
       }
     }
     
     if(log) { return(ll) } else { return(exp(ll)) }
+  }
+)
+
+stageTxVec = nimble::nimbleFunction(
+  run = function(stageFrom = double(0), betas = double(3), 
+                 covariates = double(1), log = logical(0)) {
+    # discrete-time stage transition vector, conditional on covariates and 
+    # the stage being transitioned from
+    # 
+    # Parameters: 
+    #   stageFrom - the row of the complete stage transition matrix to compute
+    #   betas - array of coefficients for multinomial logit distributions.
+    #    each column holds the coefficient for the logit of one pair of 
+    #    allowed state transitions.  the columns should define coefs. for
+    #    logit(stage_from->stage_to) = log(pi_stage_to/pi_stage_from), ordered 
+    #    such that the last stage is the reference stage, and the other columns 
+    #    define the other stages
+    #   covariates - vector of covariates used to generate stage transition 
+    #     probabilities.
+    #   log - if TRUE, returns an approximation to the log probabilities
+    # 
+    # Return:
+    #   vector of stage transition probabilities
+    
+    returnType(double(1))
+    
+    n_stages <- length(betas[1,,1])
+    
+    m <- multinomialLogitProbs(
+      betas = betas[, stageFrom, 1:(n_stages-1)],
+      x = covariates, log = log
+    )
+    
+    return(m)
+  }
+)
+
+stageTxMats = nimble::nimbleFunction(
+  run = function(betas = double(3), covariates = double(2),
+                 n_timepoints = double(0)) {
+    # discrete-time stage transition matrices, conditional on covariates
+    # 
+    # Parameters: 
+    #   betas - array of coefficients for multinomial logit distributions.
+    #    see stageTxVec documentation for details about the specification of the 
+    #    coefficient matrix.
+    #   covariates - matrix of covariates used to generate stage transition 
+    #     matrices.  each column specifies covariates for a timepoint.
+    #   n_timepoints - number of timepoints, each of which will get a stage 
+    #     transition matrix.
+    # 
+    # Return:
+    #   array of stage transition matrices, one for each timepoint. 
+    
+    returnType(double(3))
+    
+    n_stages <- length(betas[1,,1])
+    
+    m <- array(dim = c(n_stages, n_stages, n_timepoints), init = FALSE)
+    
+    for(i in 1:n_timepoints) {
+      for(j in 1:n_stages) {
+        m[j,,i] <- stageTxVec(stageFrom = j, betas = betas, 
+                              covariates = covariates[,i], 
+                              log = FALSE)
+      }
+    }
+    
+    return(m)
   }
 )
 
@@ -195,18 +272,16 @@ dist_str_bins = paste(
   sep = ''
 )
 
-  
-
-dist_str_stages = 'dstages(txmat, n_timepoints)'
-  
-
+dist_str_stages = 'dstages(beta_tx, covariates, n_timepoints)'
+ 
+ 
 nimble::registerDistributions(list(
   
   dstages = list(
     BUGSdist = dist_str_stages,
     Rdist = dist_str_stages,
-    types = c('value = double(1)', 'txmat = double(2)', 
-              'n_timepoints = double(0)'),
+    types = c('value = double(1)', 'beta_tx = double(3)', 
+              'covariates = double(2)', 'n_timepoints = double(0)'),
     discrete = TRUE,
     pqAvail = FALSE
   ),

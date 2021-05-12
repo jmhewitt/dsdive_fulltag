@@ -1,6 +1,11 @@
 imputation_plots = function(mcmc_sample_dir, output_dir, template_bins, 
                             tag_info) {
   
+  mcmc_sample_dir = 'output/mcmc/nim_fit'
+  output_dir = 'output/new_plots/multinomial'
+  targets::tar_load(template_bins)
+  targets::tar_load(tag_info)
+  
   browser()
   # load source data
   nim_pkg = readRDS(dir(

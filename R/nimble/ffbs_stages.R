@@ -4,7 +4,7 @@ ffbs_stages = nimble::nimbleFunction(
                  lambda_inds = double(1), n_bins = double(0), 
                  n_pi = double(0), n_lambda = double(0),
                  transition_matrices = double(1),
-                 txmat_stages = double(2)) {
+                 betas_tx = double(3), covariates = double(2)) {
     # use forward-filtering backwards-sampling to impute stages
     #
     # Parameters:
@@ -17,7 +17,6 @@ ffbs_stages = nimble::nimbleFunction(
     #  n_pi - the number of pre-specified descent preference values
     #  n_lambda - the number of pre-specified speed values
     #  transition_matrices - family of pre-computed tx. matrices, in flat format
-    #  txmat_stages - stage transition matrix
     
     returnType(double(1))
     
@@ -40,10 +39,9 @@ ffbs_stages = nimble::nimbleFunction(
     )
     
     # transition matrices for latent stages
-    stx <- array(dim = c(n_stages, n_stages, n_timepoints), init = FALSE)
-    for(i in 1:n_timepoints) {
-      stx[,,i] <- txmat_stages
-    }
+    stx <- stageTxMats(
+      betas = betas_tx, covariates = covariates, n_timepoints = n_timepoints
+    )
     
     # sample stages
     sampled_stages[1:n_timepoints] <- ffbs(

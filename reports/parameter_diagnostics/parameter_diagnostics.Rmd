@@ -234,39 +234,36 @@ cbind(
 
 cor(param_samples[-burn, sampler_groups$lambda])
 
+non_intercept_covariates = grep(
+  pattern = 'beta_tx\\[[^1].*', x = sampler_groups$beta_tx, value = TRUE
+)
+betas_hpds = HPDinterval(mcmc(param_samples[-burn, non_intercept_covariates]))
 
-targets::tar_load(movement_classes)
-n_stages = nrow(movement_classes$stage_defs)
-m = matrix(NA, nrow = n_stages, ncol = n_stages)
-for(i in 1:n_stages) {
-  for(j in 1:n_stages) {
-    m[i,j] = effectiveSize(mcmc(
-      param_samples[-burn, paste('txmat_stages[', i, ', ', j, ']', sep = '')]
-    ))
-  }
-}
-
-rownames(m) = rownames(movement_classes$stage_defs)
-colnames(m) = rownames(movement_classes$stage_defs)
-
-round(m,2)
+mean((betas_hpds[,'lower'] > 0) | (betas_hpds[, 'upper'] < 0) )
 ```
 
 ```{r pt_ests, dependson='pt_ests_fn', fig.width=8, fig.height=8}
-if('beta_mu' %in% names(sampler_groups)) {
-  sub_groups = sampler_groups[sort(c('alpha_mu', 'beta_mu', 'betas_tx_mu'))]
-} else {
-  sub_groups = sampler_groups[sort(c('alpha_mu', 'beta', 'betas_tx'))]
-}
-
-sub_groups = sampler_groups
+sub_groups = list(
+  intercept = grep(
+    pattern = 'beta_tx\\[1,.*', x = sampler_groups$beta_tx, value = TRUE
+  ),
+  daytime = grep(
+    pattern = 'beta_tx\\[2,.*', x = sampler_groups$beta_tx, value = TRUE
+  ),
+  moonlit = grep(
+    pattern = 'beta_tx\\[3,.*', x = sampler_groups$beta_tx, value = TRUE
+  )
+)
+  
+targets::tar_load(movement_classes)
+movement_classes$stage_defs
 
 invisible(mapply(
   function(g, name) {
     print(
       pt_ests(samples = param_samples[-burn, g, drop = FALSE], 
               dimnames = 1:length(nim_pkg$inits[[name]])) + 
-        ggtitle(name)
+        ggtitle(name) + ylim(-20,20)
     )
   }, 
   g = sub_groups, 

@@ -1,6 +1,8 @@
 flatten_tags = function(template_bins, lambda_discretization, stage_defs,
                         init_movement_coefficients, transition_matrices, n_pi,
-                        tag_list) {
+                        tag_list, depth_threshold) {
+  # Parameters:
+  #   depth_threshold - depth used to generate prop_recent_deep covariate
   
   # extract dimensions
   n_bins = nrow(template_bins)
@@ -10,6 +12,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
     data = list(
       constraint_data = 1,
       depths = NULL,
+      covariates = NULL,
       transition_matrices = transition_matrices
     ),
     consts = list(
@@ -26,10 +29,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
     ),
     inits = list(
       stages = NULL,
-      lambda = init_movement_coefficients$lambda,
-      txmat_stages = matrix(1/nrow(stage_defs), 
-                            nrow = nrow(stage_defs),
-                            ncol = nrow(stage_defs))
+      lambda = init_movement_coefficients$lambda
     )
   )
   
@@ -78,6 +78,29 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       # copy data to package
       nim_pkg$data$depths = c(nim_pkg$data$depths, tag$depth.bin[seg_inds])
       nim_pkg$inits$stages = c(nim_pkg$inits$stages, rep(1, length(seg_inds)))
+      # proportion of recent observations at depth, as a covariate
+      prop_recent_deep = c(0, sapply(2:length(seg_inds), function(i) {
+        # data index to work with
+        ind = seg_inds[i]
+        # window at which recent observations begins
+        window_start = tag$times[ind] - duration(1, units = 'hours')
+        # data indices of recent observations
+        past_inds = seg_inds[1:(i-1)]
+        window_inds = past_inds[window_start <= tag$times[past_inds]]
+        # compute proportion of recent observations spent below a depth
+        sum(tag$depths[window_inds] >= depth_threshold) / length(window_inds)
+      }))
+      # build and add covariates
+      covariates = rbind(
+        intercept = rep(1, length(seg_inds)),
+        daytime = tag$daytime[seg_inds],
+        moonlit = tag$moonlit[seg_inds],
+        prop_recent_deep = prop_recent_deep
+      )
+      nim_pkg$data$covariates = cbind(
+        nim_pkg$data$covariates,
+        covariates
+      )
       # save segment information
       nim_pkg$consts$segments = rbind(
         nim_pkg$consts$segments,
@@ -90,6 +113,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
   }
   
   # compute size, etc. constants
+  nim_pkg$consts$n_covariates = nrow(nim_pkg$data$covariates)
   nim_pkg$consts$n_segments = nrow(nim_pkg$consts$segments)
   nim_pkg$consts$n_subjects = length(unique(
     nim_pkg$consts$segments[, 'subject_id']
@@ -104,6 +128,15 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       nvals = lambda_discretization[3]
     )
   }
+  
+  # initialize stage transition covariates
+  nim_pkg$inits$beta_tx = array(0, dim = c(nim_pkg$consts$n_covariates,
+                                           nim_pkg$consts$n_stages,
+                                           nim_pkg$consts$n_stages - 1))
+  
+  # initialize stage transition covariate priors
+  nim_pkg$consts$beta_tx_mu = numeric(nim_pkg$consts$n_stages - 1)
+  nim_pkg$consts$beta_tx_cov = 1e2 * diag(nim_pkg$consts$n_stages - 1)
 
   nim_pkg
 }

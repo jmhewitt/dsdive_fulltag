@@ -23,8 +23,6 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   # Return: 
   #  a list containing file names of sampler outputs
   
-
-  
   # define and compile model
   model = nimbleModel(code = modelCode, constants = nim_pkg$consts, 
                       data = nim_pkg$data, inits = nim_pkg$inits, 
