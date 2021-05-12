@@ -10,15 +10,6 @@ sampler_Stage = nimble::nimbleFunction(
     #
     # detect FFBS dependencies induced via depths distribution
     #
-    
-    # node holding stage transition probability coefficients 
-    betas_tx_node <- deparse(model$getParamExpr(target, 'betas'))
-    
-    # support for latent stage at each timepoint
-    stage_supports <- deparse(model$getParamExpr(target, 'stage_supports'))
-    
-    # nodes containing indicators for when animal is on surface
-    surface_bin <- deparse(model$getParamExpr(target, 'surface_bin'))
 
     # depth nodes, which constrain filtering distribution for latent stages
     depth_nodes <- calcNodes[which(model$getDistribution(calcNodes) == 'dbins')]
@@ -26,39 +17,28 @@ sampler_Stage = nimble::nimbleFunction(
     # number of depth bins model is defined over
     n_bins <- model$getParamExpr(depth_nodes, 'n_bins')
     
-    # node containing depth bin transition matrices
+    # node containing depth bin and stage transition matrices
     transition_matrices <- deparse(model$getParamExpr(depth_nodes, 'tmats'))
-    alpha_nodes_as_scalar <- deparse(model$getParamExpr(depth_nodes, 'alpha'))
+    txmat_stages_nodes <- deparse(model$getParamExpr(target, 'txmat'))
     
-    # nodes containing movement parameters and covariates
-    alpha_node <- deparse(model$getParamExpr(depth_nodes, 'alpha'))
-    beta_node <- deparse(model$getParamExpr(depth_nodes, 'beta'))
-    covariate_node <- deparse(model$getParamExpr(depth_nodes, 'covariates'))
-
+    # node containing modeled lambda values
+    lambda_inds_nodes <- deparse(model$getParamExpr(depth_nodes, 'lambda_inds'))
+    
     # nodes containing parameter discretization and definition
-    stage_map_nodes <- deparse(model$getParamExpr(depth_nodes, 'stage_map'))
-    n_pi_node <- deparse(model$getParamExpr(depth_nodes, 'n_pi'))
-    n_lambda_node <- deparse(model$getParamExpr(depth_nodes, 'n_lambda'))
-    pi_discretization_node <- deparse(
-      model$getParamExpr(depth_nodes, 'pi_discretization')
-    )
-    lambda_discretization_node <- deparse(
-      model$getParamExpr(depth_nodes, 'lambda_discretization')
-    )
-    
+    stage_defs_nodes <- deparse(model$getParamExpr(depth_nodes, 'stage_defs'))
+    n_pi <- model$getParamExpr(depth_nodes, 'n_pi')
+    n_lambda <- model$getParamExpr(depth_nodes, 'n_lambda')
+
     
     #
     # derived dimensions
     #
     
     # number of latent stage types in model
-    n_stages <- length(model[[stage_map_nodes]])
+    n_stages <- nrow(model[[stage_defs_nodes]])
     
     # number of latent stages to sample
     n_timepoints <- length(model[[depth_nodes]])
-    
-    # number of covariates in model
-    n_covariates <- nrow(model[[covariate_node]])
   
   },
   
@@ -68,20 +48,14 @@ sampler_Stage = nimble::nimbleFunction(
     model[[target]] <<- ffbs_stages(
       depths = model[[depth_nodes]],
       n_timepoints = n_timepoints,
-      transition_matrices = model[[transition_matrices]],
-      n_bins = n_bins, 
       n_stages = n_stages,
-      stage_map = model[[stage_map_nodes]],
-      alpha = matrix(values(model, alpha_node), nrow = n_covariates), 
-      beta = matrix(values(model ,beta_node), nrow = n_covariates),
-      covariates = model[[covariate_node]],
-      pi_discretization = model[[pi_discretization_node]],
-      n_pi = model[[n_pi_node]],
-      n_lambda = model[[n_lambda_node]],
-      lambda_discretization = model[[lambda_discretization_node]],
-      betas_tx = matrix(values(model, betas_tx_node), nrow = n_covariates),
-      stage_supports = model[[stage_supports]],
-      surface_bin = model[[surface_bin]]
+      stage_defs = model[[stage_defs_nodes]],
+      lambda_inds = model[[lambda_inds_nodes]],
+      n_bins = n_bins, 
+      n_pi = n_pi,
+      n_lambda = n_lambda,
+      transition_matrices = model[[transition_matrices]],
+      txmat_stages = model[[txmat_stages_nodes]]
     )
     
     # update log probability

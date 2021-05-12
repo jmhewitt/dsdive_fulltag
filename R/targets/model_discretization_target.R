@@ -1,31 +1,13 @@
 model_discretization_target = list(
 
   # discretization of parameter space
-  tar_target(name = parameter_discretization, 
-             command = list(
-
-    # vertical speeds, by movement structure (i.e., stage)
-    lambda = matrix(
-      rep(c(0, .05, 101), 4),
-      ncol = 3, byrow = TRUE,
-      dimnames = list(
-        rownames = c('descent', 'foraging', 'ascent', 'free'),
-        colnames = c('min_val', 'stepsize', 'nvals')
-      )
-    ),
-
-    # directional preferences, by movement structure (i.e., stage)
-    pi = matrix(
-      c(0.5, .01, 51,
-        0.5, 1, 1,
-        0.0, .01, 51,
-        0, .01, 101),
-      ncol = 3, byrow = TRUE,
-      dimnames = list(
-        rownames = c('descent', 'foraging', 'ascent', 'free'),
-        colnames = c('min_val', 'stepsize', 'nvals')
-      )
-    )
+  tar_target(
+    name = parameter_discretization, 
+    command = list(
+      # vertical speeds
+      lambda = c(min_val = 0, stepsize = .05, nvals = 101),
+      # directional preferences
+      pi = c('ascent' = .01, 'free' = .5, 'descent' = .99)
   )),
 
   # transition matrices
@@ -38,36 +20,28 @@ model_discretization_target = list(
       bin_widths = 2 * template_bins$halfwidth
 
       # range of model parameters to consider under each dive construction
-      movement_types = c('descent', 'foraging', 'ascent', 'free')
-      stages = rep(6,4)
-      params = lapply(movement_types, function(mv_type) {
-        expand.grid(
-          pi = seq(
-            from = parameter_discretization$pi[mv_type, 'min_val'],
-            by = parameter_discretization$pi[mv_type, 'stepsize'],
-            length.out = parameter_discretization$pi[mv_type, 'nvals']
-          ),
-          lambda = seq(
-            from = parameter_discretization$lambda[mv_type, 'min_val'],
-            by = parameter_discretization$lambda[mv_type, 'stepsize'],
-            length.out = parameter_discretization$lambda[mv_type, 'nvals']
-          )
+      params = expand.grid(
+        pi = parameter_discretization$pi,
+        lambda = seq(
+          from = parameter_discretization$lambda['min_val'],
+          by = parameter_discretization$lambda['stepsize'],
+          length.out = parameter_discretization$lambda['nvals']
         )
-      })
-      names(params) = movement_types
+      )
+      
+      # CTMC transition matrices based on unrestricted bin movement
+      stage = 6
 
       # compute CTMC transition matrix for this time duration
-      tstep = sattag_timestep / imputation_factor
+      tstep = sattag_timestep
 
       # condensed transition matrices for movement structures
-      as.numeric(do.call(cbind, mapply(function(params, stage) {
-        apply(params, 1, function(r) {
-          expm(tstep * buildInfinitesimalGenerator(
-            pi = r['pi'], lambda = r['lambda'], M = n_bins, stage = stage,
-            widths = bin_widths
-          ))
-        })
-      }, params, stages, SIMPLIFY = FALSE)))
+      as.numeric(apply(params, 1, function(r) {
+        expm(tstep * buildInfinitesimalGenerator(
+          pi = r['pi'], lambda = r['lambda'], M = n_bins, stage = stage,
+          widths = bin_widths
+        ))
+      }))
     }
   )
 

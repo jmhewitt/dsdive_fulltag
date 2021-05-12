@@ -1,6 +1,7 @@
 imputation_plots = function(mcmc_sample_dir, output_dir, template_bins, 
                             tag_info) {
   
+  browser()
   # load source data
   nim_pkg = readRDS(dir(
     path = mcmc_sample_dir, pattern = 'nim_pkg.rds', full.names = TRUE
@@ -19,14 +20,14 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
   # aggregate posterior stage samples
   stage_summary = matrix(as.integer(0), 
                          nrow = nim_pkg$consts$n_stages, 
-                         ncol = nim_pkg$consts$n_timepoints)
+                         ncol = length(nim_pkg$data$depths))
   for(f in stage_sample_files) {
     stage_samples = readRDS(f)
     stage_summary = stage_summary + apply(stage_samples, 2, function(samples) {
       tabulate(bin = samples, nbins = nim_pkg$consts$n_stages)
     })
   }
-  rownames(stage_summary) = names(nim_pkg$consts$movement_types)
+  rownames(stage_summary) =  rownames(movement_classes$stage_defs)
   
   # normalize posteriors
   stage_summary = stage_summary / colSums(stage_summary)[1]
@@ -34,13 +35,12 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
   # enrich with information for plotting
   df = data.frame(
     t(stage_summary), 
-    time = as.POSIXct(nim_pkg$data$times, origin = '1970-01-01 00:00.00 UTC'), 
+    # time = as.POSIXct(nim_pkg$data$times, origin = '1970-01-01 00:00.00 UTC'), 
     depth_bin = nim_pkg$data$depths,
     depth = template_bins$center[nim_pkg$data$depths],
-    sample_stages = names(nim_pkg$consts$movement_types)[
+    sample_stages = rownames(movement_classes$stage_defs)[
       stage_samples[nrow(stage_samples),]
-    ],
-    n_stage_support = colSums(nim_pkg$data$stage_supports)
+    ]
   )
   
   # create output directory
@@ -73,56 +73,104 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
     if(is.list(inds)) {
       inds = do.call(c, inds)
     }
+    df$time = 1:nrow(df)
+    df$stage_mode = rownames(stage_summary)[apply(stage_summary, 2, which.max)]
     
-    # plot posterior probabilities for deep-forage state
-    pl = ggplot(df[inds,],
-                aes(x = time, y = depth, 
-                    col = cut(deep_forage, 
-                              breaks = seq(from = 0, to = 1, by = .2), 
-                              include.lowest = TRUE))) + 
-      # depth series
-      geom_line(col = 'grey80') + 
-      geom_point() +
-      # deep depth indicator
-      geom_hline(yintercept = 800, lty = 3) + 
-      # cee time 
-      geom_vline(xintercept = cee_start, lty = 3) + 
-      # formatting
-      depth_scale + 
-      scale_x_datetime() + 
-      scale_color_brewer('Deep-forage prob.', type = 'seq', palette = 'OrRd') + 
-      theme_few() + 
-      theme(axis.title.x = element_blank(),
-            panel.grid.minor.y = element_line(color = 'grey90'),
-            panel.grid.major.y = element_line(color = 'grey90'))
-    
-    f =  file.path(output_dir, 
-                   paste('deep_forage_probs_', subj_label, '.pdf', sep = '')
-    )
-    
-    ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12*12, 
-           limitsize = FALSE)
-    
-    # plot a sample stage imputation
-    pl = ggplot(df[inds,], aes(x = time, y = depth, col = sample_stages)) + 
+    # plot posterior mode for stage speed
+    pl = ggplot(df[inds,] %>% 
+                  mutate(mode_dir = gsub(pattern = '_(ascent|descent|free)',  
+                                         replacement = '', 
+                                         x = stage_mode)), 
+                aes(x = time, y = depth, col = mode_dir)) + 
       # imputed trajectory as path
       geom_line(col = 'grey80') +
       # imputed trajectory as discrete depths
       geom_point() + 
       # deep depth threshold
       geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
-      # cee time 
-      geom_vline(xintercept = cee_start, lty = 3) + 
       # formatting
-      # scale_color_brewer(type = 'qual', palette = 'Dark2') + 
-      scale_color_manual(
-        values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
-                   shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
-                   deep_forage = '#d95f02', free_surface = '#e7298a')
-      ) + 
+      scale_color_brewer(type = 'qual', palette = 'Dark2') +
+      # scale_color_manual(
+      #   values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
+      #              shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
+      #              deep_forage = '#d95f02', free_surface = '#e7298a')
+      # ) + 
       depth_scale + 
-      scale_x_datetime(date_breaks = '12 hours', 
-                       date_labels = c('%b %d', ' ')) + 
+      # scale_x_datetime(date_breaks = '12 hours', 
+      #                  date_labels = c('%b %d', ' ')) + 
+      theme_few() + 
+      theme(axis.title.x = element_blank(), 
+            legend.title = element_blank(),
+            panel.grid.minor.y = element_line(color = 'grey90'),
+            panel.grid.major.y = element_line(color = 'grey90'))
+    
+    # save plot of dive record 
+    f =  file.path(output_dir, 
+                   paste('posterior_mode_speed_', subj_label, '.pdf', sep = '')
+    )
+    
+    ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12*12, 
+           limitsize = FALSE)
+    
+    # plot posterior mode for stage direction
+    pl = ggplot(df[inds,] %>% 
+                  mutate(mode_dir = gsub(pattern = '(slow|medium|fast)_',  
+                                           replacement = '', 
+                                           x = stage_mode)), 
+                aes(x = time, y = depth, col = mode_dir)) + 
+      # imputed trajectory as path
+      geom_line(col = 'grey80') +
+      # imputed trajectory as discrete depths
+      geom_point() + 
+      # deep depth threshold
+      geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
+      # formatting
+      scale_color_brewer(type = 'qual', palette = 'Dark2') +
+      # scale_color_manual(
+      #   values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
+      #              shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
+      #              deep_forage = '#d95f02', free_surface = '#e7298a')
+      # ) + 
+      depth_scale + 
+      # scale_x_datetime(date_breaks = '12 hours', 
+      #                  date_labels = c('%b %d', ' ')) + 
+      theme_few() + 
+      theme(axis.title.x = element_blank(), 
+            legend.title = element_blank(),
+            panel.grid.minor.y = element_line(color = 'grey90'),
+            panel.grid.major.y = element_line(color = 'grey90'))
+    
+    # save plot of dive record 
+    f =  file.path(output_dir, 
+                   paste('posterior_mode_dir_', subj_label, '.pdf', sep = '')
+    )
+    
+    ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12*12, 
+           limitsize = FALSE)
+    
+    
+    # plot a sample stage imputation
+    pl = ggplot(df[inds,] %>% 
+                  mutate(sample_dir = gsub(pattern = '(slow|medium|fast)_',  
+                                           replacement = '', 
+                                           x = sample_stages)), 
+                aes(x = time, y = depth, col = sample_dir)) + 
+      # imputed trajectory as path
+      geom_line(col = 'grey80') +
+      # imputed trajectory as discrete depths
+      geom_point() + 
+      # deep depth threshold
+      geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
+      # formatting
+      scale_color_brewer(type = 'qual', palette = 'Dark2') +
+      # scale_color_manual(
+      #   values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
+      #              shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
+      #              deep_forage = '#d95f02', free_surface = '#e7298a')
+      # ) + 
+      depth_scale + 
+      # scale_x_datetime(date_breaks = '12 hours', 
+      #                  date_labels = c('%b %d', ' ')) + 
       theme_few() + 
       theme(axis.title.x = element_blank(), 
             legend.title = element_blank(),
@@ -137,35 +185,6 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
     ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12*12, 
            limitsize = FALSE)
     
-    # plot number of possible stages at each observation
-    pl = ggplot(df[inds,], aes(x = time, y = depth, 
-                               col = factor(n_stage_support))) + 
-      # imputed trajectory as path
-      geom_line(col = 'grey80') +
-      # imputed trajectory as discrete depths
-      geom_point() + 
-      # deep depth threshold
-      geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
-      # cee time 
-      geom_vline(xintercept = cee_start, lty = 3) + 
-      # formatting
-      scale_color_viridis_d(direction = -1) + 
-      depth_scale + 
-      scale_x_datetime(date_breaks = '12 hours', 
-                       date_labels = c('%b %d', ' ')) + 
-      theme_few() + 
-      theme(axis.title.x = element_blank(), 
-            legend.title = element_blank(),
-            panel.grid.minor.y = element_line(color = 'grey90'),
-            panel.grid.major.y = element_line(color = 'grey90'))
-    
-    # save plot of dive record 
-    f =  file.path(output_dir, 
-                   paste('n_stages_possible_', subj_label, '.pdf', sep = '')
-    )
-    
-    ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12*12, 
-           limitsize = FALSE)
     
   }
   

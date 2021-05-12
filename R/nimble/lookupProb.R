@@ -1,11 +1,9 @@
 lookupProb = nimble::nimbleFunction(
-  run = function(movement_type = double(0), pi_ind = double(0), 
+  run = function(pi_ind = double(0), 
                  lambda_ind = double(0), i = double(0), j = double(0), 
-                 n_pi = double(1), n_lambda = double(1), n_bins = double(0), 
+                 n_pi = double(0), n_lambda = double(0), n_bins = double(0), 
                  tmats = double(1)) {
     # Parameters:
-    #  movement_type - the type of movement (i.e., ascent, forage, descent) 
-    #    the probability lookup is for
     #  pi_ind - the index of the pre-specified descent preference value
     #  lambda_ind - the index of the pre-specified speed value
     #  i - the depth bin being transitioned from
@@ -23,58 +21,11 @@ lookupProb = nimble::nimbleFunction(
     # index w/in target matrix (stored in col. major format)
     index <- n_bins * (j-1) + i
     
-    # offset wrt. movement type
-    if(movement_type > 1) {
-      index <- index + Ksq * n_pi[1] * n_lambda[1]
-    }
-    if(movement_type > 2) {
-      index <- index + Ksq * n_pi[2] * n_lambda[2]
-    }
-    if(movement_type > 3) {
-      index <- index + Ksq * n_pi[3] * n_lambda[3]
-    }
-    
     # return after offsetting wrt. grouping vars
     p <- tmats[
-      index + Ksq * (n_pi[movement_type] * (lambda_ind - 1) + pi_ind - 1)
+      index + Ksq * (n_pi * (lambda_ind - 1) + pi_ind - 1)
       ]
     
     return(p)
   }
 )
-
-
-# Demo to validate the methods work as intended
-# 
-# mt = 1
-# pi_ind = 26
-# lambda_ind = 1
-# i = 3
-# j = 2
-# 
-# x = lookupProb(movement_type = mt, pi_ind = pi_ind, 
-#                lambda_ind = lambda_ind, i = i, j = j, 
-#                n_pi = parameter_discretization$pi[, 'nvals'], 
-#                n_lambda = parameter_discretization$lambda[, 'nvals'], 
-#                n_bins = n_bins, tmats = tmats)
-# 
-# xm = lookupTmat(movement_type = mt, pi_ind = pi_ind, 
-#                 lambda_ind = lambda_ind, 
-#                 n_pi = parameter_discretization$pi[, 'nvals'], 
-#                 n_lambda = parameter_discretization$lambda[, 'nvals'], 
-#                 n_bins = n_bins, tmats = tmats)
-# 
-# validateMat = expm(tstep * buildInfinitesimalGenerator(
-#   pi = seq(from = parameter_discretization$pi[mt, 'min_val'], 
-#            by = parameter_discretization$pi[mt, 'stepsize'], 
-#            length.out = parameter_discretization$pi[mt, 'nvals'])[pi_ind], 
-#   lambda = seq(from = parameter_discretization$lambda[mt, 'min_val'], 
-#                by = parameter_discretization$lambda[mt, 'stepsize'], 
-#                length.out = parameter_discretization$lambda[mt, 'nvals'])[lambda_ind], 
-#   M = n_bins, 
-#   stage = mt, 
-#   widths = bin_widths
-# ))
-# 
-# identical(x, validateMat[i,j])
-# identical(xm, validateMat)

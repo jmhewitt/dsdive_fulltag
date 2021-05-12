@@ -6,7 +6,7 @@ output:
 header-includes:
   - \usepackage{booktabs}
 params:
-    tgt_dir: nim_fit_val
+    tgt_dir: nim_fit
 ---
 
 
@@ -45,15 +45,16 @@ parameter_families = setdiff(
   'stages'
 )
 
-# associate actively sampled targets with the common parameter names
-sampler_groups = lapply(parameter_families, function(pfam) {
-  grep(pattern = paste(pfam, '\\[', sep = ''), 
-       x = active_samplers, value = TRUE)
-})
-names(sampler_groups) = parameter_families
-sampler_groups = sampler_groups[order(names(sampler_groups))]
+# # associate actively sampled targets with the common parameter names
+# sampler_groups = lapply(parameter_families, function(pfam) {
+#   grep(pattern = paste(pfam, '\\[', sep = ''), 
+#        x = active_samplers, value = TRUE)
+# })
+# names(sampler_groups) = parameter_families
+# sampler_groups = sampler_groups[order(names(sampler_groups))]
 
-rm(active_samplers, parameter_families)
+
+rm(active_samplers)
 ```
 
 ```{r output_files}
@@ -70,7 +71,14 @@ colnames(param_samples) = readRDS(
       full.names = TRUE)
 )
 
-rm(param_sample_files)
+# associate actively sampled targets with the common parameter names
+sampler_groups = lapply(parameter_families, function(pfam) {
+  grep(pattern = pfam, x = colnames(param_samples), value = TRUE)
+})
+names(sampler_groups) = parameter_families
+sampler_groups = sampler_groups[order(names(sampler_groups))]
+
+rm(param_sample_files, parameter_families)
 ```
 
 ```{r set_burn}
@@ -159,7 +167,7 @@ invisible(mapply(
 
 ```{r ess_table_alpha_mu}
 # effective sizes (ESS's) for alpha_mu parameters
-e = effectiveSize(param_samples[-burn, sampler_groups$alpha_mu])
+e = effectiveSize(param_samples[-burn, sampler_groups$lambda])
 
 # extract matrix index descriptions for parameters
 arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
@@ -167,108 +175,17 @@ arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
 }))
 
 # initialize container to store ESS's with their parameter labels
-m = nim_pkg$inits$alpha_mu * NA
+m = nim_pkg$inits$lambda * NA
 
 # push ESS's into storage container
 for(i in 1:nrow(arr_inds)) {
-  m[arr_inds[i,1], arr_inds[i,2]] = e[i]
+  m[arr_inds[i,1]] = e[i]
 }
 
-# remove unpopulated rows, and round ESS's to nearest integer
-nz_rows = apply(m, 1, function(x) any(is.finite(x)))
-nz_cols = apply(m, 2, function(x) any(is.finite(x)))
-m = round(m[nz_rows, nz_cols])
+m = round(m)
 
 # more compact printing
-knitr::kable(t(m), digits = 0, caption = 'ESS for alpha_mu', booktabs = TRUE)
-```
-
-```{r ess_table_beta_mu}
-# effective sizes (ESS's) for betas_tx_mu parameters
-tgt = ifelse('beta_mu' %in% names(sampler_groups), 'beta_mu', 'beta')
-
-e = effectiveSize(param_samples[-burn, sampler_groups[[tgt]]])
-
-# extract matrix index descriptions for parameters
-arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
-  as.numeric(unlist(strsplit(gsub('[A-z\\[\\]]*', '', tgt), ',')))
-}))
-
-# initialize container to store ESS's with their parameter labels
-m = nim_pkg$inits$beta_mu * NA
-
-# push ESS's into storage container
-for(i in 1:nrow(arr_inds)) {
-  m[arr_inds[i,1], arr_inds[i,2]] = e[i]
-}
-
-# remove unpopulated rows, and round ESS's to nearest integer
-m = round(m[complete.cases(m),])
-
-# more compact printing
-knitr::kable(t(m), digits = 0, caption = paste('ESS for', tgt, sep = ' '), 
-             booktabs = TRUE)
-```
-
-```{r ess_table_betas_tx_mu}
-# effective sizes (ESS's) for betas_tx_mu parameters
-tgt = ifelse('betas_tx_mu' %in% names(sampler_groups), 'betas_tx_mu', 
-             'betas_tx')
-
-e = effectiveSize(param_samples[-burn, sampler_groups[[tgt]]])
-
-# extract matrix index descriptions for parameters
-arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
-  as.numeric(unlist(strsplit(gsub('[A-z\\[\\]]*', '', tgt), ',')))
-}))
-
-# initialize container to store ESS's with their parameter labels
-m = nim_pkg$inits$betas_tx_mu * NA
-
-# push ESS's into storage container
-for(i in 1:nrow(arr_inds)) {
-  m[arr_inds[i,1], arr_inds[i,2]] = e[i]
-}
-
-# remove unpopulated rows, and round ESS's to nearest integer
-# remove unpopulated rows, and round ESS's to nearest integer
-nz_rows = apply(m, 1, function(x) any(is.finite(x)))
-nz_cols = apply(m, 2, function(x) any(is.finite(x)))
-m = round(m[nz_rows, nz_cols])
-
-# more compact printing
-knitr::kable(t(m), digits = 0, booktabs = TRUE, 
-             caption = paste('ESS for', tgt, sep = ' '))
-```
-
-```{r ess_table_betas_tx_stage_offset, eval = FALSE}
-# effective sizes (ESS's) for betas_tx_mu parameters
-if('betas_tx_stage_offset' %in% names(sampler_groups)) {
-  e = effectiveSize(param_samples[-burn, sampler_groups$betas_tx_stage_offset])
-
-# extract matrix index descriptions for parameters
-arr_inds = do.call(rbind, lapply(names(e), function(tgt) {
-  as.numeric(unlist(strsplit(gsub('[A-z\\[\\]]*', '', tgt), ',')))
-}))
-
-# initialize container to store ESS's with their parameter labels
-m = nim_pkg$inits$betas_tx_stage_offset * NA
-
-# push ESS's into storage container
-for(i in 1:nrow(arr_inds)) {
-  m[arr_inds[i,1], arr_inds[i,2]] = e[i]
-}
-
-# remove unpopulated rows, and round ESS's to nearest integer
-# remove unpopulated rows, and round ESS's to nearest integer
-nz_rows = apply(m, 1, function(x) any(is.finite(x)))
-nz_cols = apply(m, 2, function(x) any(is.finite(x)))
-m = round(m[nz_rows, nz_cols])
-
-# more compact printing
-knitr::kable(t(m), digits = 0, booktabs = TRUE, 
-             caption = 'ESS for betas_tx_stage_offsets')
-}
+knitr::kable(t(m), digits = 0, caption = 'ESS for lambda', booktabs = TRUE)
 ```
 
 
@@ -284,12 +201,7 @@ library(tidyr)
 pt_ests = function(samples, dimnames) {
   # Parameters:
   #  samples - matrix of MCMC samples, each row of which is output for one iter.
-  
-  # extract matrix index descriptions for parameters
-  arr_inds = do.call(rbind, lapply(colnames(samples), function(tgt) {
-    as.numeric(unlist(strsplit(gsub('[A-z\\[\\]]*', '', tgt), ',')))
-  }))
-  
+
   # posterior HPDs for parameter estimates
   m = mcmc(samples)
   hpds = HPDinterval(m)
@@ -299,22 +211,45 @@ pt_ests = function(samples, dimnames) {
     param = factor(colnames(samples)),
     est = colMeans(m),
     lwr = hpds[,'lower'],
-    upr = hpds[,'upper'],
-    covariate = factor(dimnames[[1]][arr_inds[,1]]),
-    attribute = factor(dimnames[[2]][arr_inds[,2]])
+    upr = hpds[,'upper']
   )
   
-  ggplot(df, aes(x = factor(attribute), y = est, ymin = lwr, ymax = upr)) + 
+  ggplot(df, aes(x = param, y = est, ymin = lwr, ymax = upr)) + 
     geom_pointrange() +
     geom_hline(yintercept = 0, lty = 3) + 
     ylab('Regression effect') + 
-    facet_wrap(~covariate, ncol = 1, scales = 'free_y', 
-               strip.position = 'right') + 
     theme_few() + 
     theme(axis.title.y = element_blank(),
           panel.grid.major.y = element_line(color = 'grey90')) + 
     coord_flip()
 }
+```
+
+
+```{r pt_est_table}
+cbind(
+  mean = colMeans(mcmc(param_samples[-burn, sampler_groups$lambda, drop = FALSE])),
+  HPDinterval(mcmc(param_samples[-burn, sampler_groups$lambda, drop = FALSE]))
+)
+
+cor(param_samples[-burn, sampler_groups$lambda])
+
+
+targets::tar_load(movement_classes)
+n_stages = nrow(movement_classes$stage_defs)
+m = matrix(NA, nrow = n_stages, ncol = n_stages)
+for(i in 1:n_stages) {
+  for(j in 1:n_stages) {
+    m[i,j] = effectiveSize(mcmc(
+      param_samples[-burn, paste('txmat_stages[', i, ', ', j, ']', sep = '')]
+    ))
+  }
+}
+
+rownames(m) = rownames(movement_classes$stage_defs)
+colnames(m) = rownames(movement_classes$stage_defs)
+
+round(m,2)
 ```
 
 ```{r pt_ests, dependson='pt_ests_fn', fig.width=8, fig.height=8}
@@ -324,11 +259,13 @@ if('beta_mu' %in% names(sampler_groups)) {
   sub_groups = sampler_groups[sort(c('alpha_mu', 'beta', 'betas_tx'))]
 }
 
+sub_groups = sampler_groups
+
 invisible(mapply(
   function(g, name) {
     print(
       pt_ests(samples = param_samples[-burn, g, drop = FALSE], 
-              dimnames = dimnames(nim_pkg$inits[[name]])) + 
+              dimnames = 1:length(nim_pkg$inits[[name]])) + 
         ggtitle(name)
     )
   }, 

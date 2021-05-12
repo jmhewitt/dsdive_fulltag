@@ -44,7 +44,8 @@ data_targets = list(
     command = load_raw(depth_files = depth_files, 
                        template_bins = template_bins, tag_info = tag_info, 
                        dive_labels = dive_labels, deep_depth_threshold = 800, 
-                       lon_lat_mean = cape_hatteras_loc)
+                       lon_lat_mean = cape_hatteras_loc,
+                       timestep = sattag_timestep)
   )
   
 )

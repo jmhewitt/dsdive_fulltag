@@ -1,6 +1,6 @@
 fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf, 
                max_batch_time = Inf, max_batch_mem = 1024^3,
-               sample_dir, structural_covariates) {
+               sample_dir) {
   # Build an MCMC sampler to approximate posterior inference.  Sampler will 
   # run in batches, periodically dumping samples to disk.  The time between 
   # dumps depends on the number of samples in each batch, and this is set to
@@ -19,11 +19,11 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   #  max_batch_iter - maximum number of samples per batch
   #  max_batch_mem - maximum size of samples per batch (bytes), default is 1 GiB
   #  sample_dir - directory in which to save sample files
-  #  structural_covariates - list of covariates for which effects should not 
-  #    be estimated
   # 
   # Return: 
   #  a list containing file names of sampler outputs
+  
+
   
   # define and compile model
   model = nimbleModel(code = modelCode, constants = nim_pkg$consts, 
@@ -33,193 +33,7 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
   
   # initialize MCMC config
   conf = configureMCMC(model)
-  
-  # remove all descent prob. samplers for stages w/fixed descent parameters
-  stage_ind = which(
-    colnames(nim_pkg$inits$alpha_mu) %in% c('deep_forage', 'free_surface')
-  )
-  for(i in 1:nim_pkg$consts$n_covariates) {
-    conf$removeSampler(
-      paste('alpha_mu[', i, ', ', stage_ind, ']', sep ='')
-    )
-    # conf$removeSampler(
-    #   paste('alpha_var[', i, ', ', stage_ind, ']', sep ='')
-    # )
-    # for(j in 1:nim_pkg$consts$n_subjects) {
-    #   conf$removeSampler(
-    #     paste('alpha[', i, ', ', stage_ind, ', ', j, ']', sep ='')
-    #   )
-    # }
-  }
-  
-  # do not allow most covariates to influence descent probs
-  covariate_inds = which(
-    !(rownames(nim_pkg$data$covariates) %in% c('intercept'))
-  )
-  for(i in covariate_inds) {
-    for(j in 1:nim_pkg$consts$n_stages) {
-      conf$removeSampler(paste('alpha_mu[', i, ', ', j, ']', sep = ''))
-      # conf$removeSampler(paste('alpha_var[', i, ', ', j, ']', sep = ''))
-      for(k in 1:nim_pkg$consts$n_subjects) {
-        # conf$removeSampler(paste('alpha[', i, ', ', j, ', ', k, ']', sep = ''))
-      }
-    }
-  }
-  
-  # do not estimate effects of static covariates on speed
-  static_covariates = c(
-    structural_covariates, 'deep_depth', 'shallow_depth', 
-    'time_since_surface', 'depth'
-  )
-  covariate_inds = which(
-    rownames(nim_pkg$data$covariates) %in% static_covariates
-  )
-  for(i in covariate_inds) {
-    for(j in 1:nim_pkg$consts$n_stages) {
-      conf$removeSampler(paste('beta_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('beta_var[', i, ', ', j, ']', sep = ''))
-      for(k in 1:nim_pkg$consts$n_subjects) {
-        conf$removeSampler(paste('beta[', i, ', ', j, ', ', k, ']', sep = ''))
-      }
-    }
-  }
-  
-  # do not estimate depth effect on speed for free_surface periods
-  stage_inds = which(
-    colnames(nim_pkg$inits$beta_mu) %in% 'free_surface'
-  )
-  covariate_inds = which(
-    rownames(nim_pkg$data$covariates) %in% 'depth'
-  )
-  for(i in covariate_inds) {
-    for(j in stage_inds) {
-      # set parameters to identity
-      model_c[[paste('beta_mu[', i, ', ', j, ']', sep = '')]] = 0
-      model_c[[paste('beta_var[', i, ', ', j, ']', sep = '')]] = 1
-      # remove samplers
-      conf$removeSampler(paste('beta_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('beta_var[', i, ', ', j, ']', sep = ''))
-      for(k in 1:nim_pkg$consts$n_subjects) {
-        # set parameters to identity
-        model_c[[paste('beta[', i, ', ', j, ', ', k, ']', sep = '')]] = 0
-        # remove samplers
-        conf$removeSampler(paste('beta[', i, ', ', j, ', ', k, ']', sep = ''))
-      }
-    }
-  }
-  
-  # do not estimate effects of static covariates on stage tx params
-  static_covariates = c(
-    structural_covariates, 'deep_depth', 'shallow_depth', 'time_since_surface',
-    'depth'
-  )
-  covariate_inds = which(
-    rownames(nim_pkg$data$covariates) %in% static_covariates
-  )
-  for(i in covariate_inds) {
-    for(j in 1:nim_pkg$consts$n_stage_txs) {
-      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
-      for(k in 1:nim_pkg$consts$n_subjects) {
-        conf$removeSampler(
-          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
-        )
-      }
-    }
-  }
-  
-  # identifiability constraint: depth doesn't influence surface-level stage tx.
-  covariate_inds = which(
-    rownames(nim_pkg$data$covariates) %in% c('depth')
-  )
-  stage_tx_inds = which(
-    grepl(pattern = '(deep_ascent|shallow_ascent|free_surface)__', 
-          x = colnames(nim_pkg$inits$betas_tx_mu))
-  )
-  for(i in covariate_inds) {
-    for(j in stage_tx_inds) {
-      # set variables to identity
-      model_c[[paste('betas_tx_mu[', i, ', ', j, ']', sep = '')]] = 0
-      model_c[[paste('betas_tx_var[', i, ', ', j, ']', sep = '')]] = 1
-      # remove samplers
-      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
-      for(k in 1:nim_pkg$consts$n_subjects) {
-        # set variable to identity
-        model_c[[paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')]] = 0
-        # remove sampler
-        conf$removeSampler(
-          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
-        )
-      }
-    }
-  }
-  
-  # restricted stage tx model: don't estimate deprecated effects
-  stage_tx_inds = which(
-    colnames(nim_pkg$inits$betas_tx_mu) %in% 
-      c('deep_ascent__deep_descent', 'shallow_ascent__deep_descent')
-  )
-  for(i in 1:nim_pkg$consts$n_covariates) {
-    for(j in stage_tx_inds) {
-      # set variables to identity
-      model_c[[paste('betas_tx_mu[', i, ', ', j, ']', sep = '')]] = 0
-      model_c[[paste('betas_tx_var[', i, ', ', j, ']', sep = '')]] = 1
-      # remove samplers
-      conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
-      conf$removeSampler(paste('betas_tx_var[', i, ', ', j, ']', sep = ''))
-      for(k in 1:nim_pkg$consts$n_subjects) {
-        # set variables to identity
-        model_c[[paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')]] = 0
-        # remove samplers
-        conf$removeSampler(
-          paste('betas_tx[', i, ', ', j, ', ', k, ']', sep = '')
-        )
-      }
-    }
-  }
-  
-  # # for identifiability, don't estimate deviations from stage tx offsets for 
-  # # stages with only one viable transition.  this deconflicts population-level
-  # # means while leaving random effects untouched.
-  # stage_tx_inds = which(
-  #   !(nim_pkg$consts$betas_tx_stage_from %in% nim_pkg$consts$ascent_like_stages)
-  # )
-  # for(i in 1:nim_pkg$consts$n_covariates) {
-  #   for(j in stage_tx_inds) {
-  #     conf$removeSampler(paste('betas_tx_mu[', i, ', ', j, ']', sep = ''))
-  #   }
-  # }
-  
-  # use blocked samplers for stage transition effects between stages
-  covariate_inds = which(
-    rownames(nim_pkg$data$covariates) %in% c('intercept', 'daytime', 'moonlit')
-  )
-  for(stage in nim_pkg$consts$ascent_like_stages) {
-    # stage transition effects associated with stage
-    stage_tx_inds = which(nim_pkg$consts$betas_tx_stage_from == stage)
-    # replace intercept and offset random effect samplers with blocked samplers
-    for(k in 1:nim_pkg$consts$n_subjects) {
-      # identify all potentially relevant nodes
-      tgt = do.call(c, lapply(covariate_inds, function(covariate_ind) {
-          paste('betas_tx[', covariate_ind, ', ',
-                stage_tx_inds, ', ', k, ']', sep = '')
-        }))
-      # restrict target nodes to subset of actively sampled nodes 
-      tgt = tgt[tgt %in% sapply(conf$samplerConfs, function(s) s$target)]
-      # replace default samplers with block RW samplers if appropriate
-      if(length(tgt) > 1) {
-        conf$removeSamplers(tgt)
-        conf$addSampler(target = tgt, type = 'RW_block')
-      }
-    }
-  }
-  
-  # don't estimate population-level effects if so requested 
-  if(nim_pkg$consts$population_effects == FALSE) {
-    conf$removeSamplers(c('betas_tx_mu', 'betas_tx_var', 'beta_mu', 'beta_var'))
-  }
-  
+
   # latent stage vector samplers
   conf$removeSampler('stages')
   for(seg_ind in 1:nim_pkg$consts$n_segments) {

@@ -4,113 +4,50 @@ modelCode = nimble::nimbleCode({
   # efficient way to introduce large amounts of reference data into the model
   transition_matrices[1:n_txmat_entries] ~ dflatvec(length = n_txmat_entries)
   
-  # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # latent stage transition model population-level parameters
-  for(i in 1:n_covariates) {
-    for(j in 1:n_stage_txs) {
-      betas_tx_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)
-      betas_tx_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-    }
+  # speed classes
+  for(j in 1:n_lambda_class) {
+    # continuous parameter
+    lambda[j] ~ dgamma(shape = .01, rate = .01)
+    # index of discretized parameter
+    lambda_ind[j] <- closestIndex(
+      value = lambda[j],
+      minval = lambda_discretization[1],
+      stepsize = lambda_discretization[2],
+      nvals = lambda_discretization[3]
+    )
   }
   
-  # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # depth bin transition model population-level parameters
-  for(i in 1:n_covariates) {
-    for(j in 1:n_stages) {
-      beta_mu[i,j] ~ dnorm(mean = 0, sd = 1e2)  # controls vertical speeds
-      beta_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-    }
+  # constraint to assist in identifying speed classes
+  constraint_data ~ dconstraint(lambda[1] <= lambda[2] & lambda[2] <= lambda[3])
+  
+  # stage transition matrix
+  for(j in 1:n_stages) {
+    txmat_stages[j,1:n_stages] ~ ddirch(alpha = prior_alpha[1:n_stages])
   }
   
-  # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # depth bin transition model population-level parameters
-  for(i in 1:n_covariates) {
-    for(j in 1:n_stages) {
-      alpha_mu[i,j] ~ dnorm(mean = 0, sd = 1e2) # controls descent prob's
-      # alpha_var[i,j] ~ dinvgamma(shape = 2, rate = 1)
-    }
-  }
-  
-  # latent stage transition model random effects
-  for(i in 1:n_covariates) {
-    for(j in 1:n_stage_txs) {
-      for(k in 1:n_subjects) {
-        betas_tx[i, j, k] ~ dnorm(mean = betas_tx_mu[i, j],
-                                  var = betas_tx_var[i, j])
-      }
-    }
-  }
-  
-  # TODO: soft-code hyper priors to allow sensitivity studies, etc.
-  # depth bin transition model random effects
-  for(i in 1:n_covariates) {
-    for(j in 1:n_stages) {
-      for(k in 1:n_subjects) {
-        # transfer population-level effects as fixed effects
-        alpha[i,j,k] <- alpha_mu[i,j]
-        # individual-level random effects
-        # alpha[i,j,k] ~ dnorm(mean = alpha_mu[i,j], var = alpha_var[i,j])
-        beta[i,j,k] ~ dnorm(mean = beta_mu[i,j], var = beta_var[i,j])
-      }
-    }
-  }
-
   # largest sampling unit is a sequence of depth bins
   for(seg_num in 1:n_segments) {
     
-    # introduce covariates wrt a "dummy" distribution as this is the more
-    # efficient way to introduce large numbers of covariates into the model
-    covariates[
-      1:n_covariates,  segments[seg_num,1]:segments[seg_num,4]
-    ] ~ dflatmat(nrow = n_covariates, 
-                 ncol = segments[seg_num,4] - segments[seg_num,1] + 1)
-    
-    # introduce surface bin indicators wrt a "dummy" distribution as this is 
-    # the more efficient way to introduce large numbers of covariates into model
-    surface_bin[segments[seg_num,1]:segments[seg_num,4]] ~ dflatvec(
-      length = segments[seg_num,4] - segments[seg_num,1] + 1
-    )
-    
-    # introduce support for latent stages wrt a "dummy" distribution as this is 
-    # the more efficient way to introduce large numbers of consts into model
-    stage_supports[
-      1:n_stages, segments[seg_num,1]:segments[seg_num,4]
-    ] ~ dflatmat(nrow = n_stages, 
-                 ncol = segments[seg_num,4] - segments[seg_num,1] + 1)
-    
     # likelihood for latent stages
     stages[segments[seg_num,1]:segments[seg_num,4]] ~ dstages(
-      betas = betas_tx[1:n_covariates, 1:n_stage_txs, segments[seg_num, 3]],
-      covariates = covariates[
-        1:n_covariates,  segments[seg_num,1]:segments[seg_num,4]
-      ],
-      stage_supports = stage_supports[
-        1:n_stages, segments[seg_num,1]:segments[seg_num,4]
-      ],
-      surface_bin = surface_bin[segments[seg_num,1]:segments[seg_num,4]],
+      txmat = txmat_stages[1:n_stages, 1:n_stages],
       n_timepoints = segments[seg_num,2]
     )
     
     # likelihood for depth bin observations
     depths[segments[seg_num,1]:segments[seg_num,4]] ~ dbins(
-      # latent stages
+      # latent stages and definition
       stages = stages[segments[seg_num,1]:segments[seg_num,4]],
+      stage_defs = stage_defs[1:n_stages, 1:2],
+      # (variable) discretized parameters
+      lambda_inds = lambda_ind[1:n_lambda_class],
       # dimension information
-      n_bins = n_bins,
       n_timepoints = segments[seg_num,2],
-      stage_map = movement_types[1:n_stages],
-      # depth bin transition covariates for the subject associated w/segment
-      covariates = covariates[
-        1:n_covariates,  segments[seg_num,1]:segments[seg_num,4]
-      ],
-      beta = beta[1:n_covariates, 1:n_stages, segments[seg_num, 3]],
-      alpha = alpha[1:n_covariates, 1:n_stages, segments[seg_num, 3]],
+      n_bins = n_bins,
       # transition matrices and discretization
-      n_pi = n_pi[1:n_txmat_types],
-      n_lambda = n_lambda[1:n_txmat_types],
       tmats = transition_matrices[1:n_txmat_entries],
-      pi_discretization = pi_discretization[1:n_txmat_types, 1:3],
-      lambda_discretization = lambda_discretization[1:n_txmat_types, 1:3]
+      n_pi = n_pi, 
+      n_lambda = lambda_discretization[3]
     )
     
   }
