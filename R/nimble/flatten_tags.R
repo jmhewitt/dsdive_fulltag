@@ -1,6 +1,6 @@
 flatten_tags = function(template_bins, lambda_discretization, stage_defs,
                         init_movement_coefficients, transition_matrices, n_pi,
-                        tag_list, depth_threshold) {
+                        tag_list, depth_threshold, validation_pct = 0) {
   # Parameters:
   #   depth_threshold - depth used to generate prop_recent_deep covariate
   
@@ -71,6 +71,12 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       end_ind = min(segment_starts[seg_ind + 1] - 1, baseline_end_ind)
       # indices to analyze
       seg_inds = seq(from = start_ind, to = end_ind, by = 1)
+      # if using as a validation dataset, only train using the first portion
+      if(validation_pct > 0) {
+        train_subset = 1:ceiling(validation_pct * length(seg_inds))
+        seg_inds = seg_inds[train_subset]
+        end_ind = tail(seg_inds, 1)
+      }
       # skip segment if there are no transitions to analyze
       if(length(seg_inds) == 1) {
         next
