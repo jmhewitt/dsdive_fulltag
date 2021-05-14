@@ -18,7 +18,7 @@ modelCode = nimble::nimbleCode({
   }
   
   # constraint to assist in identifying speed classes
-  constraint_data ~ dconstraint(lambda[1] <= lambda[2] & lambda[2] <= lambda[3])
+  constraint_data ~ dconstraint(lambda[1] <= lambda[2])
   
   # stage transition matrix effects
   for(i in 1:n_covariates) {

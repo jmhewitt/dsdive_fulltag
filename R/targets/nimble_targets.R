@@ -6,7 +6,7 @@ nimble_targets = list(
     name = movement_classes, 
     command = {
         res = list(
-          lambda_class = c('slow', 'medium', 'fast'),
+          lambda_class = c('slow', 'fast'),
           pi_ind = c(
             'descent' = which(names(parameter_discretization$pi) == 'descent'),
             'free' = which(names(parameter_discretization$pi) == 'free'),
@@ -18,22 +18,18 @@ nimble_targets = list(
         c(pi_ind = as.numeric(res$pi_ind['descent']), 
           lambda_class = which(res$lambda_class == 'slow')),
         c(pi_ind = as.numeric(res$pi_ind['descent']), 
-          lambda_class = which(res$lambda_class == 'medium')),
-        c(pi_ind = as.numeric(res$pi_ind['descent']), 
           lambda_class = which(res$lambda_class == 'fast')),
         c(pi_ind = as.numeric(res$pi_ind['free']), 
           lambda_class = which(res$lambda_class == 'slow')),
         c(pi_ind = as.numeric(res$pi_ind['ascent']), 
           lambda_class = which(res$lambda_class == 'slow')),
         c(pi_ind = as.numeric(res$pi_ind['ascent']), 
-          lambda_class = which(res$lambda_class == 'medium')),
-        c(pi_ind = as.numeric(res$pi_ind['ascent']), 
           lambda_class = which(res$lambda_class == 'fast'))
       )
       
       rownames(res$stage_defs) = c(
-        'slow_descent', 'medium_descent', 'fast_descent', 'slow_free', 
-        'slow_ascent', 'medium_ascent', 'fast_ascent'
+        'slow_descent', 'fast_descent', 'slow_free', 
+        'slow_ascent', 'fast_ascent'
       )
         
       res
@@ -46,7 +42,9 @@ nimble_targets = list(
       template_bins = template_bins, 
       lambda_discretization = parameter_discretization$lambda, 
       stage_defs = movement_classes$stage_defs, 
-      init_movement_coefficients = list(lambda = rep(1,3)), 
+      init_movement_coefficients = list(
+        lambda = rep(1, length(movement_classes$lambda_class))
+      ), 
       transition_matrices = transition_matrices, 
       n_pi = length(parameter_discretization$pi), 
       tag_list = raw_sattags,
