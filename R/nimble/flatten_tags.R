@@ -1,8 +1,13 @@
 flatten_tags = function(template_bins, lambda_discretization, stage_defs,
                         init_movement_coefficients, transition_matrices, n_pi,
-                        tag_list, depth_threshold, validation_pct = 0) {
+                        tag_list, depth_threshold, validation_pct = 0,
+                        validation_test_set = FALSE) {
   # Parameters:
   #   depth_threshold - depth used to generate prop_recent_deep covariate
+  #   validation_pct - if greater than 0, then only export this percentage of 
+  #     unexposed observations for model training
+  #   validation_test_set - if TRUE, then export the non-validation portion of 
+  #     the observations
   
   # extract dimensions
   n_bins = nrow(template_bins)
@@ -71,10 +76,20 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       end_ind = min(segment_starts[seg_ind + 1] - 1, baseline_end_ind)
       # indices to analyze
       seg_inds = seq(from = start_ind, to = end_ind, by = 1)
-      # if using as a validation dataset, only train using the first portion
+      # modify indices to analyze if being used for validation purposes
       if(validation_pct > 0) {
+        # portion of dataset to be used for training
         train_subset = 1:ceiling(validation_pct * length(seg_inds))
-        seg_inds = seg_inds[train_subset]
+        # modify data to export
+        if(validation_test_set) {
+          # if using as a testing dataset, only export the second portion
+          seg_inds = seg_inds[-train_subset]
+        } else {
+          # if using as a validation dataset, only train using the first portion
+          seg_inds = seg_inds[train_subset]
+        }
+        # update counters
+        start_ind = seg_inds[1]
         end_ind = tail(seg_inds, 1)
       }
       # skip segment if there are no transitions to analyze
