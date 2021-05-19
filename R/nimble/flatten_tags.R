@@ -20,6 +20,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       constraint_data = 1,
       depths = NULL,
       covariates = NULL,
+      n_previous_used = NULL,
       times = NULL,
       transition_matrices = transition_matrices
     ),
@@ -119,6 +120,19 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
         window_inds = past_inds[window_start <= tag$times[past_inds]]
         # compute proportion of recent observations spent below a depth
         sum(tag$depths[window_inds] >= depth_threshold) / length(window_inds)
+      }))
+      # save number of recent observations used to make covariate
+      nim_pkg$data$n_previous_used = c(nim_pkg$data$n_previous_used, 0, 
+                                       sapply(2:length(seg_inds), function(i) {
+        # data index to work with
+        ind = seg_inds[i]
+        # window at which recent observations begins
+        window_start = tag$times[ind] - duration(1, units = 'hours')
+        # data indices of recent observations
+        past_inds = seg_inds[1:(i-1)]
+        window_inds = past_inds[window_start <= tag$times[past_inds]]
+        # number of things used
+        length(window_inds)
       }))
       # build and add covariates
       covariates = rbind(
