@@ -103,6 +103,51 @@ validation_targets = list(
     ),
     pattern = cross(val_dive_length_timepoints, validation_batch_starts),
     deployment = 'worker'
+  
+  tar_target(
+    name = validation_df_deep_surv,
+    command = {
+
+      # data indices for validation dives
+      val_inds = which(
+        # dives must start on surface
+        (nim_pkg_val_test$data$depths == 1) &
+        # previous-depth covariate must have "full records"
+        (nim_pkg_val_test$data$n_previous_used == 12)
+      )
+
+      # determine time to next deepest depth, or whether response is censored
+      val_responses = do.call(rbind, lapply(val_inds, function(dive_ind) {
+        # determine segment in which dive was recorded
+        seg_ind = which(
+          (nim_pkg_val_test$consts$segments[,'start_ind'] <= dive_ind) &
+            (dive_ind <= nim_pkg_val_test$consts$segments[,'end_ind'])
+        )
+        # data indices in which to search for deep depth observation
+        test_inds = seq(
+          from = dive_ind + 1,
+          to = nim_pkg_val_test$consts$segments[seg_ind, 'end_ind']
+        )
+        # package results
+        data.frame(
+          # return time of first deep observation (Inf if censored)
+          deep_time = min(which(
+            template_bins$center[nim_pkg_val_test$data$depths[test_inds]] >= 
+              deep_dive_depth  
+          )),
+          # num. observations checked (for partial analyses of censored data)
+          nobs = length(test_inds)
+        )
+      }))
+
+      # package results
+      data.frame(
+        pkg_data_ind = val_inds,
+        val_responses,
+        t(nim_pkg_val_test$data$covariates[, val_inds])
+      )
+    }
+  ),
   )
   
 )
