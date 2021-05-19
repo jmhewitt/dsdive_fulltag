@@ -94,7 +94,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
         end_ind = tail(seg_inds, 1)
       }
       # skip segment if there are no transitions to analyze
-      if(length(seg_inds) == 1) {
+      if(length(seg_inds) <= 1) {
         next
       }
       # copy data to package
