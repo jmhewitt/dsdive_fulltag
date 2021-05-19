@@ -103,6 +103,7 @@ validation_targets = list(
     ),
     pattern = cross(val_dive_length_timepoints, validation_batch_starts),
     deployment = 'worker'
+  ),
   
   tar_target(
     name = validation_df_deep_surv,
@@ -148,6 +149,144 @@ validation_targets = list(
       )
     }
   ),
+  
+  # define parallelization for validation
+  tar_target(n_validation_tasks, 375),
+  tar_target(validation_tasks, 1:n_validation_tasks),
+  
+  tar_target(
+    name = validate_deep_surv_samples,
+    command = {
+      
+      # location of MCMC files (also used as output path)
+      path = file.path(mcmc_sample_dir, 'nim_fit_val_stagefree')
+      # path = nim_fit_val
+      
+      # posterior parameter sample files
+      param_sample_files = dir(
+        path = path, pattern = 'parameter_samples_[0-9]+', full.names = TRUE
+      )
+      
+      # column labels for posterior parameter samples
+      param_label_file = dir(
+        path = path, pattern = 'parameter_samples_column', full.names = TRUE
+      )
+      
+      # load posterior parameter samples 
+      param_samples = do.call(rbind, lapply(param_sample_files, function(f) {
+        readRDS(f)
+      }))
+      
+      # label posterior parameter samples
+      colnames(param_samples) = readRDS(param_label_file)
+      
+      burn = 1:1e3
+      
+      # indices of posterior samples to process
+      post_samples = (1:nrow(param_samples))[-burn]
+      
+      # select posterior samples to process based on parallelization task num.
+      
+      # determine parallelization
+      parallel_tasks = parallel::splitIndices(
+        nx = length(post_samples), 
+        ncl = n_validation_tasks
+      )
+      
+      # subset posterior samples according to parallelization task
+      post_samples = post_samples[parallel_tasks[[validation_tasks]]]
+
+      # "load" validation dataset
+      df.val = validation_df_deep_surv
+      
+      #
+      # draw posterior validation samples
+      #
+      
+      validation_samples = do.call(
+        rbind, lapply(post_samples, function(sample_ind) {
+        
+          # extract stage transition coefficients
+          betas_tx = array(dim = c(nim_pkg_val_test$consts$n_covariates,
+                                   nim_pkg_val_test$consts$n_stages,
+                                   nim_pkg_val_test$consts$n_stages - 1))
+          for(i in 1:nrow(betas_tx)) {
+            for(j in 1:ncol(betas_tx)) {
+              for(k in 1:dim(betas_tx)[3]) {
+                betas_tx[i,j,k] = param_samples[
+                  sample_ind, paste('beta_tx[', i, ', ', j, ', ', k, ']', 
+                                    sep = '')
+                ]
+              }
+            }
+          }
+          
+          # sample posterior predictive distribution for each validation dive
+          pred_samples = sapply(df.val$pkg_data_ind, function(dive_ind) {
+            
+            # stage transition matrix going in to dive start
+            stx = stageTxMats(
+              betas = betas_tx, 
+              covariates = nim_pkg_val_test$data$covariates[
+                , dive_ind - 1, drop = FALSE
+              ], 
+              n_timepoints = 1
+            )
+            
+            # stationary distribution for stage transition matrix
+            stx.sty = as.numeric(eigen(t(stx[,,1]))$vectors[,1])
+            stx.sty = stx.sty / sum(stx.sty)
+            
+            # sample stationary distribution for a starting stage
+            stage_start = sample(
+              x = nrow(movement_classes$stage_defs), 
+              size = 1, 
+              prob = stx.sty
+            )
+            
+            # forward-simulate dive from predictive distribution
+            init_inds = seq(to = dive_ind, by = 1, length.out = 12)
+            fwd_sim = fwd_sim_to_deep(
+              stages = rep(stage_start, 12), 
+              depths = nim_pkg_val_test$data$depths[init_inds], 
+              covariates = nim_pkg_val_test$data$covariates[, init_inds], 
+              n_max = 1e3, 
+              nim_pkg = nim_pkg_val_test,
+              lambda = param_samples[sample_ind, c('lambda[1]', 'lambda[2]')], 
+              betas_tx = betas_tx, 
+              template_bins = template_bins, 
+              times = as.POSIXct(
+                x = nim_pkg_val_test$data$times[init_inds],
+                tz = 'UTC', 
+                origin = '1970-01-01 00:00.00 UTC'
+              ), 
+              timestep = sattag_timestep, 
+              lon = cape_hatteras_loc['lon'], lat = cape_hatteras_loc['lat'], 
+              depth_threshold = deep_dive_depth
+            )
+          
+            # sampled time to deep depth  
+            length(fwd_sim$depths) - 1
+          })
+          
+          # return samples
+          pred_samples
+      }))
+      
+      # package results
+      res = list(
+        samples = validation_samples,
+        posterior_sample_inds = post_samples
+      )
+      
+      # save results
+      saveRDS(res, file = file.path(path, paste(tar_name(), '.rds', sep = '')))
+      
+      # return output directory
+      path
+    }, 
+    pattern = map(validation_tasks), 
+    deployment = 'worker'
   )
   
 )
