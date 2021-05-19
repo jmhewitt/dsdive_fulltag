@@ -1,13 +1,15 @@
 flatten_tags = function(template_bins, lambda_discretization, stage_defs,
                         init_movement_coefficients, transition_matrices, n_pi,
                         tag_list, depth_threshold, validation_pct = 0,
-                        validation_test_set = FALSE) {
+                        validation_test_set = FALSE,
+                        min_segment_length = 0) {
   # Parameters:
   #   depth_threshold - depth used to generate prop_recent_deep covariate
   #   validation_pct - if greater than 0, then only export this percentage of 
   #     unexposed observations for model training
   #   validation_test_set - if TRUE, then export the non-validation portion of 
   #     the observations
+  #   min_segment_length - segments shorter than this will not be exported
   
   # extract dimensions
   n_bins = nrow(template_bins)
@@ -53,6 +55,11 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
     # identify all of the observations to analyze
     tag_segments = rle(tag$gap_after)
     valid_segments = which(tag_segments$values == FALSE)
+    
+    # do not analyze short segments
+    valid_segments = valid_segments[
+      tag_segments$lengths[valid_segments] > min_segment_length
+    ]
     
     # first indices of observations to analyze
     segment_starts = cumsum(c(1, tag_segments$lengths))
