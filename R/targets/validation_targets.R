@@ -11,7 +11,9 @@ validation_targets = list(
       n_pi = length(parameter_discretization$pi), 
       tag_list = raw_sattags,
       depth_threshold = deep_dive_depth,
-      validation_pct = 0.5
+      validation_pct = 0.5, 
+      repeated_surface_bin_break = repeated_surface_bin_break, 
+      min_segment_length = min_segment_length
     )
   ),
   
@@ -27,7 +29,9 @@ validation_targets = list(
       tag_list = raw_sattags,
       depth_threshold = deep_dive_depth,
       validation_pct = 0.5,
-      validation_test_set = TRUE
+      validation_test_set = TRUE, 
+      repeated_surface_bin_break = repeated_surface_bin_break, 
+      min_segment_length = min_segment_length
     )
   ),
   
