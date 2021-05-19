@@ -18,6 +18,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       constraint_data = 1,
       depths = NULL,
       covariates = NULL,
+      times = NULL,
       transition_matrices = transition_matrices
     ),
     consts = list(
@@ -98,6 +99,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       }
       # copy data to package
       nim_pkg$data$depths = c(nim_pkg$data$depths, tag$depth.bin[seg_inds])
+      nim_pkg$data$times = c(nim_pkg$data$times, tag$times[seg_inds])
       nim_pkg$inits$stages = c(nim_pkg$inits$stages, rep(1, length(seg_inds)))
       # proportion of recent observations at depth, as a covariate
       prop_recent_deep = c(0, sapply(2:length(seg_inds), function(i) {
