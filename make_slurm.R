@@ -1,3 +1,6 @@
 library(targets)
 
-tar_make_future(names = c('nim_fit', 'nim_fit_val'), workers = 100)
+tar_make_future(
+  names = c('nim_fit', 'validate_deep_surv_samples'), 
+  workers = 400
+)
