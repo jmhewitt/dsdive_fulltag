@@ -166,6 +166,6 @@ fit = function(nim_pkg, nsamples, nthin, max_batch_iter = Inf,
     ))
   }
   
-  # return list of output files
-  sampler_files
+  # return output directory
+  out_dir
 }
