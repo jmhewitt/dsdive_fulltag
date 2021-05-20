@@ -292,12 +292,7 @@ eda_targets = list(
       # subset validation dataset
       df.eda.raw = validation_df_deep_surv %>% 
         # allow indexing back to the order of the validation dives
-        mutate(val_ind = 1:n()) %>%
-        # restrict dataset used to empirically estimate survival function
-        filter(
-          # restrict EDA to observations that start during the day
-          daytime == 1
-        )
+        mutate(val_ind = 1:n()) 
       
       # discrete event times to study
       tseq = seq(

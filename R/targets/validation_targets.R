@@ -112,9 +112,17 @@ validation_targets = list(
       # data indices for validation dives
       val_inds = which(
         # dives must start on surface
-        (nim_pkg_val_test$data$depths == 1) &
+        (c(NA, 
+           nim_pkg_val_test$data$depths[
+             1:(length(nim_pkg_val_test$data$depths)-1)
+           ]) == 1) &
+        # ...and be at depth bin 5 at next observation
+        (nim_pkg_val_test$data$depths == 5) &
         # previous-depth covariate must have "full records"
-        (nim_pkg_val_test$data$n_previous_used == 12)
+        (nim_pkg_val_test$data$n_previous_used == 12) &
+        # dives must be strictly daytime
+        (nim_pkg_val_test$data$covariates['daytime',] == 1) &
+        (nim_pkg_val_test$data$covariates['moonlit',] == 0)
       )
 
       # determine time to next deepest depth, or whether response is censored
@@ -151,7 +159,7 @@ validation_targets = list(
   ),
   
   # define parallelization for validation
-  tar_target(n_validation_tasks, 375),
+  tar_target(n_validation_tasks, 100),
   tar_target(validation_tasks, 1:n_validation_tasks),
   
   tar_target(
@@ -223,24 +231,10 @@ validation_targets = list(
           # sample posterior predictive distribution for each validation dive
           pred_samples = sapply(df.val$pkg_data_ind, function(dive_ind) {
             
-            # stage transition matrix going in to dive start
-            stx = stageTxMats(
-              betas = betas_tx, 
-              covariates = nim_pkg_val_test$data$covariates[
-                , dive_ind - 1, drop = FALSE
-              ], 
-              n_timepoints = 1
-            )
-            
-            # stationary distribution for stage transition matrix
-            stx.sty = as.numeric(eigen(t(stx[,,1]))$vectors[,1])
-            stx.sty = stx.sty / sum(stx.sty)
-            
-            # sample stationary distribution for a starting stage
-            stage_start = sample(
-              x = nrow(movement_classes$stage_defs), 
-              size = 1, 
-              prob = stx.sty
+            # selected validation dives are assumed to be slow descents b/c
+            # of m/s speed implied by depth bin 1 -> 5 transition
+            stage_start = which(
+              rownames(movement_classes$stage_defs) == 'slow_descent'
             )
             
             # forward-simulate dive from predictive distribution
