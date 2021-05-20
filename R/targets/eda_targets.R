@@ -289,73 +289,24 @@ eda_targets = list(
     name = dive_survival_eda_plot,
     command = {
       
-      # tar_load(nim_pkg)
-      # tar_load(template_bins)
-      # tar_load(deep_dive_depth)
-      
-      
-      # extract data to explore trends in how covariates are associated with 
-      # future observations of deep depths, process by segment
-      df = do.call(rbind, lapply(1:nim_pkg$consts$n_segments, function(seg_id) {
-
-        # data-indices associated with segment
-        seg_inds = seq(
-          from = nim_pkg$consts$segments[seg_id, 'start_ind'],
-          to = nim_pkg$consts$segments[seg_id, 'end_ind'], 
-          by = 1
-        )
-      
-        # exploratory data, by observation within segment
-        do.call(rbind, lapply(1:length(seg_inds), function(seg_ind) {
-          # identify start index
-          ind = seg_inds[seg_ind]
-          # identify the range of future observations that stay in segment
-          tgt_inds = seg_inds[-(1:seg_ind)]
-          # restrict range of future observations to those that don't change the 
-          # value of the daytime covariate
-          if(length(tgt_inds) > 0) {
-            start_val = nim_pkg$data$covariates['daytime',ind]
-            rl = rle(nim_pkg$data$covariates['daytime',tgt_inds] == start_val)
-            if(rl$values[1] == TRUE) {
-              tgt_inds = tgt_inds[1:rl$lengths[1]]
-            } else {
-              tgt_inds = numeric()
-            }
-          }
-          # eda results
-          data.frame(
-            # depth of first observation in window
-            start_depth = nim_pkg$data$depths[ind],
-            # covariates for first observation in window
-            t(nim_pkg$data$covariates[,ind]),
-            # time until next deep observation (Inf if censored)
-            tdeep = min(which(
-              template_bins$center[nim_pkg$data$depths[tgt_inds]] >= 
-                deep_dive_depth
-            )),
-            # time observed (to determine censoring)
-            tobs = length(tgt_inds)
-          )
-        }))
-        
-      }))
-      
-      # restrict dataset used to empirically estimate survival function
-      df.eda.raw = df %>% 
+      # subset validation dataset
+      df.eda.raw = validation_df_deep_surv %>% 
+        # allow indexing back to the order of the validation dives
+        mutate(val_ind = 1:n()) %>%
+        # restrict dataset used to empirically estimate survival function
         filter(
           # restrict EDA to observations that start during the day
-          daytime == 1, 
-          # restrict EDA to windows that start on surface
-          start_depth == 1
+          daytime == 1
         )
       
       # discrete event times to study
       tseq = seq(
         from = 0,
-        to = max(pmin(df.eda.raw$tdeep, df.eda.raw$tobs)),
+        to = max(pmin(df.eda.raw$deep_time, df.eda.raw$nobs)),
         by = 1
       )
       
+      # simplify conditioning covariate
       df.eda.raw$prop_recent_deep = cut(
         x = df.eda.raw$prop_recent_deep,
         breaks = (0:8)/8,
@@ -366,14 +317,14 @@ eda_targets = list(
       df.eda = do.call(rbind, lapply(tseq, function(event_time) {
         df.eda.raw %>% 
           # portion of dataset with sufficiently long observation periods
-          filter(tobs >= event_time) %>% 
+          filter(nobs >= event_time) %>% 
           # group by remaining covariate of interest
           group_by(prop_recent_deep) %>%
           # empirical probability estimate
           summarise(
             # number of observations and events in data
             nobs = n(),
-            nevents = sum(tdeep <= event_time),
+            nevents = sum(deep_time <= event_time),
             # proportion of deep dives by event_time
             p = nevents / nobs,
             # record event time, for plotting
@@ -391,13 +342,59 @@ eda_targets = list(
         }))
       )
       
+      merge_tables = function(x1, x2) {
+        # merge tables to get complete list of index values
+        m = x1 %>% full_join(x2, by = 'x')
+        # set na's in frequency counts to 0
+        m[is.na(m)] = 0
+        # return aggregated counts
+        m %>%
+          mutate(Freq = Freq.x + Freq.y) %>% 
+          select(x, Freq)
+      }
+      
+      # combine posterior predictive cdfs by prop_recent_deep
+      df.post = do.call(
+        rbind, lapply(levels(df.eda$prop_recent_deep), function(prop) {
+          # ids of validation dives with prop covariate
+          val_ids = unique(df.eda.raw$val_ind[df.eda$prop_recent_deep == prop])
+          # aggregate pmfs as a mixture
+          pmf = validate_deep_surv_distn[[val_ids[1]]]
+          if(length(val_ids) > 1) {
+            for(vid in val_ids[-1]) {
+              pmf = merge_tables(
+                x1 = pmf, x2 = validate_deep_surv_distn[[vid]]
+              )
+            }
+            # normalize distribution assuming all component pmfs are equally wtd.
+            pmf$Freq = pmf$Freq / length(val_ids)
+            # sort pmf and compute cdf
+            pmf = pmf[order(pmf$x),]
+            pmf$cdf = cumsum(pmf$Freq)
+            # return result
+            data.frame(prop_recent_deep = prop, pmf)
+          }
+      }))
+      
+      # munge names and update factor order
+      df.post = df.post %>% mutate(event_time = x, p = cdf)
+      df.post$prop_recent_deep = factor(
+        x = df.post$prop_recent_deep, 
+        levels = levels(df.eda$prop_recent_deep)
+      )
+      
       pl = ggplot(df.eda, 
-                  aes(y = p, x = event_time, ymin = p_lwr, ymax = p_upr)) + 
-        geom_line() + 
-        geom_pointrange() +
+                  aes(y = p, x = event_time)) + 
+        # validation distribution
+        geom_line() +
+        geom_pointrange(aes(ymin = p_lwr, ymax = p_upr)) +
+        # posterior predictive distribution
+        geom_line(data = df.post %>% filter(event_time %in% tseq),
+                  col = 'salmon') +
+        # formatting
+        facet_wrap(~prop_recent_deep,) +
         ylab('P(Deep depth)') + 
         xlab('Num. observations forward') + 
-        facet_wrap(~prop_recent_deep) +
         theme_few() +
         theme(panel.grid.major = element_line(colour = 'grey95'))
       
@@ -405,7 +402,7 @@ eda_targets = list(
       f = file.path('output', 'eda')
       dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
       ggsave(pl, filename = file.path(f, paste(tar_name(), '.png')), 
-             dpi = 'print')
+             dpi = 'print', width = 12, height = 8)
       
       # This is a naive estimator of the survivor function, which can be 
       # improved by using a Kaplan-Meier curve instead, which accounts for 

@@ -286,6 +286,57 @@ validation_targets = list(
     }, 
     pattern = map(validation_tasks), 
     deployment = 'worker'
-  )
+  ),
+  
+  tar_target(
+    name = validate_deep_surv_distn, 
+    command = {
+      
+      # directory where posterior samples exist
+      path = validate_deep_surv_samples
+      # path ='output/mcmc/nim_fit_val/'
+      
+      # list of validation files
+      flist = dir(path = path, pattern = 'validate', full.names = TRUE)
+      
+      # summarize posterior predictive samples with frequency tables
+      aggregated_subsets = lapply(flist, function(f) {
+        apply(readRDS(f)$samples, 2, function(x) {
+          res = table(x)
+          data.frame(x = as.numeric(names(res)), Freq = as.numeric(res))
+        })
+      })
+      
+      # convenience function to assist in aggregating frequency tables
+      merge_tables = function(x1, x2) {
+        # merge tables to get complete list of index values
+        m = x1 %>% full_join(x2, by = 'x')
+        # set na's in frequency counts to 0
+        m[is.na(m)] = 0
+        # return aggregated counts
+        m %>%
+          mutate(Freq = Freq.x + Freq.y) %>% 
+          select(x, Freq)
+      }
+      
+      # extract posterior predictive distributions
+      post_cdfs = lapply(1:length(aggregated_subsets[[1]]), function(ind) {
+        # merge subsets of posterior samples
+        pmf = aggregated_subsets[[1]][[ind]]
+        if(length(aggregated_subsets) > 1) {
+          for(i in 2:length(aggregated_subsets)) {
+            pmf = merge_tables(x1 = pmf, x2 = aggregated_subsets[[i]][[ind]])
+          }
+        }
+        # normalize and sort pmf
+        pmf$Freq = pmf$Freq / sum(pmf$Freq)
+        pmf = pmf[order(pmf$x),]
+        # return result
+        pmf
+      })
+      
+      # return result
+      post_cdfs
+    })
   
 )
