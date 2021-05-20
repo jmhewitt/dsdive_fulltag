@@ -80,6 +80,8 @@ fwd_sim_to_deep = function(stages, depths, covariates, n_max, nim_pkg,
     covariates['prop_recent_deep',ind+1] =  sum(
       template_bins$center[depths[window_inds]] >= depth_threshold
     ) / length(window_inds)
+    covariates['prop_recent_deep3',ind+1] =  
+      (covariates['prop_recent_deep',ind+1] - .5)^3
     
     
     #

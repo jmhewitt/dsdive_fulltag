@@ -170,7 +170,8 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
         intercept = rep(1, length(seg_inds)),
         daytime = tag$daytime[seg_inds],
         moonlit = tag$moonlit[seg_inds],
-        prop_recent_deep = prop_recent_deep
+        prop_recent_deep = prop_recent_deep,
+        prop_recent_deep3 = (prop_recent_deep - .5)^3
       )
       nim_pkg$data$covariates = cbind(
         nim_pkg$data$covariates,
