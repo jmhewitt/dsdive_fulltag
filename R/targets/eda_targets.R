@@ -352,7 +352,9 @@ eda_targets = list(
       df.post = do.call(
         rbind, lapply(levels(df.eda$prop_recent_deep), function(prop) {
           # ids of validation dives with prop covariate
-          val_ids = unique(df.eda.raw$val_ind[df.eda$prop_recent_deep == prop])
+          val_ids = unique(df.eda.raw$val_ind[
+            df.eda.raw$prop_recent_deep == prop
+          ])
           # aggregate pmfs as a mixture
           pmf = validate_deep_surv_distn[[val_ids[1]]]
           if(length(val_ids) > 1) {
