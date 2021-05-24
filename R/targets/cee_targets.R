@@ -62,9 +62,8 @@ cee_targets = list(
         unlist() %>% 
         max()
       
-      # TODO: remove
       # subset posterior samples according to parallelization task
-      post_samples = post_samples[1:100]
+      post_samples = post_samples
       
       # draw posterior predictive samples of time to next deep observation
       post_pred_samples = sapply(post_samples, function(sample_ind) {
