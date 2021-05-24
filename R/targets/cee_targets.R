@@ -115,7 +115,9 @@ cee_targets = list(
       ))
       
     }, 
-    pattern = map(cee_dive_response_targets)
+    pattern = map(cee_dive_response_targets), 
+    deployment = 'worker',
+    memory = 'transient'
   )
   
   
