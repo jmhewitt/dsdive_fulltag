@@ -1,6 +1,6 @@
-fwd_sim_to_deep = function(stages, depths, covariates, n_max, nim_pkg,
+fwd_sim_to_depth = function(stages, depths, covariates, n_max, nim_pkg,
                            lambda, betas_tx, template_bins, times, timestep, 
-                           lon, lat, depth_threshold) {
+                           lon, lat, depth_threshold, deeper = TRUE) {
   # forward-sampling of dive 
   #
   # Parameters:
@@ -15,7 +15,8 @@ fwd_sim_to_deep = function(stages, depths, covariates, n_max, nim_pkg,
   #  timestep - time between observations/samples
   #  lon - longitude around which sampling occurs (for day/night calculations)
   #  lat - latitude around which sampling occurs (for day/night calculations)
-  #   depth_threshold - depth used to generate prop_recent_deep covariate
+  #  depth_threshold - depth used to generate prop_recent_deep covariate
+  #  deeper - TRUE if depth_threshold should be exceeded
   
   # discretize speed parameters
   lambda_inds = sapply(lambda, function(par) {
@@ -101,9 +102,17 @@ fwd_sim_to_deep = function(stages, depths, covariates, n_max, nim_pkg,
     # check termination conditions and loop
     #
     
-    # stop sampling when a deep depth is reached
-    if(template_bins$center[depths[ind + 1]] >= depth_threshold) {
-      break
+    
+    if(deeper) {
+      # stop sampling when a deep depth is reached
+      if(template_bins$center[depths[ind + 1]] >= depth_threshold) {
+        break
+      }
+    } else {
+      # stop sampling when a shallow depth is reached
+      if(template_bins$center[depths[ind + 1]] <= depth_threshold) {
+        break
+      }
     }
     
     # increment counter
