@@ -89,9 +89,10 @@ post_sim_targets = list(
         
         # forward-simulate dive from predictive distribution
         fwd_sim = fwd_sim_to_depth_fixed_covs(
-          stages = which(
-            rownames(movement_classes$stage_defs) == 'slow_descent'
-          ), 
+          stages = rep(
+            which(rownames(movement_classes$stage_defs) == 'slow_descent'), 
+            12
+          ),
           depths = depths, 
           covariates = covariates, 
           n_max = 1e3, 
