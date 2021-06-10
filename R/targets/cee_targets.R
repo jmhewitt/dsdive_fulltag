@@ -255,8 +255,109 @@ cee_targets = list(
     pattern = map(cee_surface_response_targets), 
     deployment = 'worker',
     memory = 'transient'
+  ),
+  
+  tar_target(
+    name = cee_dive_response_summaries, 
+    command = {
+    
+      depth_threshold = deep_dive_depth
+      
+      # extract data for exposure conditions
+      exposure_contexts = lapply(raw_sattags, function(tag) {
+        
+        # skip processing if tag was never exposed
+        if(!is.finite(tag$exposure_time)) {
+          return(NULL)
+        }
+        
+        # last observation before exposure
+        pre_exposed_ind = min(which(tag$exposed == 1)) - 1
+        
+        # 
+        # extract dive context immediately before exposure
+        #
+        
+        # proportion of recent observations at depth, as a covariate
+        prop_recent_deep = {
+          # window at which recent observations begins
+          window_start = tag$times[pre_exposed_ind] - 
+            duration(1, units = 'hours')
+          # data indices of recent observations
+          past_inds = 1:(pre_exposed_ind-1)
+          window_inds = past_inds[window_start <= tag$times[past_inds]]
+          # compute proportion of recent observations spent below a depth
+          sum(tag$depths[window_inds] >= depth_threshold) / length(window_inds)
+        }
+        
+        #
+        # extract time until next deep depth observation
+        #
+        
+        
+        # data index at which first deep depth post-exposure is observed
+        next_deep_obs = which(tag$exposed == 1)[
+          min(which(tag$depths[tag$exposed == 1] >= depth_threshold))
+        ]
+        
+        # censored data due to gaps in data
+        if(any(tag$gap_after[(pre_exposed_ind + 1):next_deep_obs])) {
+          next_deep_obs = Inf
+        }
+        
+        #
+        # extract time until the last depth associated with exposed dive
+        #
+        
+        # extract id of exposed dive
+        exposed_dive_id = tag$diveIds[min(which(tag$exposed == 1))]
+        
+        # index of last depth that can be associated with exposed dive
+        last_exposed_depth_ind = max(which(tag$diveIds == exposed_dive_id)) + 1
+        
+        list(
+          tag = tag$tag,
+          depth.bin.prev = tag$depth.bin[pre_exposed_ind-1],
+          depth.bin = tag$depth.bin[pre_exposed_ind],
+          depth = tag$depths[pre_exposed_ind],
+          prop_recent_deep = prop_recent_deep,
+          daytime = tag$daytime[pre_exposed_ind],
+          moonlit = tag$moonlit[pre_exposed_ind],
+          time_to_deep = next_deep_obs - pre_exposed_ind,
+          time_to_end = last_exposed_depth_ind - pre_exposed_ind,
+          pre_exposure_time = tag$times[pre_exposed_ind]
+        )
+      })
+      
+      
+      #
+      # look at dive response
+      #
+      
+      df = do.call(rbind, lapply(cee_dive_response_probs, 
+                                 function(post_samples) {
+        
+        # find exposure context associated with posterior samples
+        tag_id = which(
+          post_samples$tag == sapply(exposure_contexts, function(x) x$tag)
+        )
+        
+        # compute p-value (post. pred. prob. of less time to deep depth)
+        p_val = mean(
+          post_samples$samples <= exposure_contexts[[tag_id]]$time_to_deep
+        )
+        
+        # package results
+        data.frame(tag = post_samples$tag, p = round(p_val,2))
+      }))
+      
+      # package results
+      list(
+        exposure_contexts = exposure_contexts,
+        pvals = df
+      )
+      
+    }
   )
-  
-  
   
 )
