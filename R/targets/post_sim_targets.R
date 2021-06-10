@@ -64,9 +64,9 @@ post_sim_targets = list(
       )^3
       
       # build initial depth vector
-      depths = rep(x = c(1,16), 
-          c(12 - covariate_combinations$prop_recent_deep * 12,
-            covariate_combinations$prop_recent_deep * 12)
+      depths = rep(x = c(16, 1), 
+          c(covariate_combinations$prop_recent_deep * 12,
+            12 - covariate_combinations$prop_recent_deep * 12)
       )
       
       # draw posterior predictive samples of time to next deep observation
