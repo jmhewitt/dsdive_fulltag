@@ -32,5 +32,6 @@ c(
   validation_targets,
   cee_targets,
   report_targets,
-  eda_targets
+  eda_targets,
+  post_sim_targets
 )
