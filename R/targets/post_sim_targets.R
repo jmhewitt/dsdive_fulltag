@@ -118,5 +118,89 @@ post_sim_targets = list(
     pattern = map(covariate_combinations), 
     deployment = 'worker',
     memory = 'transient'
-  )
+  ),
+  
+  tar_target(
+    name = deep_dive_time_interpretations_wrt_covariates,
+    command = {
+    
+      deep_dive_time_preds_wrt_covariates = readRDS(
+        'deep_dive_time_preds_wrt_covariates.rds'
+      )
+      
+      # # long format of output, for plotting
+      # df = do.call(
+      #   rbind, lapply(deep_dive_time_preds_wrt_covariates, function(res) {
+      #     
+      #     tab = tabulate(res$samples)
+      #     
+      #     data.frame(
+      #       res$covariate_combination,
+      #       n = 1:length(tab),
+      #       p = tab/sum(tab)
+      #     ) %>% 
+      #       dplyr::mutate(cdf = cumsum(p))
+      # }))
+      # 
+      # # plot posterior predictive distributions
+      # ggplot(df, aes(x = n * 5 / 60, y = p, col = factor(prop_recent_deep))) + 
+      #   geom_line() + 
+      #   facet_grid(daytime~moonlit) + 
+      #   theme_few() + 
+      #   xlim(0,3) + 
+      #   ylim(0,.15)
+      
+      # summarize distributions (in hours units)
+      df.summary = do.call(
+        rbind, lapply(deep_dive_time_preds_wrt_covariates, function(res) {
+          
+          hpds = HPDinterval(mcmc(res$samples * 5 / 60))
+          
+          data.frame(
+            res$covariate_combination,
+            mean = mean(res$samples * 5 / 60),
+            lwr = hpds[,'lower'],
+            upr = hpds[,'upper']
+          )
+      }))
+      
+      # plot summaries of posterior predictive distributions
+      group_sep = .015
+      pl = ggplot(df.summary %>% 
+               filter(
+                 daytime * moonlit == 0,
+                      prop_recent_deep < 1) %>% 
+               mutate(
+                 scenario = ifelse(daytime == 1, 'Daytime', 
+                                   ifelse(moonlit == 1, 'Moonlit night', 
+                                          'Dark night')),
+                 scenario = factor(scenario, levels = c('Daytime', 
+                                                        'Moonlit night', 
+                                                        'Dark night')),
+                 eps = ifelse(scenario == 'Daytime', group_sep, 
+                              ifelse(scenario == 'Moonlit night', 0, 
+                                     -group_sep))
+               ), 
+             aes(x = prop_recent_deep + eps, y = mean, ymin = lwr, ymax = upr,
+                 col = scenario)) + 
+        geom_pointrange(alpha = .8) + 
+        scale_color_brewer('Celestial covariate', 
+                           type = 'qual', palette = 'Dark2') + 
+        scale_x_continuous(
+          'Proportion of recent observations at depth', 
+          breaks = c(0.08, .25, .5, .75, .92)
+        ) + 
+        ylab('Hours until next observed deep depth') + 
+        theme_few() + 
+        theme(panel.border = element_blank(), 
+              panel.grid.major.y = element_line(colour = 'grey95'))
+      
+      # save plot
+      f = file.path('output', 'covariate_effects')
+      dir.create(f, recursive = TRUE, showWarnings = FALSE)
+      ggsave(pl, filename = file.path(f, paste(tar_name(), '.png', sep = '')), 
+             dpi = 'print')
+      
+    })
+  
 )
