@@ -3,7 +3,7 @@ post_sim_targets = list(
   tar_target(
     name = covariate_combinations,
     command = expand.grid(
-      prop_recent_deep = (1:12)/12,
+      prop_recent_deep = (0:12)/12,
       daytime = c(0,1),
       moonlit = c(0,1)
     )
@@ -124,9 +124,9 @@ post_sim_targets = list(
     name = deep_dive_time_interpretations_wrt_covariates,
     command = {
     
-      deep_dive_time_preds_wrt_covariates = readRDS(
-        'deep_dive_time_preds_wrt_covariates.rds'
-      )
+      # deep_dive_time_preds_wrt_covariates = readRDS(
+      #   'deep_dive_time_preds_wrt_covariates.rds'
+      # )
       
       # # long format of output, for plotting
       # df = do.call(
@@ -183,14 +183,14 @@ post_sim_targets = list(
                ), 
              aes(x = prop_recent_deep + eps, y = mean, ymin = lwr, ymax = upr,
                  col = scenario)) + 
-        geom_pointrange(alpha = .8) + 
+        geom_pointrange() + 
         scale_color_brewer('Celestial covariate', 
                            type = 'qual', palette = 'Dark2') + 
         scale_x_continuous(
-          'Proportion of recent observations at depth', 
+          'Proportion of previous hour observed at depth', 
           breaks = c(0.08, .25, .5, .75, .92)
         ) + 
-        ylab('Hours until next observed deep depth') + 
+        ylab('Predicted hours until next observed deep depth') + 
         theme_few() + 
         theme(panel.border = element_blank(), 
               panel.grid.major.y = element_line(colour = 'grey95'))
@@ -199,7 +199,7 @@ post_sim_targets = list(
       f = file.path('output', 'covariate_effects')
       dir.create(f, recursive = TRUE, showWarnings = FALSE)
       ggsave(pl, filename = file.path(f, paste(tar_name(), '.png', sep = '')), 
-             dpi = 'print')
+             dpi = 'print', width = 10, height = 6)
       
     })
   
