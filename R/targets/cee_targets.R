@@ -366,6 +366,75 @@ cee_targets = list(
       )
       
     }
+  ),
+  
+  tar_target(
+    name = exposure_context_plots,
+    command = {
+
+      zc93_ind = which(sapply(raw_sattags, function(res) res$tag) == 'ZcTag093')
+      zc95_ind = which(sapply(raw_sattags, function(res) res$tag) == 'ZcTag095')
+      
+      
+      plot_tag_segment = function(tag, pre_len, post_len) {
+
+        # determine when tag was exposed
+        exposed_ind = min(which(tag$exposed == 1))
+        
+        # times before and after exposure to study
+        window_start = tag$times[exposed_ind] - 
+          duration(pre_len, units =  'hours')
+        window_end = tag$times[exposed_ind] + 
+          duration(post_len, units =  'hours')
+        
+        # data associated with window indices
+        window_inds = which(
+          (tag$times >= window_start) & (tag$times <= window_end)
+        )
+        
+        # template bins depth ranges
+        bin_ranges = cbind(
+          lwr = template_bins$center - template_bins$halfwidth,
+          upr = template_bins$center + template_bins$halfwidth
+        )
+        
+        df = data.frame(
+          time = tag$times[window_inds],
+          depth = tag$depths[window_inds],
+          depth_lwr = bin_ranges[tag$depth.bin[window_inds], 'lwr'],
+          depth_upr = bin_ranges[tag$depth.bin[window_inds], 'upr']
+        )
+        
+        ggplot(df, 
+               aes(x = time, y = depth, ymin = depth_lwr, ymax = depth_upr)) + 
+          geom_pointrange() + 
+          geom_line() + 
+          geom_vline(xintercept = tag$exposure_time, lty = 3) + 
+          geom_hline(yintercept = deep_dive_depth, lty = 3) + 
+          scale_y_reverse('Depth (m)', limits = rev(c(0, 1500))) + 
+          theme_few()
+      }
+      
+      pre_len = 2.5
+      
+      pl93 = plot_tag_segment(
+        tag = raw_sattags[[zc93_ind]], pre_len = pre_len, post_len = 1
+      ) + ggtitle('Zc093') + xlab('')
+      
+      pl95 = plot_tag_segment(
+        tag = raw_sattags[[zc95_ind]], pre_len = pre_len, post_len = 1
+      ) + ggtitle('Zc095') + xlab('Time (UTC)')
+      
+      # save file
+      f = file.path('output', 'cee')
+      dir.create(f, showWarnings = FALSE, recursive = TRUE)
+      ggsave(
+        ggarrange(pl93, pl95, nrow = 2), 
+        filename = file.path(f, paste(tar_name(), '.png', sep = '')),
+        dpi = 'print', width = 8, height = 6
+      )
+      
+    }
   )
   
 )
