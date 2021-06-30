@@ -167,7 +167,8 @@ validation_targets = list(
     command = {
       
       # location of MCMC files (also used as output path)
-      path = nim_fit_val
+      # path = nim_fit_val
+      path = file.path('output', 'mcmc', 'nim_fit_val')
       
       # posterior parameter sample files
       param_sample_files = dir(
