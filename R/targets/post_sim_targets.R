@@ -201,6 +201,62 @@ post_sim_targets = list(
       ggsave(pl, filename = file.path(f, paste(tar_name(), '.png', sep = '')), 
              dpi = 'print', width = 10, height = 6)
       
+    }),
+  
+    tar_target(
+      name = signif_coefficients,
+      command = {
+        
+        # location of MCMC files (also used as output path)
+        # path = nim_fit
+        path = 'output/mcmc/nim_fit/'
+        
+        # posterior parameter sample files
+        param_sample_files = dir(
+          path = path, pattern = 'parameter_samples_[0-9]+', full.names = TRUE
+        )
+        
+        # column labels for posterior parameter samples
+        param_label_file = dir(
+          path = path, pattern = 'parameter_samples_column', full.names = TRUE
+        )
+        
+        # load posterior parameter samples 
+        param_samples = do.call(rbind, lapply(param_sample_files, function(f) {
+          readRDS(f)
+        }))
+        
+        # load data package
+        nim_pkg = readRDS(
+          file = dir(path = path, pattern = 'nim_pkg', full.names = TRUE)
+        )
+        
+        # label posterior parameter samples
+        colnames(param_samples) = readRDS(param_label_file)
+        
+        burn = 1:2e3
+        
+        # stage transition parameters grouped by covariate number
+        tx_coef_groups = lapply(1:nrow(nim_pkg$data$covariates), function(i) {
+          grep(
+            pattern = paste('beta_tx\\[', i, ',.*', sep=''), 
+            x = colnames(param_samples), 
+            value = TRUE
+          )
+        })
+        names(tx_coef_groups) = rownames(nim_pkg$data$covariates)
+        
+        # summarize numbers of coefficients and significances
+        tx_coef_group_summaries = do.call(rbind, 
+                                          lapply(tx_coef_groups, function(tgt) {
+          hpds = HPDinterval(mcmc(param_samples[-burn, tgt]))
+          data.frame(
+            signif = sum((hpds[,'lower'] > 0) | (hpds[,'upper'] < 0)),
+            total = length(tgt)
+          )
+        }))
+        
+        tx_coef_group_summaries  
     })
   
 )
