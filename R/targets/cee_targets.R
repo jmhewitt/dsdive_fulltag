@@ -348,7 +348,15 @@ cee_targets = list(
         )
         
         # package results
-        data.frame(tag = post_samples$tag, p = round(p_val,2))
+        data.frame(
+          tag = post_samples$tag, 
+          exposure_depth_bin = exposure_contexts[[tag_id]]$depth.bin,
+          daytime = exposure_contexts[[tag_id]]$daytime,
+          moonlit = exposure_contexts[[tag_id]]$moonlit,
+          prop_recent_deep = exposure_contexts[[tag_id]]$prop_recent_deep,
+          time_to_deep = exposure_contexts[[tag_id]]$time_to_deep,
+          p = round(p_val,2)
+        )
       }))
       
       # package results
