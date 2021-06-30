@@ -82,7 +82,7 @@ rm(param_sample_files, parameter_families)
 ```
 
 ```{r set_burn}
-burn = 1:100
+burn = 1:2e3
 ```
 
 # Animals analyzed 
@@ -255,11 +255,21 @@ sub_groups = list(
   ),
   prop_recent_deep = grep(
     pattern = 'beta_tx\\[4,.*', x = sampler_groups$beta_tx, value = TRUE
+  ),
+  prop_recent_deep = grep(
+    pattern = 'beta_tx\\[5,.*', x = sampler_groups$beta_tx, value = TRUE
   )
 )
   
 targets::tar_load(movement_classes)
 movement_classes$stage_defs
+
+do.call(rbind, lapply(sub_groups, function(g) {
+  hpds = HPDinterval(mcmc(param_samples[-burn, g]))
+  
+  data.frame(n_signif = sum((hpds[,'lower'] > 0) | (hpds[,'upper'] < 0)),
+             n_total = nrow(hpds))
+}))
 
 invisible(mapply(
   function(g, name) {
