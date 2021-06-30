@@ -167,11 +167,16 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
       }))
       # build and add covariates
       covariates = rbind(
-        intercept = rep(1, length(seg_inds)),
+        # intercept = rep(1, length(seg_inds)),
         daytime = tag$daytime[seg_inds],
         moonlit = tag$moonlit[seg_inds],
-        prop_recent_deep = prop_recent_deep,
-        prop_recent_deep3 = (prop_recent_deep - .5)^3
+        # prop_recent_deep = prop_recent_deep,
+        # prop_recent_deep3 = (prop_recent_deep - .5)^3,
+        t(bernsteinPoly(x = prop_recent_deep, degree = 3, intercept = TRUE,
+                      Boundary.knots = c(0,1)))
+      )
+      rownames(covariates)[-(1:2)] = paste(
+        'bpoly', rownames(covariates)[-(1:2)], sep = ''
       )
       nim_pkg$data$covariates = cbind(
         nim_pkg$data$covariates,
