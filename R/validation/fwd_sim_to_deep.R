@@ -58,8 +58,8 @@ fwd_sim_to_depth = function(stages, depths, covariates, n_max, nim_pkg,
     # extend covariates matrix
     covariates = cbind(covariates, rep(0, nrow(covariates)))
     
-    # basic covariates
-    covariates['intercept',ind+1] = 1
+    # # basic covariates
+    # covariates['intercept',ind+1] = 1
     
     # celestial covariates
     times[ind + 1] = times[ind] + timestep
@@ -78,13 +78,13 @@ fwd_sim_to_depth = function(stages, depths, covariates, n_max, nim_pkg,
     past_inds = 1:(ind-1)
     window_inds = past_inds[window_start <= times[past_inds]]
     # compute proportion of recent observations spent below a depth
-    covariates['prop_recent_deep',ind+1] =  sum(
+    prop_recent_deep = sum(
       template_bins$center[depths[window_inds]] >= depth_threshold
     ) / length(window_inds)
-    covariates['prop_recent_deep3',ind+1] =  
-      (covariates['prop_recent_deep',ind+1] - .5)^3
-    
-    
+    bpoly = t(bernsteinPoly(x = prop_recent_deep, degree = 3, intercept = TRUE,
+                    Boundary.knots = c(0,1)))
+    covariates[paste('bpoly', 1:4, sep =''),ind+1] = bpoly
+
     #
     # sample stage
     #
