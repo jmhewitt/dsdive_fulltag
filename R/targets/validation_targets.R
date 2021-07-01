@@ -240,7 +240,7 @@ validation_targets = list(
             
             # forward-simulate dive from predictive distribution
             init_inds = seq(to = dive_ind, by = 1, length.out = 12)
-            fwd_sim = fwd_sim_to_deep(
+            fwd_sim = fwd_sim_to_depth(
               stages = rep(stage_start, 12), 
               depths = nim_pkg_val_test$data$depths[init_inds], 
               covariates = nim_pkg_val_test$data$covariates[, init_inds], 
