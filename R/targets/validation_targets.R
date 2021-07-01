@@ -280,7 +280,9 @@ validation_targets = list(
       path
     }, 
     pattern = map(validation_tasks), 
-    deployment = 'worker'
+    deployment = 'worker', 
+    memory = 'transient',
+    storage = 'worker'
   ),
   
   tar_target(

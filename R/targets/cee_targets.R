@@ -123,7 +123,8 @@ cee_targets = list(
     }, 
     pattern = map(cee_dive_response_targets), 
     deployment = 'worker',
-    memory = 'transient'
+    memory = 'transient',
+    storage = 'worker'
   ),
   
   tar_target(
@@ -254,7 +255,8 @@ cee_targets = list(
     }, 
     pattern = map(cee_surface_response_targets), 
     deployment = 'worker',
-    memory = 'transient'
+    memory = 'transient',
+    storage = 'worker'
   ),
   
   tar_target(
