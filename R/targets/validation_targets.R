@@ -119,7 +119,7 @@ validation_targets = list(
         # ...and be at depth bin 5 at next observation
         (nim_pkg_val_test$data$depths == 5) &
         # previous-depth covariate must have "full records"
-        (nim_pkg_val_test$data$n_previous_used == 12) &
+        (nim_pkg_val_test$data$n_previous_used == 27) &
         # dives must be strictly daytime
         (nim_pkg_val_test$data$covariates['daytime',] == 1) &
         (nim_pkg_val_test$data$covariates['moonlit',] == 0)
@@ -239,9 +239,9 @@ validation_targets = list(
             )
             
             # forward-simulate dive from predictive distribution
-            init_inds = seq(to = dive_ind, by = 1, length.out = 12)
+            init_inds = seq(to = dive_ind, by = 1, length.out = 27)
             fwd_sim = fwd_sim_to_depth(
-              stages = rep(stage_start, 12), 
+              stages = rep(stage_start, 27), 
               depths = nim_pkg_val_test$data$depths[init_inds], 
               covariates = nim_pkg_val_test$data$covariates[, init_inds], 
               n_max = 1e3, 

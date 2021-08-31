@@ -90,7 +90,7 @@ cee_targets = list(
           }
           
           # forward-simulate dive from predictive distribution
-          init_inds = seq(to = pre_exposure_ind, by = 1, length.out = 12)
+          init_inds = seq(to = pre_exposure_ind, by = 1, length.out = 27)
           fwd_sim = fwd_sim_to_depth(
             stages = stage_samples[sample_ind, init_inds], 
             depths = nim_pkg$data$depths[init_inds], 
@@ -221,7 +221,7 @@ cee_targets = list(
         }
         
         # forward-simulate dive from predictive distribution
-        init_inds = seq(to = pre_exposure_ind, by = 1, length.out = 12)
+        init_inds = seq(to = pre_exposure_ind, by = 1, length.out = 27)
         fwd_sim = fwd_sim_to_depth(
           stages = stage_samples[sample_ind, init_inds], 
           depths = nim_pkg$data$depths[init_inds], 
@@ -284,7 +284,7 @@ cee_targets = list(
         prop_recent_deep = {
           # window at which recent observations begins
           window_start = tag$times[pre_exposed_ind] - 
-            duration(1, units = 'hours')
+            duration(135, units = 'minutes')
           # data indices of recent observations
           past_inds = 1:(pre_exposed_ind-1)
           window_inds = past_inds[window_start <= tag$times[past_inds]]

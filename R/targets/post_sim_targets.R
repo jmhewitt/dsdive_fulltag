@@ -3,7 +3,7 @@ post_sim_targets = list(
   tar_target(
     name = covariate_combinations,
     command = expand.grid(
-      prop_recent_deep = (0:12)/12,
+      prop_recent_deep = (0:27)/27,
       daytime = c(0,1),
       moonlit = c(0,1)
     )
@@ -50,14 +50,14 @@ post_sim_targets = list(
       
       # build initial covariate matrix
       covariates = rbind(
-        intercept = rep(1, 12),
-        daytime = rep(covariate_combinations$daytime, 12), 
-        moonlit = rep(covariate_combinations$moonlit, 12),
+        intercept = rep(1, 27),
+        daytime = rep(covariate_combinations$daytime, 27), 
+        moonlit = rep(covariate_combinations$moonlit, 27),
         prop_recent_deep = pmax(
-          covariate_combinations$prop_recent_deep - (0:11)/12, 
+          covariate_combinations$prop_recent_deep - (0:11)/27, 
           0
         ),
-        prop_recent_deep3 = rep(0,12)
+        prop_recent_deep3 = rep(27)
       )
       covariates['prop_recent_deep3',] = (
         covariates['prop_recent_deep',] - 0.5
@@ -65,8 +65,8 @@ post_sim_targets = list(
       
       # build initial depth vector
       depths = rep(x = c(16, 1), 
-          c(covariate_combinations$prop_recent_deep * 12,
-            12 - covariate_combinations$prop_recent_deep * 12)
+          c(covariate_combinations$prop_recent_deep * 27,
+            27 - covariate_combinations$prop_recent_deep * 27)
       )
       
       # draw posterior predictive samples of time to next deep observation
@@ -91,7 +91,7 @@ post_sim_targets = list(
         fwd_sim = fwd_sim_to_depth_fixed_covs(
           stages = rep(
             which(rownames(movement_classes$stage_defs) == 'slow_descent'), 
-            12
+            27
           ),
           depths = depths, 
           covariates = covariates, 

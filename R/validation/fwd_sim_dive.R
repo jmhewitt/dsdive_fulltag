@@ -72,7 +72,7 @@ fwd_sim_dive = function(stages, depths, covariates, n_timepoints, nim_pkg,
     #
       
     # window at which recent observations begins
-    window_start = times[ind] - duration(1, units = 'hours')
+    window_start = times[ind] - duration(135, units = 'minutes')
     # data indices of recent observations
     past_inds = 1:(ind-1)
     window_inds = past_inds[window_start <= times[past_inds]]

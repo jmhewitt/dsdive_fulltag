@@ -145,7 +145,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
         # data index to work with
         ind = seg_inds[i]
         # window at which recent observations begins
-        window_start = tag$times[ind] - duration(1, units = 'hours')
+        window_start = tag$times[ind] - duration(135, units = 'minutes')
         # data indices of recent observations
         past_inds = seg_inds[1:(i-1)]
         window_inds = past_inds[window_start <= tag$times[past_inds]]
@@ -158,7 +158,7 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
         # data index to work with
         ind = seg_inds[i]
         # window at which recent observations begins
-        window_start = tag$times[ind] - duration(1, units = 'hours')
+        window_start = tag$times[ind] - duration(135, units = 'minutes')
         # data indices of recent observations
         past_inds = seg_inds[1:(i-1)]
         window_inds = past_inds[window_start <= tag$times[past_inds]]
@@ -170,8 +170,6 @@ flatten_tags = function(template_bins, lambda_discretization, stage_defs,
         # intercept = rep(1, length(seg_inds)),
         daytime = tag$daytime[seg_inds],
         moonlit = tag$moonlit[seg_inds],
-        # prop_recent_deep = prop_recent_deep,
-        # prop_recent_deep3 = (prop_recent_deep - .5)^3,
         t(bernsteinPoly(x = prop_recent_deep, degree = 3, intercept = TRUE,
                       Boundary.knots = c(0,1)))
       )
