@@ -15,8 +15,8 @@ cee_targets = list(
     command = {
       
       # location of MCMC files (also used as output path)
-      # path = nim_fit
-      path = 'output/mcmc/nim_fit/'
+      path = nim_fit
+      # path = 'output/mcmc/nim_fit/'
       
       # posterior parameter sample files
       param_sample_files = dir(
