@@ -18,5 +18,7 @@ plot(density(ppd_avg))
 abline(v = observed, lty = 3)
 
 ecdf(ppd_avg)(observed)
+# equivalent p-value computation to line 20
+mean(ppd_avg <= observed)
 
 mean(ppd_avg)
