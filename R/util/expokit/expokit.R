@@ -11,6 +11,7 @@ system(paste(
               file.path(find.package(c('Rcpp')), 'include'), 
               sep = '', collapse = ' '), 
         '"', sep = ''),
+  'FFLAGS=-fallow-argument-mismatch',
   file.path(base_dir, 'expokit_flattened.f'),
   sep = ' '
 ))
