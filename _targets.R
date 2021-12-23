@@ -19,7 +19,8 @@ tar_option_set(
 )
 
 ## load R files and workflows
-lapply(list.files("R", full.names = TRUE, recursive = TRUE), source)
+lapply(list.files("R", full.names = TRUE, recursive = TRUE, pattern = '\\.R'), 
+       source)
 
 # assemble workflow
 c(
