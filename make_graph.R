@@ -16,4 +16,11 @@ targets::tar_make_future(names = posterior_imputation_plots, workers = 6)
 
 targets::tar_make(names = posterior_imputation_plots, callr_function = NULL)
 
-targets::tar_make(names = mle_speeds, callr_function = NULL)
+
+
+targets::tar_make_future(names = cee_surface_response_probs, workers = 4)
+
+targets::tar_make(names = deep_dive_time_preds_wrt_covariates, callr_function = NULL)
+
+
+targets::tar_make(names = zc093_figure, callr_function = NULL)
