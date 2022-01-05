@@ -32,7 +32,7 @@ c(
   nimble_targets,
   validation_targets,
   cee_targets,
-  report_targets,
   eda_targets,
-  post_sim_targets
+  post_sim_targets,
+  plot_targets
 )
