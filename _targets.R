@@ -24,15 +24,5 @@ lapply(list.files("R", full.names = TRUE, recursive = TRUE, pattern = '\\.R'),
 
 # assemble workflow
 c(
-  dir_targets,
-  data_targets, 
-  depth_bin_imputation_targets,
-  dive_segmentation_targets,
-  model_discretization_target,
-  nimble_targets,
-  validation_targets,
-  cee_targets,
-  eda_targets,
-  post_sim_targets,
-  plot_targets
+ 
 )
