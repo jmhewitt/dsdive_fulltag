@@ -290,9 +290,11 @@ validation_targets = list(
     command = {
       
       # directory where posterior samples exist
-      path = validate_deep_surv_samples
-      # path ='output/mcmc/nim_fit_val/'
+      # path = validate_deep_surv_samples
+      path ='output/mcmc/nim_fit_val/'
       
+      browser()
+
       # list of validation files
       flist = dir(path = path, pattern = 'validate', full.names = TRUE)
       

@@ -289,6 +289,7 @@ eda_targets = list(
     name = dive_survival_eda_plot,
     command = {
       
+      browser()
       # subset validation dataset
       df.eda.raw = validation_df_deep_surv %>% 
         # allow indexing back to the order of the validation dives
@@ -300,6 +301,9 @@ eda_targets = list(
         to = max(pmin(df.eda.raw$deep_time, df.eda.raw$nobs)),
         by = 1
       )
+      
+      # unwrap bernstein polynomial
+      df.eda.raw$prop_recent_deep = 1 - (df.eda.raw$bpoly1)^(1/3)
       
       # simplify conditioning covariate
       df.eda.raw$prop_recent_deep = cut(

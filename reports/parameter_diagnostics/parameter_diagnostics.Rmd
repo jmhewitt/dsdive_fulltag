@@ -47,7 +47,7 @@ parameter_families = setdiff(
 
 # # associate actively sampled targets with the common parameter names
 # sampler_groups = lapply(parameter_families, function(pfam) {
-#   grep(pattern = paste(pfam, '\\[', sep = ''), 
+#   grep(pattern = paste(pfam, '\\[', sep = ''),
 #        x = active_samplers, value = TRUE)
 # })
 # names(sampler_groups) = parameter_families
@@ -260,6 +260,16 @@ sub_groups = list(
     pattern = 'beta_tx\\[5,.*', x = sampler_groups$beta_tx, value = TRUE
   )
 )
+
+
+
+sub_groups = lapply(1:nrow(nim_pkg$data$covariates), function(ind) { 
+  grep(pattern = paste('beta_tx\\[', ind, ',.*', sep = ''), 
+       x = sampler_groups$beta_tx, value = TRUE)
+})
+names(sub_groups) = rownames(nim_pkg$data$covariates)
+
+
   
 targets::tar_load(movement_classes)
 movement_classes$stage_defs

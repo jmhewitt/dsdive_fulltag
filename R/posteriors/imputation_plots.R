@@ -2,11 +2,15 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
                             tag_info) {
   
   mcmc_sample_dir = 'output/mcmc/nim_fit'
-  output_dir = 'output/new_plots/multinomial'
+  output_dir = 'output/new_plots/multinomial_prop_reduced_classes'
   targets::tar_load(template_bins)
   targets::tar_load(tag_info)
+  targets::tar_load(movement_classes)
   
-  browser()
+  library(ggplot2)
+  library(ggthemes)
+  library(dplyr)
+  
   # load source data
   nim_pkg = readRDS(dir(
     path = mcmc_sample_dir, pattern = 'nim_pkg.rds', full.names = TRUE
@@ -46,6 +50,9 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
     sample_stages = rownames(movement_classes$stage_defs)[
       stage_samples[nrow(stage_samples),]
     ]
+  ) %>% mutate(
+    depth_lower = depth - template_bins$halfwidth[depth_bin],
+    depth_upper = depth + template_bins$halfwidth[depth_bin]
   )
   
   # create output directory
@@ -81,16 +88,66 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
     df$time = 1:nrow(df)
     df$stage_mode = rownames(stage_summary)[apply(stage_summary, 2, which.max)]
     
+    # # plot posterior mode for stage speed
+    # pl = ggplot(df[inds,] %>% 
+    #               mutate(mode_dir = gsub(pattern = '_(ascent|descent|free)',  
+    #                                      replacement = '', 
+    #                                      x = stage_mode)), 
+    #             aes(x = time, y = depth, col = mode_dir)) + 
+    #   # imputed trajectory as path
+    #   geom_line(col = 'grey80') +
+    #   # imputed trajectory as discrete depths
+    #   geom_point() + 
+    #   # deep depth threshold
+    #   geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
+    #   # formatting
+    #   scale_color_brewer(type = 'qual', palette = 'Dark2') +
+    #   # scale_color_manual(
+    #   #   values = c(deep_descent = '#1f78b4', deep_ascent = '#33a02c',
+    #   #              shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
+    #   #              deep_forage = '#d95f02', free_surface = '#e7298a')
+    #   # ) + 
+    #   depth_scale + 
+    #   # scale_x_datetime(date_breaks = '12 hours', 
+    #   #                  date_labels = c('%b %d', ' ')) + 
+    #   theme_few() + 
+    #   theme(axis.title.x = element_blank(), 
+    #         legend.title = element_blank(),
+    #         panel.grid.minor.y = element_line(color = 'grey90'),
+    #         panel.grid.major.y = element_line(color = 'grey90'))
+    
     # plot posterior mode for stage speed
     pl = ggplot(df[inds,] %>% 
-                  mutate(mode_dir = gsub(pattern = '_(ascent|descent|free)',  
+                  mutate(mode_speed = gsub(pattern = '_(ascent|descent|free)',  
                                          replacement = '', 
-                                         x = stage_mode)), 
-                aes(x = time, y = depth, col = mode_dir)) + 
+                                         x = stage_mode),
+                         mode_dir = gsub(pattern = '(fast|slow)_',  
+                                         replacement = '', 
+                                         x = stage_mode),
+                         dir_angle = plyr::mapvalues(
+                           x = mode_dir, 
+                           from = c('ascent', 'descent', 'free'), 
+                                    to = c(-45, -180+45, -90)),
+                         speed_label = plyr::mapvalues(
+                           x = mode_speed,
+                           from = c('slow', 'fast'),
+                           to = c('\u005E', '\u005E')# '\u2191')
+                         ),
+                         speed_face = plyr::mapvalues(
+                           x = mode_speed,
+                           from = c('slow', 'fast'),
+                           to = c('plain', 'bold')
+                         )
+                        ), 
+                aes(x = time, y = depth, ymin = depth_lower, ymax = depth_upper,
+                    col = mode_speed, group = 1, angle = dir_angle, 
+                    label = speed_label)) + 
       # imputed trajectory as path
-      geom_line(col = 'grey80') +
+      geom_line(alpha = .1, lwd = 1) +
       # imputed trajectory as discrete depths
-      geom_point() + 
+      geom_point(pch = 3, alpha = .1) + 
+      geom_linerange(alpha  = .1, lwd = 1) +
+      geom_text() + 
       # deep depth threshold
       geom_hline(yintercept = 800, lty = 3, alpha = .6) + 
       # formatting
@@ -100,22 +157,42 @@ imputation_plots = function(mcmc_sample_dir, output_dir, template_bins,
       #              shallow_descent = '#a6cee3', shallow_ascent = '#b2df8a',
       #              deep_forage = '#d95f02', free_surface = '#e7298a')
       # ) + 
+      scale_color_manual(
+        # values = c('fast' = '#ca0020', 'slow' = '#0571b0')
+        # values = c('slow' = '#7a0177', 'fast' = '#fbb4b9')
+        values = c(#'fast' = rgb(255/255, 69/255, 0/255), 
+                   'fast' = rgb(220/255, 0/255, 5/255), 
+                   # 'slow' = rgb(0,0,1),
+                   'slow' = rgb(0/255,69/255,255/255))
+      ) + 
       depth_scale + 
       # scale_x_datetime(date_breaks = '12 hours', 
       #                  date_labels = c('%b %d', ' ')) + 
       theme_few() + 
       theme(axis.title.x = element_blank(), 
-            legend.title = element_blank(),
-            panel.grid.minor.y = element_line(color = 'grey90'),
-            panel.grid.major.y = element_line(color = 'grey90'))
+            legend.title = element_blank())
+    
+    pl
+    
     
     # save plot of dive record 
     f =  file.path(output_dir, 
                    paste('posterior_mode_speed_', subj_label, '.pdf', sep = '')
     )
     
-    ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12*12, 
+
+    ggsave(pl, filename = f, dpi = 'print', height = 12, width = 12, 
            limitsize = FALSE)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     # plot posterior mode for stage direction
     pl = ggplot(df[inds,] %>% 
