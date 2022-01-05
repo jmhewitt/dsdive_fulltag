@@ -4,13 +4,13 @@ library(coda)
 
 # load custom likelihood
 source(
-  dir(path = file.path('R', 'util', 'statespace_tools'), 
+  dir(path = file.path('R', 'util', 'statespace_tools'),
       pattern = '.R', full.names = TRUE)
 )
 
 # load matrix exponentials
 source(
-  dir(path = file.path('R', 'util', 'expokit'), 
+  dir(path = file.path('R', 'util', 'expokit'),
       pattern = '.R', full.names = TRUE)
 )
 
@@ -66,10 +66,10 @@ nim_pkg$inits$depth_tx_mat = array(
 for(i in 1:nim_pkg$consts$n_stages) {
   nim_pkg$inits$depth_tx_mat[i, , ] <- expm::expm(
     nim_pkg$consts$tstep * buildInfinitesimalGenerator(
-      pi = nim_pkg$consts$pi[nim_pkg$consts$stage_defs[i, 1]], 
-      lambda = nim_pkg$inits$lambda[nim_pkg$consts$stage_defs[i, 2]], 
-      M = nim_pkg$consts$n_bins, 
-      stage = 6, 
+      pi = nim_pkg$consts$pi[nim_pkg$consts$stage_defs[i, 1]],
+      lambda = nim_pkg$inits$lambda[nim_pkg$consts$stage_defs[i, 2]],
+      M = nim_pkg$consts$n_bins,
+      stage = 6,
       widths = nim_pkg$consts$widths
     )
   )
@@ -77,17 +77,48 @@ for(i in 1:nim_pkg$consts$n_stages) {
 
 # initialize stage transition matrices
 nim_pkg$inits$stage_tx_mat = array(
-  dim = c(nim_pkg$consts$n_stages, nim_pkg$consts$n_stages, 
+  dim = c(nim_pkg$consts$n_subjects,
+          nim_pkg$consts$n_stages, nim_pkg$consts$n_stages,
           nim_pkg$consts$n_covariate_combinations)
 )
+for(k in 1:nim_pkg$consts$n_subjects) {
 for(i in 1:nim_pkg$consts$n_covariate_combinations) {
-  nim_pkg$inits$stage_tx_mat[, , i] <- stageTxMats(
+  nim_pkg$inits$stage_tx_mat[k, , , i] <- stageTxMats(
     betas = nim_pkg$inits$beta_tx,
     covariates = nim_pkg$consts$covariates_unique[, i, drop = FALSE],
     n_timepoints = 1
   )[, , 1]
-}
+}}
 
+nim_pkg$inits$beta_tx = array(
+  data = 0,
+  dim = c(nim_pkg$consts$n_subjects, dim(nim_pkg$inits$beta_tx))
+)
+
+nim_pkg$inits$beta_tx_mu = array(
+  data = 0,
+  dim = c(nim_pkg$consts$n_covariates, nim_pkg$consts$n_stages,
+          nim_pkg$consts$n_stages - 1)
+)
+nim_pkg$consts$beta_tx_mu = NULL
+
+beta_tx_prec = solve(nim_pkg$consts$beta_tx_cov)
+nim_pkg$inits$beta_tx_prec = array(
+  dim = c(nim_pkg$consts$n_covariates, nim_pkg$consts$n_stages,
+          nim_pkg$consts$n_stages - 1, nim_pkg$consts$n_stages - 1)
+)
+for(i in 1:nim_pkg$consts$n_covariates) {
+  for(j in 1:nim_pkg$consts$n_stages) {
+    nim_pkg$inits$beta_tx_prec[i,j,,] = beta_tx_prec
+  }
+}
+nim_pkg$consts$beta_tx_cov = NULL
+
+nim_pkg$consts$beta_tx_mu_prior_mean = rep(0, nim_pkg$consts$n_stages - 1)
+nim_pkg$consts$beta_tx_mu_prior_cov = 1e2 * diag(nim_pkg$consts$n_stages - 1)
+
+nim_pkg$consts$beta_tx_prec_prior = solve(1e2 * diag(nim_pkg$consts$n_stages - 1))
+nim_pkg$consts$beta_tx_prec_prior_k = nim_pkg$consts$n_stages
 
 #
 # nimble modeling
@@ -102,12 +133,12 @@ buildBinTxMats = nimbleFunction(
                  widths = double(1),
                  tstep = double(0),
                  stage_defs = double(2)) {
-    
+
     returnType(double(3))
-    
+
     depth_tx_mat <- array(dim = c(n_stages, n_bins, n_bins), init = FALSE)
     H <- matrix(nrow = n_bins, ncol = n_bins, init = FALSE)
-    
+
     for(i in 1:n_stages) {
       depth_tx_mat[i, 1:n_bins, 1:n_bins] <- expocall_gpadm(
         H = buildInfinitesimalGenerator(
@@ -122,7 +153,7 @@ buildBinTxMats = nimbleFunction(
         ncols = n_bins
       )[1:n_bins, 1:n_bins]
     }
-    
+
     return(depth_tx_mat)
   }
 )
@@ -130,33 +161,52 @@ buildBinTxMats = nimbleFunction(
 
 # model!
 modelCode = nimble::nimbleCode({
-  
+
   # speed classes
   for(j in 1:n_lambda_class) {
     lambda[j] ~ dgamma(shape = .01, rate = .01)
   }
-  
+
   # constraint to assist in identifying speed classes
   constraint_data ~ dconstraint(lambda[1] <= lambda[2])
-  
+
+  # hierarchical centering for population-level stage effects
+  for(i in 1:n_covariates) {
+    for(j in 1:n_stages) { # stage being transitioned from
+      beta_tx_mu[i,j,1:(n_stages-1)] ~ dmnorm(
+        mean = beta_tx_mu_prior_mean[1:(n_stages-1)],
+        cov = beta_tx_mu_prior_cov[1:(n_stages-1), 1:(n_stages-1)]
+      )
+      beta_tx_prec[i,j,1:(n_stages-1),1:(n_stages-1)] ~ dwish(
+        R = beta_tx_prec_prior[1:(n_stages-1),1:(n_stages-1)],
+        df = beta_tx_prec_prior_k
+      )
+    }
+  }
+
   # stage transition matrix effects
   for(i in 1:n_covariates) {
     for(j in 1:n_stages) { # stage being transitioned from
-      beta_tx[i,j,1:(n_stages-1)] ~ dmnorm(mean = beta_tx_mu[1:(n_stages-1)],
-                                           cov = beta_tx_cov[1:(n_stages-1),
-                                                             1:(n_stages-1)])
+      for(k in 1:n_subjects) {
+        beta_tx[k,i,j,1:(n_stages-1)] ~ dmnorm(
+          mean = beta_tx_mu[i,j,1:(n_stages-1)],
+          prec = beta_tx_prec[i,j,1:(n_stages-1), 1:(n_stages-1)]
+        )
+      }
     }
   }
-  
+
   # stage transition matrices
-  for(i in 1:n_covariate_combinations) {
-    stage_tx_mat[1:n_stages, 1:n_stages, i] <- stageTxMats(
-      betas = beta_tx[1:n_covariates, 1:n_stages, 1:(n_stages-1)],
-      covariates = covariates_unique[1:n_covariates, i:i],
-      n_timepoints = 1
-    )[1:n_stages, 1:n_stages, 1]
+  for(k in 1:n_subjects) {
+    for(i in 1:n_covariate_combinations) {
+      stage_tx_mat[k, 1:n_stages, 1:n_stages, i] <- stageTxMats(
+        betas = beta_tx[k, 1:n_covariates, 1:n_stages, 1:(n_stages-1)],
+        covariates = covariates_unique[1:n_covariates, i:i],
+        n_timepoints = 1
+      )[1:n_stages, 1:n_stages, 1]
+    }
   }
-  
+
   # depth bin transition matrices
   for(i in 1:n_stages) {
     depth_tx_mat[i, 1:n_bins, 1:n_bins] <- expocall_gpadm(
@@ -172,14 +222,14 @@ modelCode = nimble::nimbleCode({
       ncols = n_bins
     )[1:n_bins, 1:n_bins]
   }
-  
+
   # largest sampling unit is a sequence of depth bins
   for(seg_num in 1:n_segments) {
     # likelihood for depth bin observations
     depths[segments[seg_num,1]:segments[seg_num,4]] ~ dstatespace(
       obs_lik_dict = depth_tx_mat[1:n_stages, 1:n_bins, 1:n_bins],
       txmat_dict = stage_tx_mat[
-        1:n_stages, 1:n_stages, 1:n_covariate_combinations
+        segments[seg_num, 3], 1:n_stages, 1:n_stages, 1:n_covariate_combinations
       ],
       txmat_seq = covariateId[segments[seg_num,1]:segments[seg_num,4]],
       x0 = init_stages[1:n_stages],
@@ -188,11 +238,11 @@ modelCode = nimble::nimbleCode({
       nt = segments[seg_num,2]
     )
   }
-  
+
 })
 
 mod = nimbleModel(
-  code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data, 
+  code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data,
   inits = nim_pkg$inits
 )
 
@@ -206,17 +256,26 @@ mcmc = buildMCMC(conf)
 
 cmcmc = compileNimble(mcmc)
 
-niter = 1e3
+niter = 2e3
 tick = proc.time()[3]
 cmcmc$run(niter = niter)
 tock = proc.time()[3]
 niter / (tock - tick)
 
-burn = 1:700
+burn = 1:1e3
 samples = as.matrix(cmcmc$mvSamples)
 plot(samples[,'beta_tx[5, 5, 4]'])
-plot(samples[,'lambda[1]'])
+plot(mcmc(samples[-burn,'lambda[1]']))
 plot(mcmc(samples[-burn,'lambda[2]']))
 sort(effectiveSize(mcmc(samples[-burn,])))
 
-1-rejectionRate(mcmc(samples[-burn,'beta_tx[5, 5, 4]']))
+1-rejectionRate(mcmc(samples[-burn,'lambda[1]']))
+
+# TODO: add random effects, see if it's about the same speed (5.539 samples/sec)
+# because the likelihood time is linear in the length of the time series.
+#  hmm, nope, it's slower.  speed is now 1.722 samples/sec, but the tradeoff is
+#  less than an order of magnitude, so may be worthwhile for the addition of
+#  some random effects
+# 
+# adding the conjugate hierarchical centering doesn't change things much.  drops
+# rate to 1.65 samples/sec
