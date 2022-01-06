@@ -24,5 +24,8 @@ lapply(list.files("R", full.names = TRUE, recursive = TRUE, pattern = '\\.R'),
 
 # assemble workflow
 c(
- 
+ data_targets,
+ depth_bin_imputation_targets,
+ dive_segmentation_targets,
+ nimble_targets
 )
