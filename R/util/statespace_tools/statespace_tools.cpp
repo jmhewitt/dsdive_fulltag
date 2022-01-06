@@ -202,3 +202,92 @@ double nimLL2LayerCompressedRaw(
     
     return ll_marginal(x0vec, liks, txmats, nt - 1);
 }
+
+/**
+ * Final (marginal) prediction distribution [x_n | y_{1:n}] for a two-layer
+ * discrete-time, discrete-space state space model.  The number of states is
+ * assumed to be small enough that all numerical operations can be implemented
+ * using dense matrix methods.
+ *
+ * Furthermore, it is assumed that there is considerable redundancy in both the
+ * state transition and state observation distributions.  The unique
+ * distributions are passed in via "dictionary" objects to reduce memory
+ * requirements for datasets with long observation records.  The dictionary
+ * compression also helps reduce the computational cost for generating the
+ * distributions for all timepoints, but this step is done before this method
+ * is used.
+ *
+ * @param obs_lik_dict An array of m n \times n transition matrices where
+ *   each n \times n transition matrix contains the transition distribution
+ *   [y_{i+1} | y_i, x] for a fixed y_i and y_{i+1}.  The format implies there
+ *   are m latent states for x = 0,...,m-1 and n unique values for
+ *   y = 0,...,n-1.  The array is assumed to be stored in column major format
+ *   with indices specifying (x, y_i, y_{i+1}).  The order of the indices is
+ *   chosen s.t. a consecutive sequence of m elements can be used as the
+ *   likelihood [y_{i+1} | y_i, \cdot] in filtering computations.
+ * @param obs sequence of observed values for y
+ * @param txmat_dict data vector for an m \times m \times q array that stores
+ *   q unique state transition matrices for the state space model, providing
+ *   [x_{i+1} | x_i].
+ * @param txmat_seq Sequence of transition matrices used in the state space
+ *   model.
+ * @param x0 initial distribution of latent states
+ * @return
+ */
+// [[Rcpp::export]]
+Eigen::VectorXd finalPred2LayerCompressed(
+    std::vector<double> obs_lik_dict, std::vector<int> obs,
+    std::vector<double> txmat_dict, std::vector<int> txmat_seq,
+    Eigen::VectorXd x0, int num_obs_states
+) {
+
+    unsigned int nstates = x0.size();
+
+    typedef DictionaryDecoder<
+                MatrixMapper,
+                Eigen::Map<Eigen::MatrixXd>,
+                int
+            > TxContainer;
+
+    typedef DictionaryDecoder<
+                ColumnMapper3,
+                Eigen::Map<Eigen::VectorXd>,
+                int,
+                MarkovDictIter<ColumnMapper3, Eigen::Map<Eigen::VectorXd>, int>
+            > LikContainer;
+
+    // decoder for the hidden state's transition matrices
+    MatrixMapper txmap(txmat_dict.data(), nstates, nstates);
+    TxContainer txmats(txmap, txmat_seq);
+
+    // decoder for the observed state's transition matrices
+    ColumnMapper3 likmap(obs_lik_dict.data(), nstates, num_obs_states);
+    LikContainer liks(likmap, obs);
+
+    // initialize container and updating methods for predictive distribution
+    LatentPrediction<LikContainer, TxContainer> pred_dist(x0, liks, txmats);
+
+    // iterate to compute the predictive distribution for the final state
+    unsigned int nobs = obs.size() - 1;
+    auto lik_it = liks.begin();
+    for(unsigned int i = 0; i < nobs; ++i) {
+        ++pred_dist;
+        ++lik_it;
+    }
+
+    // reposition the likelihood iterator so that it is not past the final obs.
+    lik_it = liks.begin();
+    for(unsigned int i = 0; i < nobs - 1; ++i) {
+        ++lik_it;
+    }
+
+    // extract [x_n | y_{1:n-1}]
+    Eigen::VectorXd xf = *pred_dist;
+
+    // reweight the final prediction distribution by the final obs.
+    xf.array() *= (*(lik_it)).array();
+    // standardize the distribution
+    xf /= xf.sum();
+
+    return xf;
+}

@@ -246,11 +246,17 @@ fit_marginalized_model_script = tar_target(
     
     samples = as.matrix(cmcmc$mvSamples)
     
+    # create output directory
+    fpath = file.path('output', 'mcmc', tar_name())
+    dir.create(path = fpath, showWarnings = FALSE, recursive = TRUE)
+    
+    # save model package
+    f_pkg = file.path(fpath, 'nim_pkg.rds')
+    saveRDS(nim_pkg, file = f_pkg)
+    
     # save samples
-    f = file.path('output', 'mcmc', 'marginalized_model')
-    dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
-    f = file.path(f, 'samples.rds')
-    saveRDS(samples, file = f)
+    f_samples = file.path(fpath, 'samples.rds')
+    saveRDS(samples, file = f_samples)
     
     # some exploration of model output
     # 
@@ -262,6 +268,9 @@ fit_marginalized_model_script = tar_target(
     # 
     # 1-rejectionRate(mcmc(samples[-burn,'lambda[1]']))
     
-    f
+    list(
+      samples = f_samples,
+      package = f_pkg
+    )
   }
 )

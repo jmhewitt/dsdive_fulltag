@@ -48,6 +48,10 @@ nimble_targets = list(
     }
   ),
   
-  fit_marginalized_model_script
+  fit_marginalized_model_script,
+  
+  marginalized_model_posterior_diagnostic_script,
+  
+  marginalized_model_cee_prediction_script
   
 )

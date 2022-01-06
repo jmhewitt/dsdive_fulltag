@@ -8,6 +8,8 @@ covariate_tx = function(covariates, control = list()) {
   # control$window_len = 3600 # how many seconds should prop_recent depth do?
   # control$obs_freq = 300    # how many seconds between observations?
   # control$spline_degree = 3 # spline order
+  # control$lon               # proximal longitude of data collection
+  # control$lat               # proximal latitude of data collection
   
   # derived covariate: proportion of recent observations at depth
   prop_recent_deep = sapply(1:ncol(covariates), function(i) {
@@ -35,6 +37,19 @@ covariate_tx = function(covariates, control = list()) {
   rownames(prop_poly) = paste(
     'prop_deep_poly_', 1:nrow(prop_poly), sep = ''
   )
+  
+  # (re-)compute celestial covariates is lon/lat information is provided
+  if(all(!is.null(control$lon), !is.null(control$lat))) {
+    dates = as.POSIXct(
+      covariates['time',], origin = '1970-01-01 00:00.00 UTC', tz = 'UTC'
+    )
+    covariates['daytime',] = daytime(
+      date = dates, lat = control$lat, lon = control$lon
+    )
+    covariates['moonlit',] = moonlit(
+      date = dates, lat = control$lat, lon = control$lon
+    )
+  }
   
   # assemble final covariate matrix
   rbind(
