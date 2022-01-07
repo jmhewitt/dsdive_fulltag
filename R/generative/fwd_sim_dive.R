@@ -1,5 +1,6 @@
 fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
-                        model, lon, lat, depth_threshold, template_bins, subj) {
+                        model, lon, lat, depth_threshold, template_bins, 
+                        subject_id) {
   # forward-sampling of dive 
   #
   # Parameters:
@@ -13,7 +14,7 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
   #  lat - latitude around which sampling occurs (for day/night calculations)
   #  depth_threshold - depth used to generate prop_recent_deep covariate
   #  template_bins - for building out covariates
-  #  subj - subject number id, so correct tx. mats can be extracted
+  #  subject_id - subject number id, so correct tx. mats can be extracted
   
   # initialize stage history
   stages = c()
@@ -51,10 +52,13 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
     # basic covariates
     covariates['time', ind+1] = covariates['time', ind] + nim_pkg$consts$tstep
     covariates['depth', ind+1] = template_bins$center[depth_bins[ind+1]]
-    
-    # transform covariates according to model specification
+    # only transform covariates wrt. model specification needed for sampling
+    cov_inds = seq(
+      to = ind + 1,
+      from = max(1, ind + 1 - 3600/nim_pkg$consts$tstep)
+    )
     covariates_modeled = covariate_tx(
-      covariates = covariates, 
+      covariates = covariates[, cov_inds], 
       control = list(
         deep_depth = depth_threshold,
         window_len = 3600,  # TODO: make this an argument somewhere!!!
@@ -65,6 +69,8 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
       )
     )
     
+    
+    
     #
     # sample stage
     #
@@ -72,7 +78,7 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
     # map the new covariate
     covariateId = which(
       apply(nim_pkg$consts$covariates_unique, 2, function(x) {
-        all(x == covariates_modeled[, ind + 1])
+        all(x == covariates_modeled[, ncol(covariates_modeled)])
       })
     )
     
@@ -80,7 +86,7 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
     stage = sample(
       x = 1:nim_pkg$consts$n_stages, 
       size = 1,
-      p = model$stage_tx_mat[subj, stage, , covariateId]
+      p = model$stage_tx_mat[subject_id, stage, , covariateId]
     )
     
     # save stage
