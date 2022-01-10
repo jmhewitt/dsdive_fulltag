@@ -270,20 +270,13 @@ Eigen::VectorXd finalPred2LayerCompressed(
     // iterate to compute the predictive distribution for the final state
     unsigned int nobs = obs.size() - 1;
     auto lik_it = liks.begin();
-    for(unsigned int i = 0; i < nobs; ++i) {
-        ++pred_dist;
-        ++lik_it;
-    }
-
-    // reposition the likelihood iterator so that it is not past the final obs.
-    lik_it = liks.begin();
     for(unsigned int i = 0; i < nobs - 1; ++i) {
+        ++pred_dist;
         ++lik_it;
     }
 
     // extract [x_n | y_{1:n-1}]
     Eigen::VectorXd xf = *pred_dist;
-
     // reweight the final prediction distribution by the final obs.
     xf.array() *= (*(lik_it)).array();
     // standardize the distribution
