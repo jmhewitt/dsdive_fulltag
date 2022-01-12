@@ -5,7 +5,15 @@ library(future.batchtools)
 # basic check for existence of SLURM job submission command to determine if 
 # running on a SLURM-enabled server
 if(system('command -v sbatch') == 0) {
-  plan(batchtools_slurm, template = file.path("hpc", "slurm_batchtools.tmpl"))
+  nnodes = as.numeric(Sys.getenv('SLURM_JOB_NUM_NODES'))
+  if(is.na(nnodes)) {
+    nnodes = 1
+  }
+  if(nnodes > 1) {
+    plan(cluster, workers = snow::getMPIcluster())
+  } else {
+    plan(batchtools_slurm, template = file.path("hpc", "slurm_batchtools.tmpl"))
+  }
 } else {
   plan(multisession)
 }
