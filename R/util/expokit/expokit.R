@@ -4,7 +4,8 @@
 
 base_dir = file.path(getwd(), 'R', 'util', 'expokit', 'rexpokit_bare')
 
-system(paste(
+# try compiling expokit
+success = system(paste(
   'R CMD COMPILE',
   paste('CXXFLAGS=', '"',
         paste('-I', 
@@ -15,6 +16,21 @@ system(paste(
   file.path(base_dir, 'expokit_flattened.f'),
   sep = ' '
 ))
+
+# try compiling with alternate flags, if needed
+if(success != 0) {
+  system(paste(
+    'R CMD COMPILE',
+    paste('CXXFLAGS=', '"',
+          paste('-I', 
+                file.path(find.package(c('Rcpp')), 'include'), 
+                sep = '', collapse = ' '), 
+          '"', sep = ''),
+    'FFLAGS=-Wno-argument-mismatch',
+    file.path(base_dir, 'expokit_flattened.f'),
+    sep = ' '
+  ))
+}
 
 expokit_gpadm = nimble::nimbleExternalCall(
   prototype = function(ideg = integer(1), m = integer(1), t = double(1), 
