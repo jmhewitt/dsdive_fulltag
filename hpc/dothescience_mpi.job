@@ -5,14 +5,17 @@
 #SBATCH --account gelfandlab
 #SBATCH --mail-type ALL
 #SBATCH --mail-user joshua.hewitt@duke.edu
-#SBATCH --ntasks 1
+#SBATCH --ntasks 200
 
 module unload R
 module load R/3.5.2
+module load OpenMPI
+
+R_PROFILE=/opt/apps/rhel7/R-3.5.2/lib64/R/library/snow/RMPISNOWprofile; export R_PROFILE
 
 date
 START=`date +%s`
-R --no-save --no-restore CMD BATCH make.R ${SLURM_JOB_NAME}.Rout
+mpirun R --no-save --no-restore CMD BATCH make.R ${SLURM_JOB_NAME}.Rout
 END=`date +%s`
 date
 
