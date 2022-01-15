@@ -269,18 +269,14 @@ Eigen::VectorXd finalPred2LayerCompressed(
 
     // iterate to compute the predictive distribution for the final state
     unsigned int nobs = obs.size() - 1;
-    auto lik_it = liks.begin();
-    for(unsigned int i = 0; i < nobs - 1; ++i) {
+    for(unsigned int i = 0; i < nobs; ++i) {
         ++pred_dist;
-        ++lik_it;
     }
 
-    // extract [x_n | y_{1:n-1}]
+    // extract [x_n | y_{1:n-1}], which becomes [x_n | y_{1:n}] by assuming
+    // a flat likelihood at time y_n, i.e., that there is no information on the
+    // final observed transition
     Eigen::VectorXd xf = *pred_dist;
-    // reweight the final prediction distribution by the final obs.
-    xf.array() *= (*(lik_it)).array();
-    // standardize the distribution
-    xf /= xf.sum();
 
     return xf;
 }
