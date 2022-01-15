@@ -7,7 +7,9 @@ nimble_targets = list(
       template_bins = template_bins,
       tag_list = raw_sattags,
       depth_threshold = deep_dive_depth,
-      sattag_timestep = sattag_timestep
+      sattag_timestep = sattag_timestep,
+      repeated_surface_bin_break = 3,
+      min_segment_length = 60
     )
   ),
   

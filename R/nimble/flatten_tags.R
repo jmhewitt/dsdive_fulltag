@@ -1,5 +1,6 @@
 flatten_tags = function(template_bins, tag_list, depth_threshold, 
-                        sattag_timestep) {
+                        sattag_timestep, repeated_surface_bin_break = NULL,
+                        min_segment_length = 0) {
   # Parameters:
   #   depth_threshold - depth used to generate prop_recent_deep covariate
   
@@ -30,9 +31,42 @@ flatten_tags = function(template_bins, tag_list, depth_threshold,
       nim_pkg$consts$subject_id_labels, tag$tag
     )
     
+    # treat repeated surface bin observations as gaps in animal movement record
+    if(!is.null(repeated_surface_bin_break)) {
+      # summarize runs of surface vs. non-surface observations
+      surface_obs_runs = rle(tag$depth.bin == 1)
+      # ids of surface bin runs
+      surface_block_ids = which(surface_obs_runs$values == TRUE)
+      # identify surface bin runs that are longer than desired
+      long_surface_run = surface_obs_runs$lengths[surface_block_ids] >= 
+        repeated_surface_bin_break
+      # tag interior of long surface runs as data gaps
+      if(sum(long_surface_run) > 0) {
+        # data indices at which runs begin
+        run_starts = cumsum(c(1, surface_obs_runs$lengths))
+        # loop over the long surface runs
+        for(block_ind in surface_block_ids[long_surface_run]) {
+          # label interior of long surface run as a data gap
+          tag$gap_after[
+            seq(
+              from = run_starts[block_ind] + 1,
+              by = 1, 
+              length.out = surface_obs_runs$lengths[block_ind] - 2
+            )
+          ] = TRUE
+          
+        }
+      }
+    }
+    
     # identify all of the observations to analyze
     tag_segments = rle(tag$gap_after)
     valid_segments = which(tag_segments$values == FALSE)
+    
+    # do not analyze short segments
+    valid_segments = valid_segments[
+      tag_segments$lengths[valid_segments] > min_segment_length
+    ]
     
     # first indices of observations to analyze
     segment_starts = cumsum(c(1, tag_segments$lengths))
