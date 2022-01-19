@@ -78,13 +78,13 @@ validation_nstep_targets = list(
       # load model outputs
       #
       
-      # # load posterior samples and model package
-      # tar_load(fit_marginalized_model)
+      # load posterior samples and model package
+      tar_load(fit_marginalized_model)
       
-      fit_marginalized_model = list(
-        samples = "output/mcmc/fit_marginalized_model/samples.rds",
-        package = "output/mcmc/fit_marginalized_model/nim_pkg.rds"
-      )
+      # fit_marginalized_model = list(
+      #   samples = "output/mcmc/fit_marginalized_model/samples.rds",
+      #   package = "output/mcmc/fit_marginalized_model/nim_pkg.rds"
+      # )
       
       samples = readRDS(fit_marginalized_model$samples)
 

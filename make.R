@@ -1,6 +1,12 @@
-# fit model on single node
+# # fit model on single node
+# targets::tar_make(
+#   names = fit_marginalized_model,
+#   callr_function = NULL
+# )
+
+# prepare validation data
 targets::tar_make(
-  names = fit_marginalized_model,
+  names = validation_config_nstep,
   callr_function = NULL
 )
 
