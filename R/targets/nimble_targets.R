@@ -50,6 +50,16 @@ nimble_targets = list(
     }
   ),
   
+  tar_target(
+    name = covariate_tx_control,
+    command = list(
+      deep_depth = deep_dive_depth,
+      window_len = 3600,
+      obs_freq = sattag_timestep,
+      spline_degree = 3
+    )
+  ),
+  
   fit_marginalized_model_script,
   
   marginalized_model_posterior_diagnostic_script,

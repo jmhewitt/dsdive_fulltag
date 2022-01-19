@@ -1,6 +1,6 @@
 fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
                         model, lon, lat, depth_threshold, template_bins, 
-                        subject_id) {
+                        subject_id, covariate_tx_control) {
   # forward-sampling of dive 
   #
   # Parameters:
@@ -12,9 +12,12 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
   #  model - nimble model containing transition matrices
   #  lon - longitude around which sampling occurs (for day/night calculations)
   #  lat - latitude around which sampling occurs (for day/night calculations)
-  #  depth_threshold - depth used to generate prop_recent_deep covariate
+  #  depth_threshold - sampling ends after this depth is exceeded
   #  template_bins - for building out covariates
   #  subject_id - subject number id, so correct tx. mats can be extracted
+  
+  covariate_tx_control$lon = lon
+  covariate_tx_control$lat = lat
   
   # initialize stage history
   stages = c()
@@ -53,23 +56,15 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
     covariates['time', ind+1] = covariates['time', ind] + nim_pkg$consts$tstep
     covariates['depth', ind+1] = template_bins$center[depth_bins[ind+1]]
     # only transform covariates wrt. model specification needed for sampling
+    nshift = covariate_tx_control$window_len / covariate_tx_control$obs_freq
     cov_inds = seq(
       to = ind + 1,
-      from = max(1, ind + 1 - 3600/nim_pkg$consts$tstep)
+      from = max(1, ind + 1 - nshift)
     )
     covariates_modeled = covariate_tx(
       covariates = covariates[, cov_inds], 
-      control = list(
-        deep_depth = depth_threshold,
-        window_len = 3600,  # TODO: make this an argument somewhere!!!
-        obs_freq = nim_pkg$consts$tstep,
-        spline_degree = 3,   # TODO: make this an argument somewhere!!!
-        lon = lon,
-        lat = lat
-      )
+      control = covariate_tx_control
     )
-    
-    
     
     #
     # sample stage

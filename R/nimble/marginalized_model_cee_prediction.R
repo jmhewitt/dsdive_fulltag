@@ -145,7 +145,8 @@ marginalized_model_cee_prediction_script = tar_target(
         lat = cape_hatteras_loc['lat'],
         depth_threshold = deep_dive_depth,
         template_bins = template_bins,
-        subj = subject_id
+        subj = subject_id,
+        covariate_tx_control = covariate_tx_control
       )
 
       # extract time taken to reach a deep depth (sec)

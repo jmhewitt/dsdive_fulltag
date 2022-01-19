@@ -19,12 +19,7 @@ fit_marginalized_model_script = tar_target(
           covariates = data_pkg$data$covariates[
             , seg['start_ind']:seg['end_ind']
           ],
-          control = list(
-            deep_depth = deep_dive_depth,
-            window_len = 3600,
-            obs_freq = sattag_timestep,
-            spline_degree = 3
-          )
+          control = covariate_tx_control
         )
       }))
     

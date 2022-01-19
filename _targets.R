@@ -35,5 +35,6 @@ c(
  data_targets,
  depth_bin_imputation_targets,
  dive_segmentation_targets,
- nimble_targets
+ nimble_targets,
+ validation_nstep_targets
 )
