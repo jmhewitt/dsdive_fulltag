@@ -18,12 +18,8 @@ tar_load(
 # load target number to process and associated data
 #
 
-args=(commandArgs(TRUE))
-if(length(args) > 0) {
-  for(i in 1:length(args)){
-    eval(parse(text=args[[i]]))
-  }
-} else {
+taskGroup = as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
+if(is.na(taskGroup)) {
   taskGroup = 1
 }
 
@@ -67,7 +63,7 @@ sampling_groups = unique(sampling_target_groups)
 # uncompiled model
 mod = nimbleModel(
   code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data,
-  inits = nim_pkg$inits, name = tar_name(), calculate = FALSE
+  inits = nim_pkg$inits, calculate = FALSE
 )
 
 # compile model
