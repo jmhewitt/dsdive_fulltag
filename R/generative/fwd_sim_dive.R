@@ -77,11 +77,22 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
       })
     )
     
+    # extract the matching transition matrix, or rebuild (i.e., if it is new)
+    if(length(covariateId) == 1) {
+      txprobs = model$stage_tx_mat[subject_id, stage, , covariateId]
+    } else {
+      txprobs = stageTxMats(
+        betas = model$beta_tx[subject_id, , , ],
+        covariates = covariates_modeled[, ncol(covariates_modeled), drop = FALSE],
+        n_timepoints = 1
+      )[stage, , ]
+    }
+    
     # sample next stage
     stage = sample(
       x = 1:nim_pkg$consts$n_stages, 
       size = 1,
-      p = model$stage_tx_mat[subject_id, stage, , covariateId]
+      p = txprobs
     )
     
     # save stage
