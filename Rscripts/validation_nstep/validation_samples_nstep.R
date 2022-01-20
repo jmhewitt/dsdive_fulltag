@@ -83,7 +83,7 @@ posterior_sample_inds = unique(tasks$posterior_sample_ind)
 # draw samples for tasks by looping over the posterior samples to work with
 validation_pred_samples = do.call(rbind, lapply(posterior_sample_inds, 
                                                 function(post_ind) {
-  
+                                                  
   # transfer posterior sample of model parameters to model object
   for(tgt_group in sampling_groups) {
     cmod[[tgt_group]] = samples[
@@ -118,12 +118,12 @@ validation_pred_samples = do.call(rbind, lapply(posterior_sample_inds,
     # posterior predictive distribution for latent state before predictions
     xf = finalPred2LayerCompressed(
       obs_lik_dict = cmod$depth_tx_mat,
-      obs = cmod$depth_bins[seg_inds],
+      obs = cmod$depth_bins[seg_inds] - 1,
       txmat_dict = cmod$stage_tx_mat[subject_id, , , ],
-      txmat_seq = cmod$covariateId[seg_inds],
+      txmat_seq = cmod$covariateId[seg_inds] - 1,
       x0 = cmod$init_stages,
       num_obs_states = nim_pkg$consts$n_bins
-    )
+    ) 
     
     # simulate dive until a deep depth is reached
     sim = fwd_sim_dive(
