@@ -14,7 +14,7 @@ module load R/3.5.2
 
 date
 START=`date +%s`
-R --no-save --no-restore CMD BATCH '--args taskGroup=$SLURM_ARRAY_TASK_ID' Rscripts/validation_nstep/validation_samples_nstep.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
+R --no-save --no-restore CMD BATCH Rscripts/validation_nstep/validation_samples_nstep.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
 END=`date +%s`
 date
 
