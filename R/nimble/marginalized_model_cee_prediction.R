@@ -124,9 +124,9 @@ marginalized_model_cee_prediction_script = tar_target(
       # posterior predictive distribution for latent state before exposure
       xf = finalPred2LayerCompressed(
         obs_lik_dict = cmod$depth_tx_mat,
-        obs = cmod$depth_bins[seg_inds],
+        obs = cmod$depth_bins[seg_inds] - 1,
         txmat_dict = cmod$stage_tx_mat[final_seg['subject_id'], , , ],
-        txmat_seq = cmod$covariateId[seg_inds],
+        txmat_seq = cmod$covariateId[seg_inds] - 1,
         x0 = cmod$init_stages,
         num_obs_states = nim_pkg$consts$n_bins
       )
