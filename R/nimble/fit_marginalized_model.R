@@ -67,6 +67,7 @@ fit_marginalized_model_script = tar_target(
     # add unique covariates and their count to data package
     nim_pkg$consts$covariates_unique = covs
     nim_pkg$consts$n_covariate_combinations = ncol(covs)
+    nim_pkg$consts$n_covariates = nrow(covs)
     
     #
     # add additional nimble package elements
