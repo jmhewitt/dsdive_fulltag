@@ -39,16 +39,6 @@ dive_segmentation_targets = list(
       tag_info = tag_info, deep_threshold = deep_dive_depth, 
       timestep = sattag_timestep
     )
-  ),
-  
-  # identify endpoints of segmented dives
-  tar_target(
-    name = dive_endpoints,
-    command = identify_dive_endpoints(depth_files = depth_files, 
-                                      dive_labels = dive_labels, 
-                                      template_bins = template_bins, 
-                                      sattag_timestep = sattag_timestep, 
-                                      deep_threshold = deep_dive_depth)
   )
   
 )
