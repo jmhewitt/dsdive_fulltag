@@ -3,6 +3,9 @@ validation_nstep_targets = list(
   # define "n" for the n-step ahead prediction distribution
   tar_target(validation_nstep, 2),
   
+  # define parallelization for predictive sampling during validation
+  tar_target(n_validation_tasks, 100),
+  
   # sample indices for validating the n-step ahead prediction distribution
   tar_target(
     name = validation_data_nstep,
@@ -72,7 +75,7 @@ validation_nstep_targets = list(
     command = {
       
       # number of sub-tasks in array job
-      ntasks = 100
+      ntasks = n_validation_tasks
       
       #
       # load model outputs
@@ -119,6 +122,10 @@ validation_nstep_targets = list(
       
       f
     }
-  )
+  ),
+  
+  validation_nstep_processing_script,
+  
+  validation_nstep_report_script
    
 )
