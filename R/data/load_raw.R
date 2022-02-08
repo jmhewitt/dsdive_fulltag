@@ -13,8 +13,18 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
     # validate all series data have unique timestamps
     d$dtime = c(0, diff(d$Date))
     if(any(diff(d$Date) == 0)) {
-      # remove duplicate data records from gonio source
-      valid_source_rows = !((d$dtime == 0) & (d$original == 'gonio'))
+      if(tag_id == 'ZcTag111') {
+        # remove duplicate data records from gonio source
+        valid_source_rows = !((d$dtime == 0) & (d$original == 'gonio'))
+      } else if(tag_id == 'ZcTag126') {
+        valid_source_rows = 1:nrow(d)
+        # remove duplicate data records from portal source
+        valid_source_rows[
+          which(((d$dtime == 0) & (d$original == 'gonio'))) - 1
+        ] = FALSE
+      } else {
+        stop(paste('Duplicate series timestamps for ', tag_id))
+      }
       d = d[valid_source_rows, ]
     } else {
       valid_source_rows = 1:nrow(d)
