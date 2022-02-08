@@ -15,7 +15,8 @@ data_targets = list(
   # sattag series data
   tar_target(
     name = depth_files, 
-    command = dir(path = sattag_dir, pattern = 'series_', full.names = TRUE),
+    command = dir(path = sattag_dir, pattern = 'Series\\.csv', 
+                  full.names = TRUE),
     format = 'file'
   ),
   
@@ -23,9 +24,15 @@ data_targets = list(
   tar_target(
     name = message_files, 
     command = dir(
-      path = sattag_dir, pattern = 'seriesrange_', full.names = TRUE
+      path = sattag_dir, pattern = 'SeriesRange\\.csv', full.names = TRUE
     ),
     format = 'file'
+  ),
+  
+  # formats of which tag metadata are stored in
+  tar_target(
+    name = date_formats, 
+    command = c('mdy IMS p', 'ymd HMS')
   ),
   
   # tag metadata: sex and CEE info
@@ -35,10 +42,10 @@ data_targets = list(
                        colClasses = 'factor') %>%
         dplyr::mutate(
           baseline_end = parse_date_time(
-            x = baseline_end, orders = 'mdy IMS p', tz = 'UTC'
+            x = baseline_end, orders = date_formats, tz = 'UTC'
           ),
           cee_start = parse_date_time(
-            x = cee_start, orders = 'mdy IMS p', tz = 'UTC'
+            x = cee_start, orders = date_formats, tz = 'UTC'
           )
         )
   ),
