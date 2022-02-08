@@ -21,15 +21,11 @@ flatten_tags = function(template_bins, tag_list, depth_threshold,
   )
   
   # flatten tag data
+  saved_subjects = 0
   for(tag_ind in 1:length(tag_list)) {
     
     # unwrap tag
     tag = tag_list[[tag_ind]]
-    
-    # store tag name
-    nim_pkg$consts$subject_id_labels = c(
-      nim_pkg$consts$subject_id_labels, tag$tag
-    )
     
     # treat repeated surface bin observations as gaps in animal movement record
     if(!is.null(repeated_surface_bin_break)) {
@@ -75,6 +71,7 @@ flatten_tags = function(template_bins, tag_list, depth_threshold,
     baseline_end_ind = max(which(tag$times < tag$baseline_end))
       
     # flatten data
+    exported_segments = FALSE
     for(seg_ind in valid_segments) {
       # next available index in nimble package
       flat_ind = length(nim_pkg$data$depth_bins) + 1
@@ -111,8 +108,18 @@ flatten_tags = function(template_bins, tag_list, depth_threshold,
         nim_pkg$consts$segments,
         c(start_ind = flat_ind, 
           length = end_ind - start_ind + 1, 
-          subject_id = tag_ind,
+          subject_id = saved_subjects + 1,
           end_ind = flat_ind + end_ind - start_ind)
+      )
+      # record that we will analyze data from this tag
+      exported_segments = TRUE
+    }
+    
+    # store tag name and increment subject counter
+    if(exported_segments) {
+      saved_subjects = saved_subjects + 1
+      nim_pkg$consts$subject_id_labels = c(
+        nim_pkg$consts$subject_id_labels, tag$tag
       )
     }
   }
