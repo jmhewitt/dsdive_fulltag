@@ -178,7 +178,7 @@ fit_marginalized_model_script = tar_target(
     #
     
     # TRUE to estimate separate covariate effects for each individual
-    nim_pkg$consts$random_effects = FALSE
+    nim_pkg$consts$random_effects = TRUE
     
     # remove objects not used in model
     nim_pkg$data$covariates = NULL
@@ -192,7 +192,9 @@ fit_marginalized_model_script = tar_target(
     cmod = compileNimble(mod)
     
     # verify model has a finite likelihood
-    cmod$calculate()
+    if(!is.finite(cmod$calculate())) {
+      stop('Initial likelihood is not finite')
+    }
     
     conf = configureMCMC(mod)
     
@@ -234,6 +236,13 @@ fit_marginalized_model_script = tar_target(
     cmcmc = compileNimble(mcmc)
     
     niter = 1e4
+    
+    tick = proc.time()[3]
+    cmcmc$run(niter = 1)
+    tock = proc.time()[3]
+    message(paste('Initial Sample/sec:', tock - tick))
+    message(paste('Est. full sampling time:', niter * (tock - tick)))
+    
     tick = proc.time()[3]
     cmcmc$run(niter = niter)
     tock = proc.time()[3]
