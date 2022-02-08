@@ -22,7 +22,8 @@ if(system('command -v sbatch') == 0) {
 tar_option_set(
   packages = c('dplyr', 'lubridate', 'ggplot2', 'ggthemes', 'stringr', 
                'nimble', 'expm', 'pryr', 'suncalc', 'tarchetypes', 'coda',
-               'tidyr', 'future', 'future.batchtools', 'viridis', 'splines2'),
+               'tidyr', 'future', 'future.batchtools', 'viridis', 'splines2',
+               'scoringRules'),
   deployment = 'main'
 )
 
