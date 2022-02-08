@@ -3,9 +3,22 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
   
   mapply(function(depth_file, labels) {
     
+    # get tag name
+    tag_id = str_extract(depth_file, 'ZcTag[0-9]+')
+    
     # load data
     d = read.csv(file.path(depth_file))
     d$Date = as.POSIXct(d$Date, origin = '1970-01-01 00:00.00 UTC', tz = 'UTC')
+    
+    # validate all series data have unique timestamps
+    d$dtime = c(0, diff(d$Date))
+    if(any(diff(d$Date) == 0)) {
+      # remove duplicate data records from gonio source
+      valid_source_rows = !((d$dtime == 0) & (d$original == 'gonio'))
+      d = d[valid_source_rows, ]
+    } else {
+      valid_source_rows = 1:nrow(d)
+    }
     
     # forward difference: time elapsed from one observation to the next
     time_increments = difftime(
@@ -27,9 +40,6 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
     tag_start = d$Date[1]
     tag_end = d$Date[length(d$Date)]
     
-    # get tag name
-    tag_id = str_extract(depth_file, 'ZcTag[0-9]+')
-    
     # extract cee start time
     exposure_time = (tag_info %>% 
       dplyr::filter(deployid == tag_id) %>% 
@@ -50,7 +60,7 @@ load_raw = function(depth_files, template_bins, tag_info, dive_labels,
     baseline = as.numeric(d$Date < baseline_end)
     
     # add dive segmentation to depths time series
-    d$diveId = labels$labels
+    d$diveId = labels$labels[valid_source_rows]
     
     # classify dives by max observed depth
     diveTypes = d %>%
