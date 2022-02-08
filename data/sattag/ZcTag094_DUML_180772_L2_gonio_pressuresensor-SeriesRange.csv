@@ -1,0 +1,7 @@
+"DeployID","Ptt","DepthSensor","Source","Instr","Count","Start","End","LocationQuality","Latitude","Longitude","MinDepth","MinDepthAccuracy","MaxDepth","MaxDepthAccuracy","MinTemp","MinTempAccuracy","MaxTemp","MaxTempAccuracy","MobMean","MobSD","ActivitySum","original"
+"ZcTag094_DUML",180772,1,"Transmission","Mk10",22,1564502400,1564516800,NA,NA,NA,0,0,1168,15.5,NA,NA,NA,NA,NA,NA,NA,"portal"
+"ZcTag094_DUML",180772,1,"Transmission","Mk10",1,1564502400,1564502400,NA,NA,NA,0,0,1168,15.5,NA,NA,NA,NA,NA,NA,NA,"gonio"
+"ZcTag094_DUML",180772,1,"Transmission","Mk10",19,1564516800,1564531200,NA,NA,NA,0,0,1104,15.5,NA,NA,NA,NA,NA,NA,NA,"portal"
+"ZcTag094_DUML",180772,1,"Transmission","Mk10",12,1564531200,1564545600,NA,NA,NA,0,0,70,0.5,NA,NA,NA,NA,NA,NA,NA,"portal"
+"ZcTag094_DUML",180772,1,"Transmission","Mk10",10,1564545600,1564560000,NA,NA,NA,0,0,108,0.5,NA,NA,NA,NA,NA,NA,NA,"portal"
+"ZcTag094_DUML",180772,1,"Transmission","Mk10",8,1564560000,1564574400,NA,NA,NA,0,0,1360,15.5,NA,NA,NA,NA,NA,NA,NA,"portal"
