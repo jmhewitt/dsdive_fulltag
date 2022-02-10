@@ -231,27 +231,14 @@ fit_marginalized_model_script = tar_target(
     #   }
     # }
     
+    conf$addMonitors2('beta_tx')
+    
     mcmc = buildMCMC(conf)
     
     cmcmc = compileNimble(mcmc)
     
     niter = 1e4
     
-    tick = proc.time()[3]
-    cmcmc$run(niter = 1)
-    tock = proc.time()[3]
-    message(paste('Initial Sample/sec:', tock - tick))
-    message(paste('Est. full sampling time:', niter * (tock - tick)))
-    
-    tick = proc.time()[3]
-    cmcmc$run(niter = niter)
-    tock = proc.time()[3]
-    message(paste('Sampling time:', tock - tick))
-    message(paste('Samples/sec:', niter / (tock - tick)))
-    
-    samples = as.matrix(cmcmc$mvSamples)
-    
-    # create output directory
     fpath = file.path('output', 'mcmc', tar_name())
     dir.create(path = fpath, showWarnings = FALSE, recursive = TRUE)
     
@@ -259,9 +246,18 @@ fit_marginalized_model_script = tar_target(
     f_pkg = file.path(fpath, 'nim_pkg.rds')
     saveRDS(nim_pkg, file = f_pkg)
     
-    # save samples
-    f_samples = file.path(fpath, 'samples.rds')
-    saveRDS(samples, file = f_samples)
+    # run model, saving output along the way
+    runCheckpointMCMC(
+      mcmc = cmcmc, 
+      nsamples = niter, 
+      out.path = fpath,
+      out.name = 'samples', 
+      out.size = 1024, 
+      out.time = 3600/2,
+      verbose = TRUE
+    )
+    
+    
     
     # some exploration of model output
     # 
@@ -274,7 +270,7 @@ fit_marginalized_model_script = tar_target(
     # 1-rejectionRate(mcmc(samples[-burn,'lambda[1]']))
     
     list(
-      samples = f_samples,
+      samples = fpath,
       package = f_pkg
     )
   }
