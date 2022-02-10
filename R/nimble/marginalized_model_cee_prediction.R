@@ -2,19 +2,48 @@ marginalized_model_cee_prediction_script = tar_target(
   name = marginalized_model_cee_prediction, 
   command = {
     
+    # tar_load(fit_marginalized_model)
+    
+    fit_marginalized_model = list(
+      samples = file.path('output', 'mcmc', 'fit_marginalized_model'),
+      package = file.path('output', 'mcmc', 'fit_marginalized_model', 
+                          'nim_pkg.rds')
+    )
+    
     #
-    # load model outputs
+    # load, label, and merge posterior samples
     #
     
-    # load posterior samples and model package
-    tar_load(fit_marginalized_model)
+    mvSample_files = dir(
+      path = fit_marginalized_model$samples, 
+      pattern = 'mvSamples_[0-9]+', 
+      full.names = TRUE
+    )
     
-    # fit_marginalized_model = list(
-    #   samples = "output/mcmc/fit_marginalized_model/samples.rds", 
-    #   package = "output/mcmc/fit_marginalized_model/nim_pkg.rds"
-    # )
+    mvSample2_files = dir(
+      path = fit_marginalized_model$samples, 
+      pattern = 'mvSamples2_[0-9]+', 
+      full.names = TRUE
+    )
     
-    samples = readRDS(fit_marginalized_model$samples)
+    samples = do.call(rbind, lapply(mvSample_files, readRDS))
+    samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
+    
+    colnames(samples) = readRDS(dir(
+      path = fit_marginalized_model$samples, 
+      pattern = 'mvSamples_colnames',
+      full.names = TRUE
+    ))
+    
+    colnames(samples2) = readRDS(dir(
+      path = fit_marginalized_model$samples, 
+      pattern = 'mvSamples2_colnames',
+      full.names = TRUE
+    ))
+    
+    samples = cbind(samples, samples2)
+    rm(samples2)
+    
     nim_pkg = readRDS(fit_marginalized_model$package)
     
     # set burn-in
