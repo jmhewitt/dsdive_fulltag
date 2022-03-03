@@ -1,3 +1,0 @@
-"DeployID","Ptt","DepthSensor","Source","Instr","Count","Start","End","LocationQuality","Latitude","Longitude","MinDepth","MinDepthAccuracy","MaxDepth","MaxDepthAccuracy","MinTemp","MinTempAccuracy","MaxTemp","MaxTempAccuracy","MobMean","MobSD","ActivitySum","original"
-"ZcTag090_DUML",180762,1,"Transmission","Mk10",3,1564401600,1564416000,NA,NA,NA,0,0,432,3.5,NA,NA,NA,NA,NA,NA,NA,"portal"
-"ZcTag090_DUML",180762,1,"Transmission","Mk10",5,1564416000,1564430400,NA,NA,NA,0,0,1616,15.5,NA,NA,NA,NA,NA,NA,NA,"portal"
