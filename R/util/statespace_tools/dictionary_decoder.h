@@ -131,6 +131,55 @@ private:
 
 };
 
+template<typename Container, typename ContainerValue>
+struct SubscriptIterator {
+
+        using iterator_category = std::forward_iterator_tag;
+        using difference_value = std::ptrdiff_t;
+        using value_type = ContainerValue;
+        using pointer = value_type*;
+        using reference = value_type&;
+
+        SubscriptIterator(Container & c, std::size_t ind) :
+            m_container(c), m_ind(ind) { }
+
+        // return mapped element associated w/current pos. of a pointer into x
+        reference operator*() { return m_container[m_ind]; }
+        pointer operator->() { return &(m_container[m_ind]); }
+
+        // prefix increment
+        SubscriptIterator& operator++() {
+            m_ind++;
+            return *this;
+        }
+
+        // postfix increment
+        SubscriptIterator operator++(int) {
+            SubscriptIterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        friend bool operator== (
+            const SubscriptIterator& a,
+            const SubscriptIterator& b
+        ) {
+            return a.m_ind == b.m_ind;
+        }
+
+        friend bool operator!= (
+            const SubscriptIterator& a,
+            const SubscriptIterator& b
+        ) {
+            return a.m_ind != b.m_ind;
+        }
+
+    private:
+
+        Container & m_container;
+        std::size_t m_ind;
+
+    };
 
 /**
  * Decompress a sequence of objects stored via dictionary compression
@@ -232,23 +281,34 @@ struct ColumnMapper {
 struct MatrixMapper {
 
     double *data;
-    unsigned int rows, cols, nelem;
+    unsigned int rows, cols, nelem, nmats;
 
-    Eigen::Map<Eigen::MatrixXd> m;
+    typedef Eigen::Map<Eigen::MatrixXd> MappedMat;
+    MappedMat m;
 
     MatrixMapper(double* mat_array, int nrows, int ncols) : data(mat_array),
-        rows(nrows), cols(ncols), nelem(rows*cols), m(data, rows, cols) { }
+        rows(nrows), cols(ncols), nelem(rows*cols), nmats(0),
+        m(data, rows, cols) { }
 
-    Eigen::Map<Eigen::MatrixXd>& operator[](unsigned int matind) {
-        new (&m) Eigen::Map<Eigen::MatrixXd>(data + nelem * matind, rows, cols);
+    MatrixMapper(double* mat_array, int nrows, int ncols, int nmatrices) :
+        data(mat_array), rows(nrows), cols(ncols), nelem(rows*cols),
+        nmats(nmatrices), m(data, rows, cols) { }
+
+    MappedMat& operator[](unsigned int matind) {
+        new (&m) MappedMat(data + nelem * matind, rows, cols);
         return m;
     }
 
     // support decompression via arbitrary inputs that can cast to int
     template<typename Scalar>
-    Eigen::Map<Eigen::MatrixXd>& operator[](Scalar matind) {
+    MappedMat& operator[](Scalar matind) {
         return (*this)[(unsigned int)(matind)];
     }
+
+    typedef SubscriptIterator<MatrixMapper, MappedMat> iterator;
+
+    iterator begin() { return iterator(*this, 0); }
+    iterator end() { return iterator(*this, nmats); }
 };
 
 /**

@@ -203,6 +203,32 @@ double nimLL2LayerCompressedRaw(
     return ll_marginal(x0vec, liks, txmats, nt - 1);
 }
 
+double nimLL2LayerPartialRaw(
+    double* obs_lik_dict, double* obs,
+    double* txmat_seq,
+    double* x0, int num_obs_states, int num_latent_states, int nt
+) {
+
+    unsigned int nstates = num_latent_states;
+
+    // iterable sequence of the hidden state's transition matrices.
+    MatrixMapper txmats(txmat_seq, num_latent_states, num_latent_states, nt);
+
+    // decoder for the observed state's transition matrices
+    ColumnMapper3 likmap(obs_lik_dict, nstates, num_obs_states);
+    DictionaryDecoder<
+      ColumnMapper3,
+      Eigen::Map<Eigen::VectorXd>,
+      double,
+    MarkovDictIter<ColumnMapper3, Eigen::Map<Eigen::VectorXd>, double>
+    > liks(likmap, obs, nt);
+
+    // wrap prior for initial state
+    Eigen::Map<Eigen::VectorXd> x0vec(x0, nstates);
+
+    return ll_marginal(x0vec, liks, txmats, nt - 1);
+}
+
 /**
  * Final (marginal) prediction distribution [x_n | y_{1:n}] for a two-layer
  * discrete-time, discrete-space state space model.  The number of states is
