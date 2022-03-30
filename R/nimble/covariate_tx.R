@@ -10,6 +10,7 @@ covariate_tx = function(covariates, control = list()) {
   # control$spline_degree = 3 # spline order
   # control$lon               # proximal longitude of data collection
   # control$lat               # proximal latitude of data collection
+  # control$max_recent_vert   # boundary for the total_recent_vertical spline
   
   # derived covariate: proportion of recent observations at depth
   prop_recent_deep = sapply(1:ncol(covariates), function(i) {
@@ -38,6 +39,33 @@ covariate_tx = function(covariates, control = list()) {
     'prop_deep_poly_', 1:nrow(prop_poly), sep = ''
   )
   
+  # derived covariate: total vertical movement over last 1h
+  total_recent_vertical = sapply(1:ncol(covariates), function(i) {
+    # window defining recent observations
+    window = covariates['time', i] - c(control$window_len, 0)
+    # data indices of recent observations
+    window_inds = (window[1] <= covariates['time',]) & 
+      (covariates['time',] < window[2])
+    # stop processing if we don't have a complete record of recent observations
+    if(sum(window_inds) != control$window_len / control$obs_freq) {
+      NA
+    } else {
+      sum(abs(diff(covariates['depth',window_inds])))
+    }
+  })
+  
+  # spline-transform derived covariate
+  vertical_poly = t(bernsteinPoly(
+    x = total_recent_vertical, 
+    degree = control$spline_degree, 
+    intercept = TRUE,
+    Boundary.knots = c(0, control$max_recent_vert)
+  ))
+  
+  rownames(vertical_poly) = paste(
+    'total_vertical_poly_', 1:nrow(vertical_poly), sep = ''
+  )
+  
   # (re-)compute celestial covariates is lon/lat information is provided
   if(all(!is.null(control$lon), !is.null(control$lat))) {
     dates = as.POSIXct(
@@ -54,6 +82,7 @@ covariate_tx = function(covariates, control = list()) {
   # assemble final covariate matrix
   rbind(
     covariates[c('daytime','moonlit'),],
-    prop_poly
+    prop_poly,
+    vertical_poly
   )
 }
