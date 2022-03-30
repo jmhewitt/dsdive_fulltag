@@ -23,7 +23,7 @@ tar_option_set(
   packages = c('dplyr', 'lubridate', 'ggplot2', 'ggthemes', 'stringr', 
                'nimble', 'expm', 'pryr', 'suncalc', 'tarchetypes', 'coda',
                'tidyr', 'future', 'future.batchtools', 'viridis', 'splines2',
-               'scoringRules'),
+               'scoringRules', 'ggpubr'),
   deployment = 'main'
 )
 
@@ -37,5 +37,6 @@ c(
  depth_bin_imputation_targets,
  dive_segmentation_targets,
  nimble_targets,
- validation_nstep_targets
+ validation_nstep_targets,
+ plot_targets
 )
