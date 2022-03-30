@@ -68,7 +68,7 @@ fit_marginalized_model_script = tar_target(
     nim_pkg$consts$covariates_unique = covs
     nim_pkg$consts$n_covariate_combinations = ncol(covs)
     nim_pkg$consts$n_covariates = nrow(covs)
-    
+
     #
     # add additional nimble package elements
     #
@@ -181,7 +181,7 @@ fit_marginalized_model_script = tar_target(
     nim_pkg$consts$random_effects = TRUE
     
     # remove objects not used in model
-    nim_pkg$data$covariates = NULL
+    # nim_pkg$data$covariates = NULL
     nim_pkg$data$times = NULL
     
     mod = nimbleModel(

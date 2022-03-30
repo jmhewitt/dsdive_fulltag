@@ -59,16 +59,18 @@ modelCode = nimble::nimbleCode({
     
   }
   
-  # stage transition matrices
-  for(k in 1:n_subjects) {
-    for(i in 1:n_covariate_combinations) {
-      stage_tx_mat[k, 1:n_stages, 1:n_stages, i] <- stageTxMats(
-        betas = beta_tx[k, 1:n_covariates, 1:n_stages, 1:(n_stages-1)],
-        covariates = covariates_unique[1:n_covariates, i:i],
-        n_timepoints = 1
-      )[1:n_stages, 1:n_stages, 1]
-    }
-  }
+  # Code block OBE by increasing number of unique covariate combinations
+  # 
+  # # stage transition matrices
+  # for(k in 1:n_subjects) {
+  #   for(i in 1:n_covariate_combinations) {
+  #     stage_tx_mat[k, 1:n_stages, 1:n_stages, i] <- stageTxMats(
+  #       betas = beta_tx[k, 1:n_covariates, 1:n_stages, 1:(n_stages-1)],
+  #       covariates = covariates_unique[1:n_covariates, i:i],
+  #       n_timepoints = 1
+  #     )[1:n_stages, 1:n_stages, 1]
+  #   }
+  # }
   
   # construct population-level depth bin transition matrices for each stage
   for(i in 1:n_stages) {
@@ -89,12 +91,26 @@ modelCode = nimble::nimbleCode({
   # largest sampling unit is a sequence of depth bins
   for(seg_num in 1:n_segments) {
     # likelihood for depth bin observations
-    depth_bins[segments[seg_num,1]:segments[seg_num,4]] ~ dstatespace(
+    # depth_bins[segments[seg_num,1]:segments[seg_num,4]] ~ dstatespace(
+    #   obs_lik_dict = depth_tx_mat[1:n_stages, 1:n_bins, 1:n_bins],
+    #   txmat_dict = stage_tx_mat[
+    #     segments[seg_num, 3], 1:n_stages, 1:n_stages, 1:n_covariate_combinations
+    #   ],
+    #   txmat_seq = covariateId[segments[seg_num,1]:segments[seg_num,4]],
+    #   x0 = init_stages[1:n_stages],
+    #   num_obs_states = n_bins,
+    #   num_latent_states = n_stages,
+    #   nt = segments[seg_num,2]
+    # )
+    depth_bins[segments[seg_num,1]:segments[seg_num,4]] ~ dstatespace2(
       obs_lik_dict = depth_tx_mat[1:n_stages, 1:n_bins, 1:n_bins],
-      txmat_dict = stage_tx_mat[
-        segments[seg_num, 3], 1:n_stages, 1:n_stages, 1:n_covariate_combinations
+      covariates = covariates[
+        1:n_covariates, segments[seg_num,1]:segments[seg_num,4]
       ],
-      txmat_seq = covariateId[segments[seg_num,1]:segments[seg_num,4]],
+      betas = beta_tx[
+        segments[seg_num,3], 1:n_covariates, 1:n_stages, 1:(n_stages-1)
+      ],
+      n_covariates = n_covariates,
       x0 = init_stages[1:n_stages],
       num_obs_states = n_bins,
       num_latent_states = n_stages,
