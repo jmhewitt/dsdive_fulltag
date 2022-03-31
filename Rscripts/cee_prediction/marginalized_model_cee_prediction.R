@@ -149,9 +149,10 @@ cee_preds = function() {
   #   length.out = 1e4
   # )
   
+  message('Sampling')
+  
   # draw from posterior predictive distribution for time-till-deep
   baseline_deep_pred_samples = sapply(posterior_sample_inds, function(ind) {
-    message(ind)
     
     # transfer posterior sample of model parameters to model object
     for(tgt_group in sampling_groups) {
