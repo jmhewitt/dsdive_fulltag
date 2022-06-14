@@ -38,5 +38,6 @@ c(
  dive_segmentation_targets,
  nimble_targets,
  validation_nstep_targets,
- plot_targets
+ plot_targets,
+ cee_targets
 )
