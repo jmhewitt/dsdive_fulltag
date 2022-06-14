@@ -231,7 +231,7 @@ fit_marginalized_model_script = tar_target(
     #   }
     # }
     
-    conf$addMonitors2('beta_tx')
+    conf$addMonitors2(c('beta_tx', 'depth_tx_mat'))
     
     mcmc = buildMCMC(conf)
     
