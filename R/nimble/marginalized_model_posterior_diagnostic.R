@@ -14,6 +14,8 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     # load, label, and merge posterior samples
     #
     
+    pkg = readRDS(fit_marginalized_model$package)
+    
     mvSample_files = dir(
       path = fit_marginalized_model$samples, 
       pattern = 'mvSamples_[0-9]+', 
@@ -45,6 +47,37 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     rm(samples2)
     
     #
+    # remove output for quantities that are not actually sampled
+    #
+    
+    # generate node names for fixed effects that are copied within model
+    fixef_specs = expand.grid(
+      ind = pkg$consts$fixef_inds,
+      k = 1:pkg$consts$n_subjects,
+      j = 1:pkg$consts$n_stages,
+      jm1 = 1:(pkg$consts$n_stages - 1)
+    )
+    fixef_specs = fixef_specs[complete.cases(fixef_specs),]
+    fixef_nodes = apply(fixef_specs, 1, function(r) {
+      paste(
+        'beta_tx[', 
+        paste(r['k'], r['ind'], r['j'], r['jm1'], sep = ', '), 
+        ']', 
+        sep = ''
+      )
+    })
+    
+    # enumerate all of the nodes that are not properly sampled
+    not_sampled = c(
+      'pi[2]', # treated as known
+      fixef_nodes # fixed effects are copied from population-level parameters
+    )
+    
+    not_sampled_inds = which(colnames(samples) %in% not_sampled)
+    
+    samples = samples[,-not_sampled_inds]
+    
+    #
     # diagnostics
     #
     
@@ -59,6 +92,8 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     
     # set burn-in
     burn = 1:(nrow(samples)*.1)
+    burn = 1:500
+    
     
     #
     # explore posterior output
@@ -84,8 +119,6 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     #
     # compare prior and posterior
     #
-    
-    pkg = readRDS(fit_marginalized_model$package)
     
     ggplot(data.frame(x = samples[-burn, 'lambda[1]']), aes(x=x)) +
       stat_density(geom = 'line') + 
