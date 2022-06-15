@@ -89,9 +89,14 @@ fit_marginalized_model_script = tar_target(
       1/nim_pkg$consts$n_stages, nim_pkg$consts$n_stages
     )
     
-    # treat infinitesimal depth bin transition probabilities as fixed;
-    # values taken from Hewitt et al. (2021)
-    nim_pkg$consts$pi = c(.97, .5, .05)
+    # initial values for infinitesimal depth bin transition probabilities taken
+    # from Hewitt et al. (2021); nim_pkg$inits$pi[2] will be treated as fixed
+    nim_pkg$inits$pi = c(.97, .5, .05)
+    nim_pkg$consts$n_pi_class = length(nim_pkg$inits$pi)
+    
+    # constrain support for pi's to help identify the stages as ascent/descent
+    nim_pkg$consts$pi_prior_min = c(.5, 0, 0)
+    nim_pkg$consts$pi_prior_max = c(1, 1, .5)
     
     # initial speed values and lambda dimension
     nim_pkg$inits$lambda = c(.3, 1.5)
@@ -106,7 +111,7 @@ fit_marginalized_model_script = tar_target(
     for(i in 1:nim_pkg$consts$n_stages) {
       nim_pkg$inits$depth_tx_mat[i, , ] <- expm::expm(
         nim_pkg$consts$tstep * buildInfinitesimalGenerator(
-          pi = nim_pkg$consts$pi[nim_pkg$consts$stage_defs[i, 1]],
+          pi = nim_pkg$inits$pi[nim_pkg$consts$stage_defs[i, 1]],
           lambda = nim_pkg$inits$lambda[nim_pkg$consts$stage_defs[i, 2]],
           M = nim_pkg$consts$n_bins,
           stage = 6,
@@ -177,16 +182,33 @@ fit_marginalized_model_script = tar_target(
     # nimble model fitting
     #
     
-    # TRUE to estimate separate covariate effects for each individual
-    nim_pkg$consts$random_effects = TRUE
+    # specify which covariates are modeled as random vs. fixed effects:
+    #   - only model intercept terms as random effects
+    nim_pkg$consts$ranef_inds = which(
+      rownames(nim_pkg$data$covariates) %in% c('intercept')
+    )
+    nim_pkg$consts$fixef_inds = setdiff(
+      1:nim_pkg$consts$n_covariates, nim_pkg$consts$ranef_inds
+    )
+    nim_pkg$consts$n_fixefs = length(nim_pkg$consts$fixef_inds)
+    nim_pkg$consts$n_ranefs = length(nim_pkg$consts$ranef_inds)
+    
+    # ensure nimble interprets the covariate index vectors as vectors;
+    # if n_fixefs or n_ranefs == 1, then nimble will try to interpret as scalar
+    nim_pkg$consts$fixef_inds = c(nim_pkg$consts$fixef_inds, NA)
+    nim_pkg$consts$ranef_inds = c(nim_pkg$consts$ranef_inds, NA)
+    
+    # TRUE to estimate separate/group covariate effects for each individual
+    nim_pkg$consts$random_effects = nim_pkg$consts$n_ranefs > 0
+    nim_pkg$consts$fixed_effects = nim_pkg$consts$n_fixefs > 0
     
     # remove objects not used in model
     # nim_pkg$data$covariates = NULL
     nim_pkg$data$times = NULL
     
     mod = nimbleModel(
-      code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data,
-      inits = nim_pkg$inits
+      code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data, 
+      inits = nim_pkg$inits, calculate = FALSE
     )
     
     cmod = compileNimble(mod)
@@ -194,9 +216,17 @@ fit_marginalized_model_script = tar_target(
     # verify model has a finite likelihood
     if(!is.finite(cmod$calculate())) {
       stop('Initial likelihood is not finite')
+      # debugging support to find the nodes with poor definition
+      ll = sapply(cmod$getNodeNames(), function(nom) {
+        cmod$calculate(nom)
+      })
+      names(ll[which(!is.finite(ll))])
     }
     
     conf = configureMCMC(mod)
+    
+    # treat directional preference for free movement as known
+    conf$removeSampler('pi[2]')
     
     # NOTE: The alternate samplers seem to slow down sampling rates by 10x while
     #  at most doubling the average effective sample size, and not changing the 
@@ -231,6 +261,7 @@ fit_marginalized_model_script = tar_target(
     #   }
     # }
     
+    # save derived quantities that are required for posterior sampling
     conf$addMonitors2(c('beta_tx', 'depth_tx_mat'))
     
     mcmc = buildMCMC(conf)
@@ -240,6 +271,11 @@ fit_marginalized_model_script = tar_target(
     niter = 1e4
     
     fpath = file.path('output', 'mcmc', tar_name())
+    
+    # make sure output directory is empty (i.e., clear previous model output)
+    unlink(x = fpath, recursive = TRUE)
+    
+    # (re-)create output directory
     dir.create(path = fpath, showWarnings = FALSE, recursive = TRUE)
     
     # save model package
@@ -256,18 +292,6 @@ fit_marginalized_model_script = tar_target(
       out.time = 3600/2,
       verbose = TRUE
     )
-    
-    
-    
-    # some exploration of model output
-    # 
-    # burn = 1:1e3
-    # plot(samples[,'beta_tx[5, 5, 4]'])
-    # plot(mcmc(samples[-burn,'lambda[1]']))
-    # plot(mcmc(samples[-burn,'lambda[2]']))
-    # sort(effectiveSize(mcmc(samples[-burn,])))
-    # 
-    # 1-rejectionRate(mcmc(samples[-burn,'lambda[1]']))
     
     list(
       samples = fpath,
