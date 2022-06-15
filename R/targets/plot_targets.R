@@ -388,6 +388,8 @@ plot_targets = list(
         dpi = 'print', width = 8, height = 4
       )
       
-    })
+    }),
+  
+  sattag_illustration_script
   
 )
