@@ -83,6 +83,7 @@ runCheckpointMCMC = function(
   
   # run sampler
   if(verbose) {
+    tick = proc.time()[3]
     message(paste(Sys.time(), ' :: Starting Sampling', sep = ''))
   }
   batchInd = 1
@@ -112,10 +113,17 @@ runCheckpointMCMC = function(
     batchInd = batchInd + 1
     # output progress
     if(verbose) {
+      completed_samples = nsamples - remainingSamples
       message(paste(
         Sys.time(), ' :: Sampling ', 
-        round((nsamples - remainingSamples) / nsamples * 100, 2),
+        round(completed_samples / nsamples * 100, 2),
         '% complete', sep = ''
+      ))
+      tock = proc.time()[3]
+      sec_sample = (tock - tick) / completed_samples
+      message(paste(
+        '  Estimated time remaining (sec):', 
+        round(sec_sample * remainingSamples)
       ))
     }
   }
