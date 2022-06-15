@@ -7,10 +7,18 @@ covariate_tx = function(covariates, control = list()) {
   # control$deep_depth = 800  # what is deep?
   # control$window_len = 3600 # how many seconds should prop_recent depth do?
   # control$obs_freq = 300    # how many seconds between observations?
-  # control$spline_degree = 3 # spline order
+  # control$poly_degree = 3   # polynomial order
   # control$lon               # proximal longitude of data collection
   # control$lat               # proximal latitude of data collection
-  # control$max_recent_vert   # boundary for the total_recent_vertical spline
+  
+  # validate minimum required contents for control list
+  required = c('deep_depth', 'window_len', 'obs_freq', 'poly_degree')
+  if(!all(required %in% names(control))) {
+    stop(paste(
+      'control list missing required element(s):',
+      paste(setdiff(required, names(control)), collapse = ', ')
+    ))
+  }
   
   # derived covariate: proportion of recent observations at depth
   prop_recent_deep = sapply(1:ncol(covariates), function(i) {
@@ -27,13 +35,8 @@ covariate_tx = function(covariates, control = list()) {
     }
   })
   
-  # spline-transform derived covariate
-  prop_poly = t(bernsteinPoly(
-    x = prop_recent_deep, 
-    degree = control$spline_degree, 
-    intercept = TRUE,
-    Boundary.knots = c(0,1)
-  ))
+  # polynomial-transform derived covariate (no intercept)
+  prop_poly = t(outer(prop_recent_deep, 1:control$poly_degree, FUN = '^'))
   
   rownames(prop_poly) = paste(
     'prop_deep_poly_', 1:nrow(prop_poly), sep = ''
@@ -54,13 +57,10 @@ covariate_tx = function(covariates, control = list()) {
     }
   })
   
-  # spline-transform derived covariate
-  vertical_poly = t(bernsteinPoly(
-    x = total_recent_vertical, 
-    degree = control$spline_degree, 
-    intercept = TRUE,
-    Boundary.knots = c(0, control$max_recent_vert)
-  ))
+  # polynomial-transform derived covariate (no intercept)
+  vertical_poly = t(
+    outer(total_recent_vertical, 1:control$poly_degree, FUN = '^')
+  )
   
   rownames(vertical_poly) = paste(
     'total_vertical_poly_', 1:nrow(vertical_poly), sep = ''
@@ -79,9 +79,19 @@ covariate_tx = function(covariates, control = list()) {
     )
   }
   
+  # transform celestial covariates to scientifically meaningful factors
+  celestial = rbind(
+    daytime = covariates['daytime',],
+    night_dark = 
+      (covariates['daytime',] == FALSE) & (covariates['moonlit',] == FALSE),
+    night_moonlit = 
+      (covariates['daytime',] == FALSE) & (covariates['moonlit',] == TRUE)
+  )
+  
   # assemble final covariate matrix
   rbind(
-    covariates[c('daytime','moonlit'),],
+    intercept = 1,
+    celestial,
     prop_poly,
     vertical_poly
   )
