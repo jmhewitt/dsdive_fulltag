@@ -56,8 +56,7 @@ nimble_targets = list(
       deep_depth = deep_dive_depth,
       window_len = 3600,
       obs_freq = sattag_timestep,
-      spline_degree = 3,
-      max_recent_vert = 2198 * 12 # maximum depth bin times window obs. length
+      poly_degree = 3
     )
   ),
   
