@@ -66,6 +66,8 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     
     plot(mcmc(samples[-burn, sampling_target_groups == 'lambda']))
     
+    plot(mcmc(samples[-burn, sampling_target_groups == 'pi']))
+    
     for(g in sampling_groups) {
       message(paste('Effective sample size summary for', g))
       print(summary(effectiveSize(
