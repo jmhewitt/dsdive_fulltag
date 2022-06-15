@@ -92,8 +92,6 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     
     # set burn-in
     burn = 1:(nrow(samples)*.1)
-    burn = 1:500
-    
     
     #
     # explore posterior output
