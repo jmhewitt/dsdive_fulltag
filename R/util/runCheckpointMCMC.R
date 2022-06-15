@@ -82,6 +82,9 @@ runCheckpointMCMC = function(
   )
   
   # run sampler
+  if(verbose) {
+    message(paste(Sys.time(), ' :: Starting Sampling', sep = ''))
+  }
   batchInd = 1
   remainingSamples = nsamples
   while(remainingSamples > 0) {
