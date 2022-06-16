@@ -64,6 +64,8 @@ nimble_targets = list(
   
   marginalized_model_posterior_diagnostic_script,
   
-  marginalized_model_cee_prediction_script
+  marginalized_model_cee_prediction_script,
+  
+  parameter_interpretation_pattern_script
   
 )
