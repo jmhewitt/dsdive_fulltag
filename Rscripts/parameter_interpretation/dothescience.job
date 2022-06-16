@@ -1,0 +1,22 @@
+#!/bin/sh
+
+#SBATCH --job-name dsdive_fulltag_parameter_interpretation
+#SBATCH --partition common
+#SBATCH --account gelfandlab
+#SBATCH --mail-type ALL
+#SBATCH --mail-user joshua.hewitt@duke.edu
+#SBATCH --ntasks 1
+#SBATCH --array=1-45
+#SBATCH --mem=20G
+
+module unload R
+module load R/3.5.2
+
+date
+START=`date +%s`
+R --no-save --no-restore CMD BATCH Rscripts/parameter_interpretation/parameter_interpretation.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
+END=`date +%s`
+date
+
+ELAPSED=$(( $END - $START ))
+echo "Elapsed time (hrs): $(echo "scale=10; $ELAPSED/3600" | bc)"
