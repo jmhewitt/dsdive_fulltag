@@ -154,17 +154,14 @@ pred_samples = function(ptype, times, init_stage) {
   # re-build model so that we can use it to generate transition matrices
   #
   
-  # need to re-link compiled functions when running target in parallel
-  source(file.path('R', 'util', 'statespace_tools', 'statespace_tools.R'))
-  
   # uncompiled model
   mod = nimbleModel(
     code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data,
-    inits = nim_pkg$inits, name = tar_name(), calculate = FALSE
+    inits = nim_pkg$inits, name = basename(tempfile('model')), calculate = FALSE
   )
   
   # compile model
-  cmod = compileNimble(mod)
+  cmod = compileNimble(mod, showCompilerOutput = TRUE)
   
   # verify model has a finite likelihood
   cmod$calculate()
