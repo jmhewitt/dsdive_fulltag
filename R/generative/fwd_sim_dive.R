@@ -17,7 +17,9 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
   #    with a visit above shallow_threshold in between in order for simulation
   #    to end
   #  template_bins - for building out covariates
-  #  subject_id - subject number id, so correct tx. mats can be extracted
+  #  subject_id - subject number id, so correct tx. mats can be extracted.  if 
+  #   subject_id < 0, then the population-level transition matrices will be used
+  #   instead
   
   # initialize termination conditions
   visited_deep = FALSE
@@ -107,16 +109,24 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
     #   })
     # )
     
-    # # extract the matching transition matrix, or rebuild (i.e., if it is new)
-    # if(length(covariateId) == 1) {
-    #   txprobs = model$stage_tx_mat[subject_id, stage, , covariateId]
-    # } else {
+    # build transition matrix for latent stage
+    if(subject_id > 0) { # individual-specific stage transition matrix
       txprobs = stageTxMats(
         betas = model$beta_tx[subject_id, , , ],
-        covariates = covariates_modeled[, ncol(covariates_modeled), drop = FALSE],
+        covariates = covariates_modeled[
+          , ncol(covariates_modeled), drop = FALSE
+        ],
         n_timepoints = 1
       )[stage, , ]
-    # }
+    } else { # population-level stage transition matrix
+      txprobs = stageTxMats(
+        betas = model$beta_tx_mu,
+        covariates = covariates_modeled[
+          , ncol(covariates_modeled), drop = FALSE
+        ],
+        n_timepoints = 1
+      )[stage, , ]
+    }
     
     # sample next stage
     stage = sample(
