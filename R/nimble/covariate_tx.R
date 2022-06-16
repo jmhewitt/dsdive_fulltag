@@ -20,6 +20,15 @@ covariate_tx = function(covariates, control = list()) {
     ))
   }
   
+  # validate minimum required contents for input covariates
+  required = c('time', 'depth', 'daytime', 'moonlit')
+  if(!all(required %in% rownames(covariates))) {
+    stop(paste(
+      'covariates matrix missing required element(s):',
+      paste(setdiff(required, rownames(covariates)), collapse = ', ')
+    ))
+  }
+  
   # derived covariate: proportion of recent observations at depth
   prop_recent_deep = sapply(1:ncol(covariates), function(i) {
     # window defining recent observations
