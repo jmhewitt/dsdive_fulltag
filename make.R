@@ -14,6 +14,12 @@ if(interactive()) {
   )
 }
 
+# TODO: transfer to a post-sampling make script
+targets::tar_make(
+  names = parameter_interpretation_plot,
+  callr_function = NULL
+)
+
 # prepare validation data
 targets::tar_make(
   names = validation_config_nstep,

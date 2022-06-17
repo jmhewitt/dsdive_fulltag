@@ -390,6 +390,8 @@ plot_targets = list(
       
     }),
   
-  sattag_illustration_script
+  sattag_illustration_script,
+  
+  parameter_interpretation_plot_script
   
 )
