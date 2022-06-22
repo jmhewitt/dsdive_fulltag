@@ -7,6 +7,8 @@
 #include <RcppEigen.h>
 using namespace Rcpp;
 
+#include "linops.h"
+
 /**
  * Prediction distribution for state space models provided in an iterator-like
  * container.
@@ -18,14 +20,10 @@ using namespace Rcpp;
  * @tparam TransitionMatIt container providing an iterator that returns
  *  Eigen::MatrixXd objects quantifying the sequence of transition
  *  matrices [x_{i+1} | x_i]
+ * @tparam LinOps implementation of linear algebra operations for scale of data
  */
-template<typename LikContainer, typename TxContainer>
+template<typename LikContainer, typename TxContainer, typename LinOps>
 class LatentPrediction {
-
-    // TODO: make the next() function implementation a template parameter,
-    // so that we can make the implementation do the diffusion on the log scale
-    // or the natural scale.  this can be implemented using functor-like
-    // behavior, i believe.  cwiseScale(...), scalarScale(...), diffuse(...)
 
     /**
      * Recursively compute [x_{i+1} | y_{1:i}] from [x_{i} | y_{1:i-1}].
@@ -34,11 +32,11 @@ class LatentPrediction {
      */
     void next() {
         // reweight the current prediction distribution by the current obs.
-        pred_x.array() *= (*(lik_it++)).array();
+        LinOps::cwiseScale(pred_x, *(lik_it++));
         // forward-diffuse the prediction distribution
-        pred_x_row *= *(tx_it++);
+        LinOps::diffuse(pred_x_row, *(tx_it++));
         // standardize the distribution
-        pred_x /= pred_x.sum();
+        LinOps::normalize(pred_x);
     }
 
     // [x_i | y_{1:i-1}]

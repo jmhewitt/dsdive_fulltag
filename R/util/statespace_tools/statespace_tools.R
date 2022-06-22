@@ -77,7 +77,7 @@ marginal_ll2_cpp = nimble::nimbleExternalCall(
   prototype = function(
     obs_lik_dict = double(3), obs = double(1),
     txmat_seq = double(3), x0 = double(1), num_obs_states = integer(),
-    num_latent_states = integer(), nt = integer()
+    num_latent_states = integer(), nt = integer(), logEntries = logical()
   ) {},
   returnType = double(),
   Cfun = 'nimLL2LayerPartialRaw',
@@ -89,14 +89,14 @@ marginal_ll2 = nimble::nimbleFunction(
   run = function(
     obs_lik_dict = double(3), obs = double(1),
     txmat_seq = double(3), x0 = double(1), num_obs_states = integer(0),
-    num_latent_states = integer(0), nt = integer(0)
+    num_latent_states = integer(0), nt = integer(0), logEntries = logical(0)
   ) {
     returnType(double(0))
     return(
       marginal_ll2_cpp(
         obs_lik_dict = obs_lik_dict, obs = obs,
         txmat_seq = txmat_seq, x0 = x0, num_obs_states = num_obs_states,
-        num_latent_states = num_latent_states, nt = nt
+        num_latent_states = num_latent_states, nt = nt, logEntries = logEntries
       ))
   }
 )
@@ -106,13 +106,14 @@ dstatespace2 = nimble::nimbleFunction(
                  covariates = double(2), betas = double(3),
                  n_covariates = integer(0), x0 = double(1),
                  num_obs_states = integer(0), num_latent_states = integer(0),
-                 nt = integer(0), log = integer(0)) {
+                 nt = integer(0), logEntries = integer(0), log = integer(0)) {
     returnType(double(0))
 
     txmat_seq <- stageTxMats(
       betas = betas,
       covariates = covariates,
-      n_timepoints = nt
+      n_timepoints = nt, 
+      log = logEntries
     )
 
     ll <- marginal_ll2(
@@ -122,7 +123,8 @@ dstatespace2 = nimble::nimbleFunction(
       x0 = x0,
       num_obs_states = num_obs_states,
       num_latent_states = num_latent_states,
-      nt = nt
+      nt = nt,
+      logEntries = logEntries
     )
 
     if(log) { return(ll) } else { return(exp(ll)) }
@@ -142,13 +144,14 @@ nimble::registerDistributions(list(
   ),
   dstatespace2 = list(
     BUGSdist = paste("dstatespace2(obs_lik_dict, covariates, betas,",
-                     "n_covariates, x0, num_obs_states, num_latent_states, nt)",
+                     "n_covariates, x0, num_obs_states, num_latent_states, nt,",
+                     'logEntries)',
                      sep = ' '),
     types = c('value = double(1)', 'obs_lik_dict = double(3)',
               'covariates = double(2)', 'n_covariates = integer(0)',
               'betas = double(3)', 'x0 = double(1)',
               'num_obs_states = integer(0)', 'num_latent_states = integer(0)',
-              'nt = integer(0)'),
+              'nt = integer(0)', 'logEntries = integer(0)'),
     pqAvail = FALSE,
     discrete = TRUE
   )

@@ -29,6 +29,6 @@ double nimLL2LayerCompressedRaw(double* obs_lik_dict, double* obs,
  */
 double nimLL2LayerPartialRaw(double* obs_lik_dict, double* obs,
                              double* txmat_seq, double* x0, int num_obs_states,
-                             int num_latent_states, int nt);
+                             int num_latent_states, int nt, bool logEntries);
 
 #endif

@@ -57,7 +57,7 @@ modelCode = nimble::nimbleCode({
   
   # construct population-level depth bin transition matrices for each stage
   for(i in 1:n_stages) {
-    depth_tx_mat[i, 1:n_bins, 1:n_bins] <- expocall_gpadm(
+    depth_tx_mat[i, 1:n_bins, 1:n_bins] <- log(expocall_gpadm(
       H = buildInfinitesimalGenerator(
         pi = pi[stage_defs[i, 1]],
         lambda = lambda[stage_defs[i, 2]],
@@ -68,7 +68,7 @@ modelCode = nimble::nimbleCode({
       t = tstep,
       nrows = n_bins,
       ncols = n_bins
-    )[1:n_bins, 1:n_bins]
+    )[1:n_bins, 1:n_bins])
   }
   
   # largest sampling unit is a sequence of depth bins
@@ -82,10 +82,11 @@ modelCode = nimble::nimbleCode({
         segments[seg_num,3], 1:n_covariates, 1:n_stages, 1:(n_stages-1)
       ],
       n_covariates = n_covariates,
-      x0 = init_stages[1:n_stages],
+      x0 = log(init_stages[1:n_stages]),
       num_obs_states = n_bins,
       num_latent_states = n_stages,
-      nt = segments[seg_num,2]
+      nt = segments[seg_num,2], 
+      logEntries = 1
     )
   }
   

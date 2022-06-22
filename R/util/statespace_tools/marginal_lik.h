@@ -2,6 +2,7 @@
 #define STATESPACE_TOOLS_MARGINAL_LIK_H
 
 #include "pred_dist.h"
+#include "linops.h"
 
 /**
  * Evaluate the marginal likelihood for a statespace model
@@ -16,8 +17,9 @@
  * @tparam TransitionMatIt container providing an iterator that returns
  *  Eigen::MatrixXd objects quantifying the sequence of transition
  *  matrices [x_{i+1} | x_i]
+ * @tparam LinOps implementation of linear algebra operations for scale of data
  */
-template<typename LikContainer, typename TxContainer>
+template<typename LinOps, typename LikContainer, typename TxContainer>
 double ll_marginal(
     const Eigen::VectorXd & pred_x0, LikContainer & lik, TxContainer & tx,
     unsigned int nobs
@@ -25,11 +27,13 @@ double ll_marginal(
 
     double ll = 0;
 
-    LatentPrediction<LikContainer, TxContainer> pred_dist(pred_x0, lik, tx);
+    LatentPrediction<LikContainer, TxContainer, LinOps> pred_dist(
+        pred_x0, lik, tx
+    );
 
     auto lik_it = lik.begin();
     for(unsigned int i = 0; i < nobs; ++i) {
-        ll += std::log(((*pred_dist).array() * (*lik_it).array()).sum());
+        ll += LinOps::logMass(*pred_dist, *lik_it);
         // mathematically, must update likelihood after prediction distribution
         ++pred_dist;
         ++lik_it;

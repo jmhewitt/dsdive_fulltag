@@ -113,7 +113,7 @@ stageTxVec = nimble::nimbleFunction(
 
 stageTxMats = nimble::nimbleFunction(
   run = function(betas = double(3), covariates = double(2),
-                 n_timepoints = double(0)) {
+                 n_timepoints = double(0), log = logical(0)) {
     # discrete-time stage transition matrices, conditional on covariates
     # 
     # Parameters: 
@@ -124,6 +124,7 @@ stageTxMats = nimble::nimbleFunction(
     #     matrices.  each column specifies covariates for a timepoint.
     #   n_timepoints - number of timepoints, each of which will get a stage 
     #     transition matrix.
+    #   log - TRUE to return matrix entries on log scale
     # 
     # Return:
     #   array of stage transition matrices, one for each timepoint. 
@@ -138,7 +139,7 @@ stageTxMats = nimble::nimbleFunction(
       for(j in 1:n_stages) {
         m[j,,i] <- stageTxVec(stageFrom = j, betas = betas, 
                               covariates = covariates[,i], 
-                              log = FALSE)
+                              log = log)
       }
     }
     

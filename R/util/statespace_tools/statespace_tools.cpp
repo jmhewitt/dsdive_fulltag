@@ -3,6 +3,7 @@
 #include "pred_dist.h"
 #include "marginal_lik.h"
 #include "dictionary_decoder.h"
+#include "linops.h"
 
 // [[Rcpp::export]]
 std::vector<Eigen::VectorXd> testPreds(
@@ -13,7 +14,8 @@ std::vector<Eigen::VectorXd> testPreds(
 
     LatentPrediction<
         std::vector<Eigen::VectorXd>,
-        std::vector<Eigen::MatrixXd>
+        std::vector<Eigen::MatrixXd>,
+        NaturalScale
     > pred(x0, liks, txmats);
 
     std::vector<Eigen::VectorXd> pred_vecs;
@@ -30,7 +32,7 @@ double testLL(
     std::vector<Eigen::MatrixXd> txmats,
     Eigen::VectorXd x0
 ) {
-    return ll_marginal(x0, liks, txmats, liks.size());
+    return ll_marginal<NaturalScale>(x0, liks, txmats, liks.size());
 }
 
 /**
@@ -83,7 +85,7 @@ double llCompressed(
         int
     > liks(likmap, obs);
 
-    return ll_marginal(x0, liks, txmats, obs.size());
+    return ll_marginal<NaturalScale>(x0, liks, txmats, obs.size());
 }
 
 double nimLLCompressedRaw(
@@ -110,7 +112,7 @@ double nimLLCompressedRaw(
     // wrap prior for initial state
     Eigen::Map<Eigen::VectorXd> x0vec(x0, nstates);
 
-    return ll_marginal(x0vec, liks, txmats, nt);
+    return ll_marginal<NaturalScale>(x0vec, liks, txmats, nt);
 }
 
 /**
@@ -169,7 +171,7 @@ double ll2LayerCompressed(
         MarkovDictIter<ColumnMapper3, Eigen::Map<Eigen::VectorXd>, int>
     > liks(likmap, obs);
 
-    return ll_marginal(x0, liks, txmats, obs.size() - 1);
+    return ll_marginal<NaturalScale>(x0, liks, txmats, obs.size() - 1);
 }
 
 double nimLL2LayerCompressedRaw(
@@ -200,13 +202,12 @@ double nimLL2LayerCompressedRaw(
     // wrap prior for initial state
     Eigen::Map<Eigen::VectorXd> x0vec(x0, nstates);
     
-    return ll_marginal(x0vec, liks, txmats, nt - 1);
+    return ll_marginal<NaturalScale>(x0vec, liks, txmats, nt - 1);
 }
 
 double nimLL2LayerPartialRaw(
-    double* obs_lik_dict, double* obs,
-    double* txmat_seq,
-    double* x0, int num_obs_states, int num_latent_states, int nt
+    double* obs_lik_dict, double* obs, double* txmat_seq, double* x0,
+    int num_obs_states, int num_latent_states, int nt, bool logEntries
 ) {
 
     unsigned int nstates = num_latent_states;
@@ -226,7 +227,8 @@ double nimLL2LayerPartialRaw(
     // wrap prior for initial state
     Eigen::Map<Eigen::VectorXd> x0vec(x0, nstates);
 
-    return ll_marginal(x0vec, liks, txmats, nt - 1);
+    return logEntries ? ll_marginal<LogScale>(x0vec, liks, txmats, nt - 1) :
+                        ll_marginal<NaturalScale>(x0vec, liks, txmats, nt - 1);
 }
 
 /**
@@ -291,7 +293,9 @@ Eigen::VectorXd finalPred2LayerCompressed(
     LikContainer liks(likmap, obs);
 
     // initialize container and updating methods for predictive distribution
-    LatentPrediction<LikContainer, TxContainer> pred_dist(x0, liks, txmats);
+    LatentPrediction<LikContainer, TxContainer, NaturalScale> pred_dist(
+        x0, liks, txmats
+    );
 
     // iterate to compute the predictive distribution for the final state
     unsigned int nobs = obs.size() - 1;
@@ -331,7 +335,9 @@ Eigen::VectorXd finalPred2LayerPartialCompressed(
     LikContainer liks(likmap, obs);
 
     // initialize container and updating methods for predictive distribution
-    LatentPrediction<LikContainer, MatrixMapper> pred_dist(x0, liks, txmats);
+    LatentPrediction<LikContainer, MatrixMapper, NaturalScale> pred_dist(
+        x0, liks, txmats
+    );
 
     // iterate to compute the predictive distribution for the final state
     for(unsigned int i = 0; i < nobs; ++i) {
