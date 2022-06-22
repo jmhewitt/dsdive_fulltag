@@ -86,7 +86,7 @@ modelCode = nimble::nimbleCode({
       num_obs_states = n_bins,
       num_latent_states = n_stages,
       nt = segments[seg_num,2], 
-      logEntries = 1
+      logEntries = 1 # perform HMM computations using log-scale inputs
     )
   }
   
