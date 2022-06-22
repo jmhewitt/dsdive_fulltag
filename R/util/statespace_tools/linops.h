@@ -108,20 +108,20 @@ struct LogScale {
     template<typename RowVec>
     static void diffuse(RowVec &x, const Eigen::MatrixXd &m) {
 
-        double * xiter = x.data();
+        // copy input b/c it is an output variable, so will be overwritten
+        Eigen::VectorXd xcpy = x;
+
         const double * mcol = m.data();
-        std::size_t nrow = x.size();
+        const double * xcpyiter = xcpy.data();
+        std::size_t nrow = xcpy.size();
 
-        RowVec out = x;
-        double * oiter = out.data();
-        double * oend = oiter + nrow;
+        double * xiter = x.data();
+        double * xend = xiter + nrow;
 
-        while(oiter != oend) {
-            *(oiter++) = logMass(xiter, mcol, nrow);
+        while(xiter != xend) {
+            *(xiter++) = logMass(xcpyiter, mcol, nrow);
             mcol += nrow;
         }
-
-        x = out;
     }
 };
 

@@ -27,12 +27,36 @@ std::vector<Eigen::VectorXd> testPreds(
 }
 
 // [[Rcpp::export]]
-double testLL(
+std::vector<Eigen::VectorXd> testPredsLogEntries(
     std::vector<Eigen::VectorXd> liks,
     std::vector<Eigen::MatrixXd> txmats,
     Eigen::VectorXd x0
 ) {
-    return ll_marginal<NaturalScale>(x0, liks, txmats, liks.size());
+
+    LatentPrediction<
+        std::vector<Eigen::VectorXd>,
+        std::vector<Eigen::MatrixXd>,
+        LogScale
+    > pred(x0, liks, txmats);
+
+    std::vector<Eigen::VectorXd> pred_vecs;
+
+    for(int i = 0; i < liks.size(); ++i)
+        pred_vecs.push_back(*(++pred));
+
+    return pred_vecs;
+}
+
+// [[Rcpp::export]]
+double testLL(
+    std::vector<Eigen::VectorXd> liks,
+    std::vector<Eigen::MatrixXd> txmats,
+    Eigen::VectorXd x0,
+    bool logEntries
+) {
+    std::size_t n = liks.size();
+    return logEntries ? ll_marginal<LogScale>(x0, liks, txmats, n) :
+                        ll_marginal<NaturalScale>(x0, liks, txmats, n);
 }
 
 /**
