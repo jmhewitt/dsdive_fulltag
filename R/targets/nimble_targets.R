@@ -56,7 +56,9 @@ nimble_targets = list(
       deep_depth = deep_dive_depth,
       window_len = 3600,
       obs_freq = sattag_timestep,
-      poly_degree = 3
+      poly_degree = 3,
+      vertical_scale = 500,
+      vertical_center = 1650
     )
   ),
   

@@ -10,6 +10,8 @@ covariate_tx = function(covariates, control = list()) {
   # control$poly_degree = 3   # polynomial order
   # control$lon               # proximal longitude of data collection
   # control$lat               # proximal latitude of data collection
+  # control$vertical_scale    # (optional) rescaling for total_recent_vertical
+  # control$vertical_center   # (optional) centering for total_recent_vertical
   
   # validate minimum required contents for control list
   required = c('deep_depth', 'window_len', 'obs_freq', 'poly_degree')
@@ -65,6 +67,13 @@ covariate_tx = function(covariates, control = list()) {
       sum(abs(diff(covariates['depth',window_inds])))
     }
   })
+  
+  # (optional) re-center and scale total_recent_vertical covariate
+  if(all(c('vertical_scale', 'vertical_center') %in% names(control))) {
+    total_recent_vertical = (
+      total_recent_vertical - control$vertical_center
+    ) / control$vertical_scale
+  }
   
   # polynomial-transform derived covariate (no intercept)
   vertical_poly = t(
