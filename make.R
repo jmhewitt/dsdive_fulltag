@@ -22,7 +22,8 @@ if(interactive()) {
 #
 
 targets::tar_make(
-  names = c('parameter_interpretation_plot', 'random_effect_plot'),
+  names = c('parameter_interpretation_plot', 'random_effect_plot', 
+            'random_starts_plot'),
   callr_function = NULL
 )
 
