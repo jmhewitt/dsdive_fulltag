@@ -392,6 +392,8 @@ plot_targets = list(
   
   sattag_illustration_script,
   
-  parameter_interpretation_plot_script
+  parameter_interpretation_plot_script,
+  
+  random_effect_plot_script
   
 )
