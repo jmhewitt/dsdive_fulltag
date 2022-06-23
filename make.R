@@ -1,8 +1,9 @@
-# fit model on single node
+# prepare data for model fitting: dependencies for fit_script.R
 targets::tar_make(
-  names = fit_marginalized_model,
-  callr_function = NULL
+  names = c('cape_hatteras_loc', 'covariate_tx_control', 'data_pkg', 
+            'movement_classes')
 )
+
 
 if(interactive()) {
   # identify trajectories to use for seeding posterior predictive simulations 
@@ -14,9 +15,14 @@ if(interactive()) {
   )
 }
 
+# TODO: refactor parameter_interpretation script to allow for multiple starts
+
+#
 # TODO: transfer to a post-sampling make script
+#
+
 targets::tar_make(
-  names = parameter_interpretation_plot,
+  names = c('parameter_interpretation_plot', 'random_effect_plot'),
   callr_function = NULL
 )
 
