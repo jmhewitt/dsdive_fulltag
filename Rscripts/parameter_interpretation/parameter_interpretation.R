@@ -212,6 +212,9 @@ pred_samples = function(ptype, times, init_stage) {
     # simulation uses population-level parameters instead of random effects
     #
     
+    # back transform parameters to natural scale
+    cmod$depth_tx_mat = exp(cmod$depth_tx_mat)
+    
     # simulate dive until a deep depth is reached
     sim = fwd_sim_dive(
       stage = which(rownames(nim_pkg$consts$stage_defs) == init_stage),
