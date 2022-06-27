@@ -116,7 +116,8 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
         covariates = covariates_modeled[
           , ncol(covariates_modeled), drop = FALSE
         ],
-        n_timepoints = 1
+        n_timepoints = 1, 
+        log = FALSE
       )[stage, , ]
     } else { # population-level stage transition matrix
       txprobs = stageTxMats(
@@ -124,7 +125,8 @@ fwd_sim_dive = function(stage, depth_bins, covariates, n_timepoints, nim_pkg,
         covariates = covariates_modeled[
           , ncol(covariates_modeled), drop = FALSE
         ],
-        n_timepoints = 1
+        n_timepoints = 1,
+        log = FALSE
       )[stage, , ]
     }
     
