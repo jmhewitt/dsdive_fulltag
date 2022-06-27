@@ -6,7 +6,7 @@
 #SBATCH --mail-type ALL
 #SBATCH --mail-user joshua.hewitt@duke.edu
 #SBATCH --ntasks 1
-#SBATCH --array=1-45
+#SBATCH --array=1-2295
 #SBATCH --mem=20G
 
 module unload R

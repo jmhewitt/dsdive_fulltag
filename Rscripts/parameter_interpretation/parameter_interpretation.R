@@ -23,10 +23,6 @@ source('_targets.R')
 sapply(as.list(tar_option_get('packages')), 
        function(x) library(x[[1]], character.only = TRUE))
 
-#
-# load data and information needed for posterior predictive sampling
-#
-
 tar_load(cape_hatteras_loc)
 tar_load(covariate_tx_control)
 shallow_threshold = 200
@@ -36,11 +32,65 @@ tar_load(template_bins)
 covariate_tx_control$lon = cape_hatteras_loc['lon']
 covariate_tx_control$lat = cape_hatteras_loc['lat']
 
+#
+# task details
+#
+
+# load dive prototypes
+ptypes = readRDS(file.path('output', 'parameter_interpretation', 
+                           'parameter_interpretation_patterns.rds'))
+
+# define times from which posterior predictive sampling will begin; only the 
+# day/night/moonlit properties are important
+init_times = list(
+  daytime = seq(
+    from = strptime(x = '2020-06-16 0600', format = '%Y-%m-%d %H%M', 
+                    tz = 'US/Eastern'),
+    by = covariate_tx_control$obs_freq,
+    length.out = ncol(ptypes)
+  ),
+  night_dark = seq(
+    from = strptime(x = '2020-01-25 1800', format = '%Y-%m-%d %H%M', 
+                    tz = 'US/Eastern'),
+    by = covariate_tx_control$obs_freq,
+    length.out = ncol(ptypes)
+  ),
+  night_moonlit = seq(
+    from = strptime(x = '2020-02-08 1805', format = '%Y-%m-%d %H%M', 
+                    tz = 'US/Eastern'),
+    by = covariate_tx_control$obs_freq,
+    length.out = ncol(ptypes)
+  )
+)
+
+# configurations for posterior predictive sampling
+config_inds = expand.grid(
+  ptype = 1:nrow(ptypes), 
+  time = 1:length(init_times),
+  stage = 1:nrow(tar_read(movement_classes)$stage_defs)
+)
+
+# enumerate all of the posterior predictive sampling needs
+manifest = expand.grid(
+  fit_rep = 0:50,
+  post_pred_task = 1:nrow(config_inds)
+)
+
+
+#
+# load data and information needed for posterior predictive sampling
+#
+
 # tar_load(fit_marginalized_model)
 
+sample_dir = file.path(
+  'output', 'mcmc', paste('fit_marginalized_model_', manifest$fit_rep[taskId], 
+                          sep = '')
+)
+
 fit_marginalized_model = list(
-  samples = file.path('output', 'mcmc', 'fit_marginalized_model'),
-  package = file.path('output', 'mcmc', 'fit_marginalized_model', 'nim_pkg.rds')
+  samples = sample_dir,
+  package = file.path(sample_dir, 'nim_pkg.rds')
 )
 
 #
@@ -80,7 +130,7 @@ rm(samples2)
 nim_pkg = readRDS(fit_marginalized_model$package)
 
 # set burn-in
-burn = 1:(nrow(samples)*.1)
+burn = 1:(nrow(samples)*.5)
 
 # get top-level names and groupings of variables being sampled
 sampling_targets = colnames(samples)
@@ -94,33 +144,6 @@ sampling_groups = unique(sampling_target_groups)
 #
 # draw posterior predictive samples
 #
-
-# load dive prototypes
-ptypes = readRDS(file.path('output', 'parameter_interpretation', 
-                           'parameter_interpretation_patterns.rds'))
-
-# define times from which posterior predictive sampling will begin; only the 
-# day/night/moonlit properties are important
-init_times = list(
-  daytime = seq(
-    from = strptime(x = '2020-06-16 0600', format = '%Y-%m-%d %H%M', 
-                    tz = 'US/Eastern'),
-    by = covariate_tx_control$obs_freq,
-    length.out = ncol(ptypes)
-  ),
-  night_dark = seq(
-    from = strptime(x = '2020-01-25 1800', format = '%Y-%m-%d %H%M', 
-                    tz = 'US/Eastern'),
-    by = covariate_tx_control$obs_freq,
-    length.out = ncol(ptypes)
-  ),
-  night_moonlit = seq(
-    from = strptime(x = '2020-02-08 1805', format = '%Y-%m-%d %H%M', 
-                    tz = 'US/Eastern'),
-    by = covariate_tx_control$obs_freq,
-    length.out = ncol(ptypes)
-  )
-)
 
 # # test sampling start times to make sure celestial covariates are as expected
 # covariate_tx(
@@ -226,15 +249,8 @@ pred_samples = function(ptype, times, init_stage) {
   ))
 }
 
-# configurations for posterior predictive sampling
-config_inds = expand.grid(
-  ptype = 1:nrow(ptypes), 
-  time = 1:length(init_times),
-  stage = 1:nrow(nim_pkg$consts$stage_defs)
-)
-
 # generate samples for task
-cfg = config_inds[taskId,]
+cfg = config_inds[manifest$post_pred_task[taskId],]
 res = pred_samples(
   ptype = ptypes[cfg$ptype,], 
   times = init_times[[cfg$time]], 
@@ -253,9 +269,18 @@ res[[1]]$config = list(
 # save output
 #
 
-f = file.path('output', 'parameter_interpretation', 'samples')
+f = file.path(
+  'output', 
+  paste('parameter_interpretation_', manifest$fit_rep[taskId], sep = ''), 
+  'samples'
+)
 dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
 
-fname = paste('parameter_interpretation_samples_cfg', taskId, '.rds', sep = '')
+fname = paste(
+  'parameter_interpretation_samples_cfg', 
+  manifest$post_pred_task[taskId], 
+  '.rds', 
+  sep = ''
+)
 
 saveRDS(res, file = file.path(f, fname))
