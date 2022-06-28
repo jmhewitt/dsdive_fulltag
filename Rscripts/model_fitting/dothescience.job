@@ -7,7 +7,7 @@
 #SBATCH --mail-user joshua.hewitt@duke.edu
 #SBATCH --ntasks 1
 #SBATCH --array=0-50
-#SBATCH --mem=20G
+#SBATCH --mem=40G
 
 module unload R
 module load R/3.5.2
