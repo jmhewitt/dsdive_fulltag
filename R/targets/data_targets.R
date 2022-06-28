@@ -87,7 +87,7 @@ data_targets = list(
         cees = cee_info %>% 
           filter(
             # only focus on cee's associated with current tag
-            deployid == tag,
+            trimws(format(deployid)) == trimws(format(tag)),
             # CEEs must begin during data collection
             tag_range[1] <= tstart, 
             tstart <= tag_range[2]
