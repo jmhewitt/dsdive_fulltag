@@ -50,39 +50,46 @@ flatten_tags = function(template_bins, tag_list, depth_threshold,
               length.out = surface_obs_runs$lengths[block_ind] - 2
             )
           ] = TRUE
-          
         }
       }
     }
     
-    # identify all of the observations to analyze
+    # identify all of the contiguous observations we might analyze
     tag_segments = rle(tag$gap_after)
-    valid_segments = which(tag_segments$values == FALSE)
+    segments = data.frame(start = cumsum(c(1, tag_segments$lengths)))
+    segments$end = segments$start + c(tag_segments$lengths, 1) - 1
+    segments$id = 1:nrow(segments)
+    
+    # long-format segments
+    segment_vec = rep(NA, length(tag$gap_after))
+    for(i in 1:nrow(segments)) {
+      if(segments$end[i] <= length(segment_vec)) {
+        segment_vec[segments$start[i]:segments$end[i]] = segments$id[i]
+      }
+    }
+    
+    # restrict contiguous segments to baseline periods
+    tag_segments = rle(segment_vec * tag$baseline)
+    segments = data.frame(start = cumsum(c(1, tag_segments$lengths)))
+    segments$end = segments$start + c(tag_segments$lengths, 1) - 1
+    segments$id = 1:nrow(segments)
+    
+    # identify all of the baseline observations to analyze
+    valid_segments = which(tag_segments$values > 0)
     
     # do not analyze short segments
     valid_segments = valid_segments[
       tag_segments$lengths[valid_segments] > min_segment_length
     ]
-    
-    # first indices of observations to analyze
-    segment_starts = cumsum(c(1, tag_segments$lengths))
-    
-    # last index of baseline period
-    baseline_end_ind = max(which(tag$times < tag$baseline_end))
       
     # flatten data
     exported_segments = FALSE
     for(seg_ind in valid_segments) {
       # next available index in nimble package
       flat_ind = length(nim_pkg$data$depth_bins) + 1
-      # start index of data segment
-      start_ind = segment_starts[seg_ind]
-      # skip segment if it begins after the baseline period
-      if(tag$times[start_ind] >= tag$baseline_end) {
-        next
-      }
-      # only analyze baseline portions of tag
-      end_ind = min(segment_starts[seg_ind + 1] - 1, baseline_end_ind)
+      # start/end indices of data segment
+      start_ind = segments$start[seg_ind]
+      end_ind = segments$end[seg_ind]
       # indices to analyze
       seg_inds = seq(from = start_ind, to = end_ind, by = 1)
       # skip segment if there are no transitions to analyze

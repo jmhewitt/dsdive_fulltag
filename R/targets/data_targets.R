@@ -39,21 +39,6 @@ data_targets = list(
     command = c('mdy IMS p', 'ymd HMS')
   ),
   
-  # tag metadata: sex and CEE info
-  tar_target(
-    name = tag_info, 
-    command = read.csv(file.path(sattag_dir, 'tag_info.csv'), 
-                       colClasses = 'factor') %>%
-        dplyr::mutate(
-          baseline_end = parse_date_time(
-            x = baseline_end, orders = date_formats, tz = 'UTC'
-          ),
-          cee_start = parse_date_time(
-            x = cee_start, orders = date_formats, tz = 'UTC'
-          )
-        )
-  ),
-  
   # use CEE metadata to identify baseline and exposed periods in data
   tar_target(
     name = tag_timelines,
@@ -167,8 +152,11 @@ data_targets = list(
           stop(paste('Potentially inconsistent CEE timeline for', tag))
         }
         
-        # assemble cee periods
+        # assemble cee periods and id's
         cee_segments = data.frame(
+          cee_id = sapply(critical_times[start_inds], function(x) {
+            cees$cee_id[x == cees$tstart]
+          }),
           start = critical_times[start_inds],
           end = critical_times[start_inds + 1]
         ) %>% mutate(
@@ -193,8 +181,9 @@ data_targets = list(
   tar_target(
     name = raw_sattags,
     command = load_raw(depth_files = depth_files, 
-                       template_bins = template_bins, tag_info = tag_info, 
-                       dive_labels = dive_labels, deep_depth_threshold = 800, 
+                       template_bins = template_bins, 
+                       tag_timelines = tag_timelines, 
+                       deep_depth_threshold = 800, 
                        lon_lat_mean = cape_hatteras_loc,
                        timestep = sattag_timestep)
   )
