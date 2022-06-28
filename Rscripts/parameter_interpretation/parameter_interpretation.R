@@ -273,10 +273,15 @@ res[[1]]$config = list(
 #
 
 f = file.path(
-  'output', 
+  'output', 'parameter_interpretation',
   paste('parameter_interpretation_', manifest$fit_rep[taskId], sep = ''), 
   'samples'
 )
+
+# make sure output directory is empty (i.e., clear previous model output)
+unlink(x = fpath, recursive = TRUE)
+
+# (re-)create output directory
 dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
 
 fname = paste(
