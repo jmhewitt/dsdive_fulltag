@@ -15,8 +15,6 @@ if(interactive()) {
   )
 }
 
-# TODO: refactor parameter_interpretation script to allow for multiple starts
-
 #
 # TODO: transfer to a post-sampling make script
 #
