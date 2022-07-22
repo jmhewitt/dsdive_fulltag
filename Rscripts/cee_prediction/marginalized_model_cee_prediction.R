@@ -118,20 +118,19 @@ sampling_groups = unique(sampling_target_groups)
 # wrap primary code in analysis function
 cee_preds = function() {
 
+  # normalize tag name
+  cee_tag = gsub(pattern = '\\_DUML', replacement = '', x = cee$tag)
+  
   # extract raw tag data for task
   tag_map = sapply(raw_sattags, function(x) x$tag)
-  raw_tag = raw_sattags[[
-    which(
-      tag_map == gsub(pattern = '\\_DUML', replacement = '', x = cee$tag)
-    )
-  ]]
+  raw_tag = raw_sattags[[which(tag_map == cee_tag)]]
   
   #
   # find cee segment within the model data package
   #
 
   # map subject name to id in data package
-  subj_id = which(nim_pkg$consts$subject_id_labels == cee$tag)
+  subj_id = which(nim_pkg$consts$subject_id_labels == cee_tag)
 
   # validate time data appears consistent with data package
   if(length(nim_pkg$data$depth_bins) != length(data_pkg$data$times)) {
