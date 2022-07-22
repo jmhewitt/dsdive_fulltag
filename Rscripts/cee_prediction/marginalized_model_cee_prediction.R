@@ -1,21 +1,66 @@
+#
+# set random seed for task relative to entire job
+#
+
+# set seed for job
+RNGkind("L'Ecuyer-CMRG")
+set.seed(2022)
+
+# set seed for task
+taskId = as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
+s <- .Random.seed
+for (i in 1:taskId) {
+  s <- parallel::nextRNGStream(s)
+}
+.GlobalEnv$.Random.seed <- s
+
+# 
+# workspace configuration from targets workflow
+#
+
 source('_targets.R')
 
 sapply(as.list(tar_option_get('packages')), 
        function(x) library(x[[1]], character.only = TRUE))
 
-tar_load(raw_sattags)
 tar_load(data_pkg)
-tar_load(deep_dive_depth)
+tar_load(raw_sattags)
 tar_load(cape_hatteras_loc)
 tar_load(covariate_tx_control)
+tar_load(deep_dive_depth)
 shallow_threshold = 200
 tar_load(template_bins)
 
-# tar_load(fit_marginalized_model)
+# enrich covariate control list with lon/lat, for celestial calculations
+covariate_tx_control$lon = cape_hatteras_loc['lon']
+covariate_tx_control$lat = cape_hatteras_loc['lat']
+
+
+#
+# task details
+#
+
+# load information about tags
+tar_load(tag_timelines)
+# compile list of all exposures across all tags
+cees = do.call(rbind, lapply(tag_timelines, function(x) {
+  if(nrow(x$cee_segments) > 0) {
+    cbind(tag = x$tag, x$cee_segments)
+  }
+}))
+# extract the cee to be analyzed
+cee = cees[taskId,]
+
+
+#
+# load data and information needed for posterior predictive sampling
+#
+
+sample_dir = file.path('output', 'mcmc', 'fit_marginalized_model_0')
 
 fit_marginalized_model = list(
-  samples = file.path('output', 'mcmc', 'fit_marginalized_model'),
-  package = file.path('output', 'mcmc', 'fit_marginalized_model', 'nim_pkg.rds')
+  samples = sample_dir,
+  package = file.path(sample_dir, 'nim_pkg.rds')
 )
 
 #
@@ -55,7 +100,7 @@ rm(samples2)
 nim_pkg = readRDS(fit_marginalized_model$package)
 
 # set burn-in
-burn = 1:(nrow(samples)*.1)
+burn = 1:(nrow(samples)*.5)
 
 # get top-level names and groupings of variables being sampled
 sampling_targets = colnames(samples)
@@ -67,93 +112,104 @@ sampling_target_groups = gsub(
 sampling_groups = unique(sampling_target_groups)
 
 #
-# extract information about subject
+# analysis routine
 #
 
-# read in array parameter, which serves as target animal to test
-subj_ind = as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
-  
-# wrap primary code in function
+# wrap primary code in analysis function
 cee_preds = function() {
+
+  # extract raw tag data for task
+  tag_map = sapply(raw_sattags, function(x) x$tag)
+  raw_tag = raw_sattags[[which(tag_map == cee$tag)]]
   
-  # unwrap input
-  raw_tag = raw_sattags[[subj_ind]]
-  
-  # get name for tag
-  tagName = raw_tag$tag
-  
-  # determine subject id number for this tag
-  subject_id = which(
-    nim_pkg$consts$subject_id_labels == raw_tag$tag
+  #
+  # find cee segment within the model data package
+  #
+
+  # map subject name to id in data package
+  subj_id = which(nim_pkg$consts$subject_id_labels == cee$tag)
+
+  # validate time data appears consistent with data package
+  if(length(nim_pkg$data$depth_bins) != length(data_pkg$data$times)) {
+    stop('Cannot re-associate observation times with data package entries')
+  }
+
+  # augment segment information with start and end times
+  segment_df = data.frame(
+    nim_pkg$consts$segments,
+    start_time = as.POSIXct(
+      data_pkg$data$times[nim_pkg$consts$segments[, 'start_ind']],
+      origin = '1970-01-01 00:00.00 UTC', 
+      tz = 'UTC'
+    ),
+    end_time = as.POSIXct(
+      data_pkg$data$times[nim_pkg$consts$segments[, 'end_ind']],
+      origin = '1970-01-01 00:00.00 UTC', 
+      tz = 'UTC'
+    )
   )
-  
-  # get info. for the subject's final segment that was analyzed
-  final_seg = nim_pkg$consts$segments[
-    max(which(nim_pkg$consts$segments[,'subject_id'] == subject_id)),
-  ]
-  
-  # skip processing if the animal was not clearly exposed
-  if(!is.finite(raw_tag$exposure_time)) {
-    err_msg = paste('There is no exposure time recorded for',
-                    tagName,
-                    'so we cannot analyze CEE response')
-    warning(err_msg)
-    return(list(list(error = err_msg, tag = tagName)))
+
+  # identify the segment that preceeds the CEE
+  pre_exposure_segment = data.frame(segment_df) %>% 
+    mutate(seg_id = 1:n()) %>% 
+    filter(
+      # only look at this subject's segments
+      subject_id == subj_id,
+      # only consider a segment that ends immediately before the cee
+      end_time <= cee$start,
+      cee$start <= end_time + nim_pkg$consts$tstep
+    ) %>% 
+    select(seg_id) %>% 
+    unlist()
+
+  # early return b/c the CEE cannot be analyzed
+  if(length(pre_exposure_segment) == 0) {
+    return(
+      list(list(
+        tag = cee$tag,
+        cee = cee$cee_id,
+        error = 'Missing pre-exposure baseline data to initialize predictions.'
+      ))
+    )
   }
-  
-  # skip processing if baseline period ends considerably before exposure
-  if(as.numeric(raw_tag$exposure_time) - 
-     data_pkg$data$times[final_seg['end_ind']] > nim_pkg$consts$tstep) {
-    err_msg = paste('There is a large gap between the end of the baseline',
-                    'data and exposure time for',
-                    tagName,
-                    'so we cannot analyze CEE response')
-    warning(err_msg)
-    return(list(list(error = err_msg, tag = tagName)))
-  }
-  
-  # TODO: consider skipping processing, or modifying the processing, if we
-  # can't get enough data to compute the lagged covariates
-  
-  # indices of the final segment
-  seg_inds = final_seg['start_ind']:final_seg['end_ind']
-  
+
+  # indices of the final pre-exposure segment
+  seg_inds = seq(
+    from = nim_pkg$consts$segments[pre_exposure_segment, 'start_ind'],
+    to = nim_pkg$consts$segments[pre_exposure_segment, 'end_ind']
+  )
+
   #
   # re-build model so that we can use it to generate transition matrices
   #
-  
+
   # need to re-link compiled functions when running target in parallel
   source(file.path('R', 'util', 'statespace_tools', 'statespace_tools.R'))
   
   # uncompiled model
   mod = nimbleModel(
     code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data,
-    inits = nim_pkg$inits, name = tar_name(), calculate = FALSE
+    inits = nim_pkg$inits, name = basename(tempfile('model')), calculate = FALSE
   )
   
   # compile model
-  cmod = compileNimble(mod)
+  cmod = compileNimble(mod, showCompilerOutput = TRUE)
   
   # verify model has a finite likelihood
   cmod$calculate()
-  
+
   #
   # composition sample!
   #
-  
+
   # identify posterior samples that will be used in the posterior analysis
   posterior_sample_inds = (1:nrow(samples))[-burn]
-  # posterior_sample_inds = seq(
-  #   from = min(posterior_sample_inds),
-  #   to = max(posterior_sample_inds),
-  #   length.out = 1e4
-  # )
-  
+
   message('Sampling')
-  
+
   # draw from posterior predictive distribution for time-till-deep
   baseline_deep_pred_samples = sapply(posterior_sample_inds, function(ind) {
-    
+
     # transfer posterior sample of model parameters to model object
     for(tgt_group in sampling_groups) {
       cmod[[tgt_group]] = samples[
@@ -161,13 +217,14 @@ cee_preds = function() {
       ]
     }
     
-    # update model components
-    cmod$calculate()
-    
+    # return depth bin transition matrices to natural scale
+    cmod$depth_tx_mat = exp(cmod$depth_tx_mat)
+
     txmat_seq = stageTxMats(
-      betas = cmod$beta_tx[final_seg['subject_id'],,,], 
+      betas = cmod$beta_tx[subj_id,,,], 
       covariates = cmod$covariates[, seg_inds], 
-      n_timepoints = length(seg_inds)
+      n_timepoints = length(seg_inds), 
+      log = FALSE
     )
     
     # posterior predictive distribution for latent state before exposure
@@ -178,7 +235,7 @@ cee_preds = function() {
       x0 = cmod$init_stages,
       num_obs_states = nim_pkg$consts$n_bins
     )
-    
+
     # simulate dive until a deep depth is reached
     sim = fwd_sim_dive(
       stage = sample(
@@ -193,7 +250,7 @@ cee_preds = function() {
       lat = cape_hatteras_loc['lat'],
       depth_threshold = deep_dive_depth,
       template_bins = template_bins,
-      subj = subject_id,
+      subj = subj_id,
       covariate_tx_control = covariate_tx_control, 
       shallow_threshold = shallow_threshold
     )
@@ -203,15 +260,32 @@ cee_preds = function() {
       )) * nim_pkg$consts$tstep,
       second_deep = length(sim$depth_bins) * nim_pkg$consts$tstep)
   })
+
+  # analyze depth data associated with cee
+  cee_behaviors = data.frame(
+    depth = raw_tag$depths,
+    time = raw_tag$times,
+    gap_after = raw_tag$gap_after
+  ) %>% 
+    mutate(
+      before_gap = cumsum(gap_after) == 0
+    ) %>% 
+    filter(
+      # bracket data to cee window
+      cee$start <= time,
+      time <= cee$end,
+      # only analyze consecutive observations
+      before_gap == TRUE
+    )
   
   # observed amount of time it took to see a deep depth post-exposure (sec)
   observed_time_to_deep = c(
     first_deep = min(which(
-      raw_tag$depths[raw_tag$exposed == 1] > deep_dive_depth
+      cee_behaviors$depth > deep_dive_depth
     )) * nim_pkg$consts$tstep,
     second_deep = data.frame(
-      deep = raw_tag$depths[raw_tag$exposed == 1] > deep_dive_depth,
-      recovery =raw_tag$depths[raw_tag$exposed == 1] < shallow_threshold
+      deep = cee_behaviors$depth > deep_dive_depth,
+      recovery = cee_behaviors$depth < shallow_threshold
     ) %>% 
       mutate(ind = 1:n(),
              visited_deep = cumsum(deep) > 0,
@@ -225,9 +299,10 @@ cee_preds = function() {
   
   # package results
   list(list(
-    tag = tagName,
+    tag = cee$tag,
+    cee = cee,
     deep_at_exposure = 
-      data_pkg$data$covariates['depth', final_seg['end_ind']] >
+      data_pkg$data$covariates['depth', tail(seg_inds,1)] >
       deep_dive_depth,
     baseline_deep_pred_samples = baseline_deep_pred_samples,
     observed_time_to_deep = observed_time_to_deep,
@@ -256,8 +331,11 @@ res = cee_preds()
 #
 
 f = file.path('output', 'cee', 'samples')
+
+unlink(f, recursive = TRUE)
+
 dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
 
-fname = paste('cee_predictions_raw_sattags_', subj_ind, '.rds', sep = '')
+fname = paste('cee_predictions_', taskId, '.rds', sep = '')
 
 saveRDS(res, file = file.path(f, fname))
