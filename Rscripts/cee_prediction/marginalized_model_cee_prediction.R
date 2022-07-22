@@ -349,8 +349,6 @@ res = cee_preds()
 
 f = file.path('output', 'cee', 'samples')
 
-unlink(f, recursive = TRUE)
-
 dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
 
 fname = paste('cee_predictions_', taskId, '.rds', sep = '')
