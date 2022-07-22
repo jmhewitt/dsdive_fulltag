@@ -183,9 +183,6 @@ cee_preds = function() {
   # re-build model so that we can use it to generate transition matrices
   #
 
-  # need to re-link compiled functions when running target in parallel
-  source(file.path('R', 'util', 'statespace_tools', 'statespace_tools.R'))
-  
   # uncompiled model
   mod = nimbleModel(
     code = modelCode, constants = nim_pkg$consts, data = nim_pkg$data,
@@ -197,6 +194,10 @@ cee_preds = function() {
   
   # verify model has a finite likelihood
   cmod$calculate()
+  
+  # need to re-link compiled functions when running target in parallel, but
+  # should only be run after the model is compiled for portability
+  source(file.path('R', 'util', 'statespace_tools', 'statespace_tools.R'))
 
   #
   # composition sample!
