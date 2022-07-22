@@ -279,7 +279,7 @@ f = file.path(
 )
 
 # make sure output directory is empty (i.e., clear previous model output)
-unlink(x = fpath, recursive = TRUE)
+unlink(x = f, recursive = TRUE)
 
 # (re-)create output directory
 dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
