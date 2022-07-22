@@ -271,17 +271,30 @@ cee_preds = function() {
     depth = raw_tag$depths,
     time = raw_tag$times,
     gap_after = raw_tag$gap_after
-  ) %>% 
-    mutate(
-      before_gap = cumsum(gap_after) == 0
-    ) %>% 
+  ) %>%  
     filter(
       # bracket data to cee window
       cee$start <= time,
-      time <= cee$end,
-      # only analyze consecutive observations
+      time <= cee$end
+    ) %>% 
+    mutate(
+      before_gap = cumsum(gap_after) == 0
+    ) %>%
+    filter(
+      # only analyze filtered observations consecutive in time
       before_gap == TRUE
     )
+  
+  # early return observations not available
+  if(nrow(cee_behaviors) == 0) {
+    return(
+      list(list(
+        tag = cee$tag,
+        cee = cee$cee_id,
+        error = 'Missing post-exposure data.'
+      ))
+    )
+  }
   
   # observed amount of time it took to see a deep depth post-exposure (sec)
   observed_time_to_deep = c(
