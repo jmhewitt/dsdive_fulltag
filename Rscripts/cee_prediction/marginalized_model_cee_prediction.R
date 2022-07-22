@@ -120,7 +120,11 @@ cee_preds = function() {
 
   # extract raw tag data for task
   tag_map = sapply(raw_sattags, function(x) x$tag)
-  raw_tag = raw_sattags[[which(tag_map == cee$tag)]]
+  raw_tag = raw_sattags[[
+    which(
+      tag_map == gsub(pattern = '\\_DUML', replacement = '', x = cee$tag)
+    )
+  ]]
   
   #
   # find cee segment within the model data package
