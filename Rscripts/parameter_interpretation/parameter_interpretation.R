@@ -278,12 +278,6 @@ f = file.path(
   'samples'
 )
 
-# make sure output directory is empty (i.e., clear previous model output)
-unlink(x = f, recursive = TRUE)
-
-# (re-)create output directory
-dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
-
 fname = paste(
   'parameter_interpretation_samples_cfg', 
   manifest$post_pred_task[taskId], 
