@@ -5,8 +5,8 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     # tar_load(fit_marginalized_model)
     
     fit_marginalized_model = list(
-      samples = file.path('output', 'mcmc', 'fit_marginalized_model'),
-      package = file.path('output', 'mcmc', 'fit_marginalized_model', 
+      samples = file.path('output', 'mcmc', 'fit_marginalized_model_0'),
+      package = file.path('output', 'mcmc', 'fit_marginalized_model_0', 
                           'nim_pkg.rds')
     )
     
@@ -77,6 +77,8 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     
     samples = samples[,-not_sampled_inds]
     
+    dim(samples)
+    
     #
     # diagnostics
     #
@@ -91,7 +93,7 @@ marginalized_model_posterior_diagnostic_script = tar_target(
     sampling_groups = unique(sampling_target_groups)
     
     # set burn-in
-    burn = 1:(nrow(samples)*.1)
+    burn = 1:(nrow(samples)*.5)
     
     #
     # explore posterior output
