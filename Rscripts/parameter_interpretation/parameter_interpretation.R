@@ -278,6 +278,8 @@ f = file.path(
   'samples'
 )
 
+dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
+
 fname = paste(
   'parameter_interpretation_samples_cfg', 
   manifest$post_pred_task[taskId], 
