@@ -288,3 +288,5 @@ fname = paste(
 )
 
 saveRDS(res, file = file.path(f, fname))
+
+q(save = 'no', status = 0, runLast = FALSE)
