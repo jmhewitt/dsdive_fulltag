@@ -392,7 +392,11 @@ plot_targets = list(
   
   sattag_illustration_script,
   
+  tar_target(name = multiple_start_reps, command = 0:50),
+  
   parameter_interpretation_plot_script,
+  
+  parameter_interpretation_sensitivity_plot_script,
   
   random_effect_plot_script,
   

@@ -2,9 +2,18 @@ parameter_interpretation_plot_script = tar_target(
   name = parameter_interpretation_plot,
   command = {
     
+    parameter_interp_rep = paste(
+      'parameter_interpretation_', multiple_start_reps, sep =''
+    )
+    
     # identify posterior predictive samples
-    f = dir(path = file.path('output', 'parameter_interpretation', 'samples'), 
-            full.names = TRUE)
+    f = dir(
+      path = file.path(
+        'output', 'parameter_interpretation', parameter_interp_rep, 'samples'
+      ), 
+      full.names = TRUE, 
+      pattern = 'cfg'
+    )
     
     # compute means for all groups from posterior predictive samples
     summaries = do.call(rbind, lapply(f, function(f) {
@@ -19,6 +28,11 @@ parameter_interpretation_plot_script = tar_target(
         }))
       )
     }))
+    
+    # TODO: temporarily identify missing simulations
+    if(nrow(summaries) != 45) {
+      message(paste('Missing simulation output for rep', multiple_start_reps))
+    }
     
     # label the different trajectories used to initialize simulations
     summaries$prototype = factor(
@@ -131,7 +145,7 @@ parameter_interpretation_plot_script = tar_target(
     # save figures
     #
     
-    f = file.path('output', 'figures')
+    f = file.path('output', 'figures', parameter_interp_rep)
     dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
     
     ggsave(pl, filename = file.path(f, paste(tar_name(), '.pdf', sep = '')),
@@ -141,5 +155,13 @@ parameter_interpretation_plot_script = tar_target(
                                               sep = '')),
            width = 8, height = 4, dpi = 'print')
     
-  }
+    # output summary information for rep so we can compare findings
+    summaries$rep = multiple_start_reps
+    summaries
+    
+  }, 
+  pattern = map(multiple_start_reps), 
+  deployment = 'worker', 
+  memory = 'transient',
+  storage = 'worker'
 )
