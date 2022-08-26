@@ -130,21 +130,24 @@ cee_targets = list(
         ) + 
         # axes
         scale_x_continuous(
-          'Time to reach first deep depth (h)', 
+          # 'Time to reach first deep depth (h)', 
+          expression(H[1]('\u2113'[ij^'*'])),
           breaks = c(0,30,60,90,120)/60,
           limits = c(0, 2*60)/60
         ) + 
         scale_y_continuous(
-          'Post. pred. CDF', 
+          # 'Post. pred. CDF', 
+          expression(F(H[1]('\u2113'[ij^'*']))),
           limits = c(0,1),
           sec.axis = sec_axis(
             trans = identity, 
             breaks = cee_results$pval['first_deep_shorter'], 
-            labels = paste(
-              'F(x)=', 
-              round(cee_results$pval['first_deep_shorter'],2),
-              sep = ''
-            )
+            # labels = paste(
+            #   # 'F(x)=', 
+            #   round(cee_results$pval['first_deep_shorter'],2),
+            #   sep = ''
+            # ),
+            labels = expression(F(h[1]('\u2113'[ij^'*']))==.01)
           )
         ) +
         # title and formatting
@@ -167,21 +170,24 @@ cee_targets = list(
         ) + 
         # axes
         scale_x_continuous(
-          'Deep dive recovery time (h)', 
+          # 'Deep dive recovery time (h)', 
+          expression(H[2]('\u2113'[ij^'*'])-H[1]('\u2113'[ij^'*'])),
           breaks = seq(0,8,by = 2),
           limits = c(0,8)
         ) + 
         scale_y_continuous(
-          'Post. pred. CDF',
+          # 'Post. pred. CDF',
+          expression(F(H[2]('\u2113'[ij^'*'])-H[1]('\u2113'[ij^'*']))),
           limits = c(0,1),
           sec.axis = sec_axis(
             trans = identity, 
             breaks = cee_results$pval['interval_shorter'], 
-            labels = paste(
-              'F(x)=', 
-              round(cee_results$pval['interval_shorter'],2),
-              sep = ''
-            )
+            # labels = paste(
+            #   'F(x)=', 
+            #   round(cee_results$pval['interval_shorter'],2),
+            #   sep = ''
+            # )
+            labels = expression(F(h[2]('\u2113'[ij^'*'])-h[1]('\u2113'[ij^'*']))==1)
           )
         ) +
         # title and formatting
@@ -194,14 +200,15 @@ cee_targets = list(
       ggsave(
         ggarrange(
           pl + theme(plot.title = element_blank()), 
-          pl2 + theme(plot.title = element_blank(), 
-                      axis.title.y = element_blank()),
-          nrow = 1, ncol =2, labels = 'AUTO', 
-          label.x = c(0,-.05)
+          pl2 + theme(plot.title = element_blank()), 
+                      # axis.title.y = element_blank()),
+          nrow = 1, ncol = 2, labels = 'AUTO'
+          # align = 'v'
+          # label.x = c(0,-.05)
         ),
-        filename = file.path(f, paste(tar_name(), '_', cee_results$tag, '.pdf',
+        filename = file.path(f, paste(tar_name(), '_', cee_results$tag, '.png',
                                       sep = '')),
-        width = 8, height = 3
+        width = 8, height = 3, dpi = 'print'
       )
       
       
