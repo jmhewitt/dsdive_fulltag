@@ -43,6 +43,8 @@ sattag_illustration_script = tar_target(
       control = covariate_tx_control
     )
     
+    record$exposure_time = record$timeline$cee_segments$start
+    
     d = data.frame(
       # raw series data
       Date = record$times,
@@ -257,12 +259,12 @@ sattag_illustration_script = tar_target(
         theme(axis.title.x = element_blank(),
               plot.title = element_text(hjust = .5, size = title_size)) + 
         ggtitle(
-          'Derived covariate: Proportion of last hour spent in deep depths'
+          'Recent diving activity: Proportion of last hour spent in deep depths'
         ),
       pl_vertical + 
         theme(plot.title = element_text(hjust = .5, size = title_size)) + 
         ggtitle(
-          'Derived covariate: Total vertical distance traveled in last hour'
+          'Recent diving activity: Total vertical distance traveled in last hour'
         ) + 
         ylab('Distance (m)'),
       ncol = 1, 
