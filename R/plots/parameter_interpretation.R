@@ -39,7 +39,8 @@ parameter_interpretation_plot_script = tar_target(
       x = summaries$prototype, 
       levels = rev(1:3), 
       labels = rev(c(
-        'mid_recovery','starting_recovery','finishing_deep'
+        # 'mid_recovery','starting_recovery','finishing_deep'
+        'Low','Medium','High'
       ))
     )
     
@@ -47,7 +48,8 @@ parameter_interpretation_plot_script = tar_target(
     summaries$time = factor(
       x = summaries$time,
       levels = c("daytime", "night_dark", "night_moonlit")[c(1,3,2)],
-      labels = c('Daytime', 'Dark\nNight', 'Moonlit\nNight')[c(1,3,2)]
+      # labels = c('Daytime', 'Dark\nNight', 'Moonlit\nNight')[c(1,3,2)]
+      labels = c('Daytime', 'Dark Night', 'Moonlit Night')[c(1,3,2)]
     )
     
     # convert all seconds to minutes
@@ -84,6 +86,23 @@ parameter_interpretation_plot_script = tar_target(
       ylab('Deep depth hitting time (min)') + 
       facet_wrap(~prototype, labeller = titlecase) + 
       theme_few()
+    
+    # alternate visualization for parameter effects
+    plalt = ggplot(summaries, aes(x = prototype, y = first_deep, col = init_stage, 
+                               lty = init_stage, pch = init_stage,
+                               group = init_stage)) + 
+      geom_point() + 
+      geom_line() + 
+      scale_linetype_discrete('Initial movement', labels = titlecase) + 
+      scale_shape_discrete('Initial movement', labels = titlecase) + 
+      scale_color_brewer('Initial movement', labels = titlecase, 
+                         type = 'qual', palette = 'Dark2') + 
+      xlab('Covariate values') + 
+      # ylab('Deep depth hitting time (min)') + 
+      ylab(expression(E~'['~H[1](1)~']')) + 
+      facet_wrap(~time, labeller = titlecase) + 
+      theme_few() + 
+      theme(axis.title.y = element_text(angle = 0, vjust = .5))
 
     #
     # load and plot prototypes as well, since this helps interpret the panels
@@ -148,8 +167,8 @@ parameter_interpretation_plot_script = tar_target(
     f = file.path('output', 'figures', parameter_interp_rep)
     dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
     
-    ggsave(pl, filename = file.path(f, paste(tar_name(), '.pdf', sep = '')),
-           width = 8, height = 4, dpi = 'print')
+    ggsave(plalt, filename = file.path(f, paste(tar_name(), '.pdf', sep = '')),
+           width = 8, height = 3, dpi = 'print')
     
     ggsave(pl2, filename = file.path(f, paste(tar_name(), '_prototypes.pdf', 
                                               sep = '')),
