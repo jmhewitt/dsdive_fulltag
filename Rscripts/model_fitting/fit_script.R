@@ -47,7 +47,7 @@ fit_model(
   random_inits = taskId > 0, # non-random starts are used for taskId == 0
   random_betas = FALSE, # start all covariate effects from 0 or I
   out_dir = file.path(
-    'output', 'mcmc', 'fixed_beta_starts',
+    'output', 'mcmc', 'fixed_init_beta',
     paste('fit_marginalized_model_', taskId, sep = '')
   )
 )
