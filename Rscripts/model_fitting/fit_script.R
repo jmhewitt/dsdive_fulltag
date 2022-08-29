@@ -45,7 +45,9 @@ fit_model(
   covariate_tx_control = covariate_tx_control, 
   movement_classes = tar_read(movement_classes),
   random_inits = taskId > 0, # non-random starts are used for taskId == 0
+  random_betas = FALSE, # start all covariate effects from 0 or I
   out_dir = file.path(
-    'output', 'mcmc', paste('fit_marginalized_model_', taskId, sep = '')
+    'output', 'mcmc', 'fixed_beta_starts',
+    paste('fit_marginalized_model_', taskId, sep = '')
   )
 )

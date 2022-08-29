@@ -1,7 +1,8 @@
 fit_model = function(data_pkg, covariate_tx_control, movement_classes,
-                     random_inits, out_dir) {
+                     random_inits, out_dir, random_betas) {
   # Parameters:
   #   random_inits - TRUE to sample initial model parameters from prior
+  #   random_betas - FALSE to start all betas from 0 and cov mat's from I
   #   out_dir - directory in which to save posterior samples and configuration
   
   # we build the model config/data from the input
@@ -189,7 +190,10 @@ fit_model = function(data_pkg, covariate_tx_control, movement_classes,
       # in particular for lambda that are both approximately 0
       message('(Re-)Sampling initial parameters')
       # draw top-level parameters
-      cmod$simulate(nodes = c('pi','lambda','beta_tx_mu', 'beta_tx_prec'))
+      cmod$simulate(nodes = c('pi','lambda'))
+      if(random_betas) {
+        cmod$simulate(nodes = c('beta_tx_mu', 'beta_tx_prec'))
+      }
       # recall pi[2] is fixed
       cmod$pi[2] = .5
       # ensure lambda constraints are met
@@ -197,7 +201,9 @@ fit_model = function(data_pkg, covariate_tx_control, movement_classes,
       # update dependent model parameters and components
       cmod$calculate()
       # draw random effects
-      cmod$simulate(nodes = 'beta_tx')
+      if(random_betas) {
+        cmod$simulate(nodes = 'beta_tx')
+      }
       # update dependent model parameters and components
       initializing_params = !is.finite(cmod$calculate())
     }
