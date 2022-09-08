@@ -6,7 +6,7 @@ sattag_illustration_script = tar_target(
     # illustration of raw sattag data
     #
     
-    tag = 'ZcTag093'
+    tag = 'ZcTag087'
     
     tar_load(template_bins)
     
@@ -137,7 +137,7 @@ sattag_illustration_script = tar_target(
       scale_y_reverse(
         breaks = seq(0, max(template_bins$center + template_bins$halfwidth), 
                      by = 400), 
-        limits = c(1400,0),
+        limits = c(1800,0),
         # depth bins as second y-axis
         sec.axis = sec_axis(
           trans = identity,
@@ -262,11 +262,13 @@ sattag_illustration_script = tar_target(
           'Recent diving activity: Proportion of last hour spent in deep depths'
         ),
       pl_vertical + 
-        theme(plot.title = element_text(hjust = .5, size = title_size)) + 
+        theme(plot.title = element_text(hjust = .5, size = title_size),
+              axis.title.y = element_text(angle = 0, vjust = .5)) + 
         ggtitle(
-          'Recent diving activity: Total vertical distance traveled in last hour'
+          'Recent diving activity: Standardized total vertical distance traveled in last hour'
         ) + 
-        ylab('Distance (m)'),
+        # ylab('Distance (m)'),
+        ylab('Z'),
       ncol = 1, 
       heights = c(5,1,1)
     )
