@@ -396,6 +396,8 @@ plot_targets = list(
   
   parameter_interpretation_plot_script,
   
+  parameter_interpretation_variability_plot_script,
+  
   parameter_table_script,
   
   parameter_interpretation_sensitivity_plot_script,
