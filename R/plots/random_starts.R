@@ -2,14 +2,12 @@ random_starts_plot_script = tar_target(
   name = random_starts_plot,
   command = {
     
-    browser()
-    
     #
     # enumerate random starts outputs
     #
     
     outdirs = dir(
-      path = file.path('output', 'mcmc'), 
+      path = file.path('output', 'mcmc', 'fixed_init_beta'), 
       pattern = 'fit_marginalized_model_', 
       full.names = TRUE
     )
@@ -54,7 +52,8 @@ random_starts_plot_script = tar_target(
       pkg = readRDS(file.path(d, 'nim_pkg.rds'))
       
       # set burn-in
-      burn = 1:(nrow(samples)*.5)
+      # burn = 1:(nrow(samples)*.5)
+      burn = 1:7e3
       
       #
       # remove output for quantities that are not actually sampled
@@ -87,6 +86,10 @@ random_starts_plot_script = tar_target(
       
       samples = samples[,-not_sampled_inds]
       
+      if(nrow(samples) < 1e4) {
+        return(NULL)
+      }
+      
       data.frame(
         rep = as.numeric(str_extract(string = basename(d), pattern = '[0-9]+')),
         param = colnames(samples),
@@ -100,6 +103,17 @@ random_starts_plot_script = tar_target(
     colnames(df)[4:5] = c('lower', 'upper')
     
     
+    #
+    # make plots for the main parameters sampled
+    #
+    
+    # reminder of what parameters were, indeed, sampled
+    sampling_groups = unique(gsub(
+      pattern = '\\[.*\\]', replacement = '', x = unique(df$param)
+    ))
+      
+    # posteriors for covariates that influence depth bin transitions (or at 
+    # least just the intercept)
     pl = ggplot(
       df %>% filter(grepl(pattern = 'beta_tx_mu\\[1', x = param)),
       aes(x = rep, y = mean, ymin = lower, ymax = upper)
@@ -107,7 +121,44 @@ random_starts_plot_script = tar_target(
       geom_pointrange() + 
       facet_wrap(~param, scales = 'free_y') + 
       theme_few()
-  
-    pl  
+    
+    # posteriors for speed parameters
+    pl2 = ggplot(
+      df %>% filter(grepl(pattern = 'lambda', x = param)),
+      aes(x = rep, y = mean, ymin = lower, ymax = upper)
+    ) + 
+      geom_pointrange() + 
+      facet_wrap(~param, scales = 'free_y') + 
+      theme_few()
+    
+    # posteriors for directional bias parameters
+    pl3 = ggplot(
+      df %>% filter(grepl(pattern = 'pi', x = param)),
+      aes(x = rep, y = mean, ymin = lower, ymax = upper)
+    ) + 
+      geom_pointrange() + 
+      facet_wrap(~param, scales = 'free_y') + 
+      theme_few()
+    
+    #
+    # save plots
+    #
+    
+    f = file.path('output', 'figures', 'parameter_sensitivity')
+    dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
+    
+    ggsave(pl, 
+           filename = file.path(f, paste(tar_name(), '_beta_tx_mu.pdf', 
+                                         sep = '')),
+           width = 16, height = 16)
+    
+    ggsave(pl2, 
+           filename = file.path(f, paste(tar_name(), '_lambda.pdf', 
+                                         sep = '')))
+    
+    ggsave(pl3, 
+           filename = file.path(f, paste(tar_name(), '_pi.pdf', 
+                                         sep = '')))
+    
   }
 )
