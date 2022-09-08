@@ -1,4 +1,102 @@
 cee_targets = list(
+  
+  tar_target(
+    name = cee_predictive_samples,
+    command = {
+      
+      # collate a posterior sample of parameters from across the multiple chains
+      # that will be used to draw posterior predictive samples for covariate
+      # effect interpretation, and cee response estimation
+      
+      #
+      # enumerate random starts outputs
+      #
+      
+      # scrape directory where posterior samples from chains live
+      outdirs = dir(
+        path = file.path('output', 'mcmc', 'fixed_init_beta'), 
+        pattern = 'fit_marginalized_model_', 
+        full.names = TRUE
+      )
+      
+      # number of chains to aggregate parameters from
+      nchains = length(outdirs)
+      
+      # target number of aggregated samples to collect
+      npost_samples = 1e4
+      
+      # number of samples to extract from each chain
+      samples_per_chain = ceiling(npost_samples / nchains)
+      
+      # post-burn in posterior sample indices to extract from each chain
+      sample_inds = seq(from = 8.5e3, to = 10e3, length.out = samples_per_chain)
+      
+      # aggregate parameter samples from each chain
+      samples = do.call(rbind, lapply(outdirs, function(d) {
+        
+        message(d)
+        
+        #
+        # load, label, and merge posterior samples
+        #
+        
+        mvSample_files = dir(
+          path = d, 
+          pattern = 'mvSamples_[0-9]+', 
+          full.names = TRUE
+        )
+        
+        mvSample2_files = dir(
+          path = d, 
+          pattern = 'mvSamples2_[0-9]+', 
+          full.names = TRUE
+        )
+        
+        if(length(mvSample_files) == 0) {
+          return(NULL)
+        }
+        
+        if(length(mvSample2_files) == 0) {
+          return(NULL)
+        }
+        
+        samples = do.call(rbind, lapply(mvSample_files, readRDS))
+        samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
+        
+        # skip file if not enough samples are available for subsetting
+        if(nrow(samples) < max(sample_inds)) {
+          return(NULL)
+        }
+        
+        # skip file if not enough samples are available for subsetting
+        if(nrow(samples2) < max(sample_inds)) {
+          return(NULL)
+        }
+        
+        colnames(samples) = readRDS(dir(
+          path = d, 
+          pattern = 'mvSamples_colnames',
+          full.names = TRUE
+        ))
+        
+        colnames(samples2) = readRDS(dir(
+          path = d, 
+          pattern = 'mvSamples2_colnames',
+          full.names = TRUE
+        ))
+        
+        # extract samples into single object
+        cbind(samples, samples2)[sample_inds,]
+      }))
+      
+      # save thinned, collated posterior samples 
+      f = file.path('output', 'mcmc', 'fixed_init_beta')
+      dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
+      saveRDS(samples, file = file.path(f, paste(tar_name(), '.rds', sep = '')))
+      
+      0
+    }
+  ),
 
   tar_target(
     name = cee_results,
@@ -172,8 +270,8 @@ cee_targets = list(
         scale_x_continuous(
           # 'Deep dive recovery time (h)', 
           expression(H[2]('\u2113'[ij^'*'])-H[1]('\u2113'[ij^'*'])),
-          breaks = seq(0,8,by = 2),
-          limits = c(0,8)
+          breaks = seq(0,12,by = 2),
+          limits = c(0,12)
         ) + 
         scale_y_continuous(
           # 'Post. pred. CDF',
@@ -211,42 +309,72 @@ cee_targets = list(
         width = 8, height = 3, dpi = 'print'
       )
       
-      
       # qq-uniform plot; the model probs. are on the x-axis, and their sample
       # percentile is on the y-axis.  If the animals were not impacted, then 
       # the percentiles would be "balanced", and lie closer to the 1:1 line.
-      # We don't see this, in fact, we see a shift toward smaller probs.
-      plo = ggarrange(
-        
-        ggplot(data.frame(x), aes(x=x)) + 
-          geom_vline(xintercept = 0.5, col = 'grey90') +
-          stat_ecdf(geom = 'point') + 
-          xlab('Post. predictive percentile') + 
-          ylab('Empirical percentile') + 
-          geom_abline(slope = 1, intercept = 0, lty = 3) + 
-          ggtitle('First deep depth percentiles')+ 
-          theme_few() + 
-          theme(plot.title = element_text(hjust = .5)) + 
-          xlim(0,1),
-        
-        ggplot(data.frame(x2f), aes(x=x2f)) + 
-          geom_vline(xintercept = 0.5, col = 'grey90') +
-          stat_ecdf(geom = 'point') + 
-          xlab('Post. predictive percentile') + 
-          ylab('Empirical percentile') + 
-          geom_abline(slope = 1, intercept = 0, lty = 3) + 
-          ggtitle('Deep dive recovery percentiles') + 
-          theme_few() +
-          theme(plot.title = element_text(hjust = .5),
-                axis.title.y = element_blank()) + 
-          xlim(0,1),
-        
-        nrow = 1, ncol = 2, labels = 'AUTO'
-      )
+      # # We don't see this, in fact, we see a shift toward smaller probs.
+      # plo = ggarrange(
+      #   
+      #   ggplot(data.frame(x), aes(x=x)) + 
+      #     geom_vline(xintercept = 0.5, col = 'grey90') +
+      #     stat_ecdf(geom = 'point') + 
+      #     xlab(expression(t)) + 
+      #     ylab(expression('Freq. '~bgroup('{',F(bold('\u00B7'))<t,'}'))) +
+      #     # ylab(expression('Freq. '~bgroup('{',F(symbol('\267'))<t,'}'))) + 
+      #     geom_abline(slope = 1, intercept = 0, lty = 3) + 
+      #     # ggtitle('First deep depth percentiles') + 
+      #     ggtitle(expression(F(H[1]('\u2113'[ij^'*']))~' comparison'))+
+      #     theme_few() + 
+      #     theme(
+      #       plot.title = element_text(hjust = .5),
+      #       axis.title.y = element_text(angle = 0, vjust = .5)) + 
+      #     xlim(0,1),
+      #   
+      #   ggplot(data.frame(x2f), aes(x=x2f)) + 
+      #     geom_vline(xintercept = 0.5, col = 'grey90') +
+      #     stat_ecdf(geom = 'point') + 
+      #     xlab(expression(t)) + 
+      #     ylab(expression('Freq. '~bgroup('{',F(bold('\u00B7'))<t,'}'))) +
+      #     # ylab(expression('Freq. '~bgroup('{',F(symbol('\267'))<t,'}'))) + 
+      #     geom_abline(slope = 1, intercept = 0, lty = 3) + 
+      #     # ggtitle('Deep dive recovery percentiles') + 
+      #     ggtitle(expression(
+      #       F(H[2]('\u2113'[ij^'*'])-H[1]('\u2113'[ij^'*']))~' comparison'
+      #     ))+
+      #     theme_few() +
+      #     theme(plot.title = element_text(hjust = .5),
+      #           axis.title.y = element_blank()) + 
+      #     xlim(0,1),
+      #   
+      #   nrow = 1, ncol = 2, labels = 'AUTO', align = 'v'
+      # )
       
-      ggsave(plo, 
-             filename = file.path(f, paste(tar_name(), '_pop.pdf', sep ='')),
-             width = 8, height = 3)
+      # facet version
+      # repeat axis title solution: https://stackoverflow.com/questions/70022117/how-to-add-y-axis-title-for-each-facet-row-in-ggplot
+      plo = rbind(
+        data.frame(x = x, series = "F(H[1]('\u2113'[ij^'*']))~' comparison'"),
+        data.frame(x = x2f, series = "F(H[2]('\u2113'[ij^'*'])-H[1]('\u2113'[ij^'*']))~' comparison'")
+      ) %>% ggplot(aes(x=x)) + 
+        geom_vline(xintercept = .5, col = 'grey90') + 
+        stat_ecdf(geom = 'point') +
+        geom_abline(slope = 1, intercept = 0, lty = 3) + 
+        xlab(expression(t)) + 
+        ylab(expression('Freq. '~bgroup('{',F(bold('\u00B7'))<t,'}'))) +
+        facet_wrap(~series, labeller = label_parsed, scales = 'free_x') +
+        theme_few() + 
+        theme(axis.title.y = element_text(angle = 0, vjust = 0.5)) + 
+        xlim(0,1)
+      
+      gt = ggplot_gtable(ggplot_build(plo))
+      which.xlab = grep('xlab-b', gt$layout$name)
+      gt = gtable::gtable_add_grob(gt, gt$grobs[which.xlab], 10, 5)
+      gt = gtable::gtable_add_grob(gt, gt$grobs[which.xlab], 10, 9)
+      # remove the original axis title
+      gt = gtable::gtable_filter(gt, 'xlab-b', invert = TRUE) 
+
+      ggsave(gt, 
+             filename = file.path(f, paste(tar_name(), '_pop.png', sep ='')),
+             width = 8, height = 3, dpi = 'print')
       
       ind = 10
       ggplot(
