@@ -40,7 +40,8 @@ parameter_interpretation_plot_script = tar_target(
       levels = rev(1:3), 
       labels = rev(c(
         # 'mid_recovery','starting_recovery','finishing_deep'
-        'Low','Medium','High'
+        # 'Low','Medium','High'
+        'Shallow', 'Recovery', 'Deep'
       ))
     )
     
@@ -50,6 +51,13 @@ parameter_interpretation_plot_script = tar_target(
       levels = c("daytime", "night_dark", "night_moonlit")[c(1,3,2)],
       # labels = c('Daytime', 'Dark\nNight', 'Moonlit\nNight')[c(1,3,2)]
       labels = c('Daytime', 'Dark Night', 'Moonlit Night')[c(1,3,2)]
+    )
+    
+    # relabel the random walk stage
+    summaries$init_stage = gsub(
+      pattern = 'slow_free',
+      replacement = 'slow_random', 
+      x = summaries$init_stage
     )
     
     # convert all seconds to minutes
@@ -97,7 +105,7 @@ parameter_interpretation_plot_script = tar_target(
       scale_shape_discrete('Initial movement', labels = titlecase) + 
       scale_color_brewer('Initial movement', labels = titlecase, 
                          type = 'qual', palette = 'Dark2') + 
-      xlab('Covariate values') + 
+      xlab('Recent diving activity') + 
       # ylab('Deep depth hitting time (min)') + 
       ylab(expression(E~'['~H[1](1)~']')) + 
       facet_wrap(~time, labeller = titlecase) + 
@@ -167,7 +175,8 @@ parameter_interpretation_plot_script = tar_target(
     f = file.path('output', 'figures', parameter_interp_rep)
     dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
     
-    ggsave(plalt, filename = file.path(f, paste(tar_name(), '.pdf', sep = '')),
+    ggsave(plalt + theme(axis.text.x = element_text(size = 8)), 
+           filename = file.path(f, paste(tar_name(), '.pdf', sep = '')),
            width = 8, height = 3, dpi = 'print')
     
     ggsave(pl2, filename = file.path(f, paste(tar_name(), '_prototypes.pdf', 
