@@ -51,56 +51,69 @@ cees = do.call(rbind, lapply(tag_timelines, function(x) {
 # extract the cee to be analyzed
 cee = cees[taskId,]
 
-
 #
 # load data and information needed for posterior predictive sampling
 #
 
-sample_dir = file.path('output', 'mcmc', 'fit_marginalized_model_0')
-
-fit_marginalized_model = list(
-  samples = sample_dir,
-  package = file.path(sample_dir, 'nim_pkg.rds')
+# load burned-in posterior samples
+samples = readRDS(
+  file.path('output', 'mcmc', 'fixed_init_beta', 'cee_predictive_samples.rds')
 )
 
-#
-# load, label, and merge posterior samples
-#
-
-mvSample_files = dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples_[0-9]+', 
-  full.names = TRUE
+nim_pkg = readRDS(
+  file.path('output', 'mcmc', 'fixed_init_beta', 'fit_marginalized_model_1',
+            'nim_pkg.rds')
 )
 
-mvSample2_files = dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples2_[0-9]+', 
-  full.names = TRUE
-)
-
-samples = do.call(rbind, lapply(mvSample_files, readRDS))
-samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
-
-colnames(samples) = readRDS(dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples_colnames',
-  full.names = TRUE
-))
-
-colnames(samples2) = readRDS(dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples2_colnames',
-  full.names = TRUE
-))
-
-samples = cbind(samples, samples2)
-rm(samples2)
-
-nim_pkg = readRDS(fit_marginalized_model$package)
-
-# set burn-in
-burn = 1:(nrow(samples)*.5)
+# #
+# # load data and information needed for posterior predictive sampling
+# #
+# 
+# sample_dir = file.path('output', 'mcmc', 'fit_marginalized_model_0')
+# 
+# fit_marginalized_model = list(
+#   samples = sample_dir,
+#   package = file.path(sample_dir, 'nim_pkg.rds')
+# )
+# 
+# #
+# # load, label, and merge posterior samples
+# #
+# 
+# mvSample_files = dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples_[0-9]+', 
+#   full.names = TRUE
+# )
+# 
+# mvSample2_files = dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples2_[0-9]+', 
+#   full.names = TRUE
+# )
+# 
+# samples = do.call(rbind, lapply(mvSample_files, readRDS))
+# samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
+# 
+# colnames(samples) = readRDS(dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples_colnames',
+#   full.names = TRUE
+# ))
+# 
+# colnames(samples2) = readRDS(dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples2_colnames',
+#   full.names = TRUE
+# ))
+# 
+# samples = cbind(samples, samples2)
+# rm(samples2)
+# 
+# nim_pkg = readRDS(fit_marginalized_model$package)
+# 
+# # set burn-in
+# burn = 1:(nrow(samples)*.5)
 
 # get top-level names and groupings of variables being sampled
 sampling_targets = colnames(samples)
@@ -207,7 +220,8 @@ cee_preds = function() {
   #
 
   # identify posterior samples that will be used in the posterior analysis
-  posterior_sample_inds = (1:nrow(samples))[-burn]
+  # posterior_sample_inds = (1:nrow(samples))[-burn]
+  posterior_sample_inds = (1:nrow(samples))
 
   message('Sampling')
 

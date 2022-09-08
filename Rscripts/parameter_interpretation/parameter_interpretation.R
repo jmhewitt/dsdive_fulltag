@@ -72,65 +72,77 @@ config_inds = expand.grid(
 
 # enumerate all of the posterior predictive sampling needs
 manifest = expand.grid(
-  fit_rep = 0:50,
+  # fit_rep = 0:50,
   post_pred_task = 1:nrow(config_inds)
 )
-
 
 #
 # load data and information needed for posterior predictive sampling
 #
 
-# tar_load(fit_marginalized_model)
-
-sample_dir = file.path(
-  'output', 'mcmc', paste('fit_marginalized_model_', manifest$fit_rep[taskId], 
-                          sep = '')
+samples = readRDS(
+  file.path('output', 'mcmc', 'fixed_init_beta', 'cee_predictive_samples.rds')
 )
 
-fit_marginalized_model = list(
-  samples = sample_dir,
-  package = file.path(sample_dir, 'nim_pkg.rds')
+nim_pkg = readRDS(
+  file.path('output', 'mcmc', 'fixed_init_beta', 'fit_marginalized_model_1', 
+            'nim_pkg.rds')
 )
 
-#
-# load, label, and merge posterior samples
-#
-
-mvSample_files = dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples_[0-9]+', 
-  full.names = TRUE
-)
-
-mvSample2_files = dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples2_[0-9]+', 
-  full.names = TRUE
-)
-
-samples = do.call(rbind, lapply(mvSample_files, readRDS))
-samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
-
-colnames(samples) = readRDS(dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples_colnames',
-  full.names = TRUE
-))
-
-colnames(samples2) = readRDS(dir(
-  path = fit_marginalized_model$samples, 
-  pattern = 'mvSamples2_colnames',
-  full.names = TRUE
-))
-
-samples = cbind(samples, samples2)
-rm(samples2)
-
-nim_pkg = readRDS(fit_marginalized_model$package)
-
-# set burn-in
-burn = 1:(nrow(samples)*.5)
+# #
+# # load data and information needed for posterior predictive sampling
+# #
+# 
+# # tar_load(fit_marginalized_model)
+# 
+# sample_dir = file.path(
+#   'output', 'mcmc', paste('fit_marginalized_model_', manifest$fit_rep[taskId], 
+#                           sep = '')
+# )
+# 
+# fit_marginalized_model = list(
+#   samples = sample_dir,
+#   package = file.path(sample_dir, 'nim_pkg.rds')
+# )
+# 
+# #
+# # load, label, and merge posterior samples
+# #
+# 
+# mvSample_files = dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples_[0-9]+', 
+#   full.names = TRUE
+# )
+# 
+# mvSample2_files = dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples2_[0-9]+', 
+#   full.names = TRUE
+# )
+# 
+# samples = do.call(rbind, lapply(mvSample_files, readRDS))
+# samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
+# 
+# colnames(samples) = readRDS(dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples_colnames',
+#   full.names = TRUE
+# ))
+# 
+# colnames(samples2) = readRDS(dir(
+#   path = fit_marginalized_model$samples, 
+#   pattern = 'mvSamples2_colnames',
+#   full.names = TRUE
+# ))
+# 
+# samples = cbind(samples, samples2)
+# rm(samples2)
+# 
+# nim_pkg = readRDS(fit_marginalized_model$package)
+# 
+# # set burn-in
+# burn = 1:(nrow(samples)*.5)
 
 # get top-level names and groupings of variables being sampled
 sampling_targets = colnames(samples)
@@ -194,7 +206,8 @@ pred_samples = function(ptype, times, init_stage) {
   #
   
   # identify posterior samples that will be used in the posterior analysis
-  posterior_sample_inds = (1:nrow(samples))[-burn]
+  # posterior_sample_inds = (1:nrow(samples))[-burn]
+  posterior_sample_inds = (1:nrow(samples))
   
   message('Sampling')
   
@@ -273,8 +286,8 @@ res[[1]]$config = list(
 #
 
 f = file.path(
-  'output', 'parameter_interpretation',
-  paste('parameter_interpretation_', manifest$fit_rep[taskId], sep = ''), 
+  'output', 'parameter_interpretation', 'fixed_init_beta',
+  # paste('parameter_interpretation_', manifest$fit_rep[taskId], sep = ''), 
   'samples'
 )
 
