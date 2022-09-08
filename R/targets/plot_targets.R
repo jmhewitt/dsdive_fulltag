@@ -396,10 +396,14 @@ plot_targets = list(
   
   parameter_interpretation_plot_script,
   
+  parameter_table_script,
+  
   parameter_interpretation_sensitivity_plot_script,
   
   random_effect_plot_script,
   
-  random_starts_plot_script
+  random_starts_plot_script,
+  
+  random_starts_convergence_script
   
 )
