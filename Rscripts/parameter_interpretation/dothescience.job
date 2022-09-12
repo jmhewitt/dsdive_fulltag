@@ -2,7 +2,7 @@
 
 #SBATCH --job-name dsdive_fulltag_parameter_interpretation
 #SBATCH --partition common
-#SBATCH --account gelfandlab
+#SBATCH --account nowaceklab
 #SBATCH --mail-type ALL
 #SBATCH --mail-user joshua.hewitt@duke.edu
 #SBATCH --ntasks 1
