@@ -1,5 +1,5 @@
 parameter_interpretation_variability_plot_script = tar_target(
-  name = multiple_start_reps,
+  name = parameter_interpretation_variability_plot,
   command = {
     
     parameter_interp_rep = paste(
