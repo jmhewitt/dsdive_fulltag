@@ -19,8 +19,95 @@ cee_targets = list(
         full.names = TRUE
       )
       
-      # number of chains to aggregate parameters from
-      nchains = length(outdirs)
+      # post-burn in samples to work with
+      post_start = 8.5e3
+      post_end = 10e3
+      sample_inds = post_start:post_end
+      
+      # compute posterior summaries for each chain
+      summaries = lapply(outdirs, function(d) {
+        
+        message(d)
+        
+        #
+        # load, label, and merge posterior samples
+        #
+        
+        mvSample_files = dir(
+          path = d, 
+          pattern = 'mvSamples_[0-9]+', 
+          full.names = TRUE
+        )
+        
+        if(length(mvSample_files) == 0) {
+          return(NULL)
+        }
+        
+        samples = do.call(rbind, lapply(mvSample_files, readRDS))
+        
+        # skip file if not enough samples are available for subsetting
+        if(nrow(samples) < max(sample_inds)) {
+          return(NULL)
+        }
+        
+        colnames(samples) = readRDS(dir(
+          path = d, 
+          pattern = 'mvSamples_colnames',
+          full.names = TRUE
+        ))
+        
+        # target nodes
+        tgt = c(
+          paste('lambda[', 1:2, ']', sep = ''),
+          paste('pi[', c(1,3), ']', sep = '')
+        )
+        
+        # extract samples into single object
+        list(
+          chain = d,
+          summaries = data.frame(
+            param = tgt,
+            mean = colMeans(samples[sample_inds, tgt]),
+            sd = apply(samples[sample_inds, tgt], 2, sd),
+            HPDinterval(mcmc(samples[sample_inds, tgt])),
+            rep = d
+          )
+        )
+      })
+      
+      # remove null output
+      summaries = summaries[!sapply(summaries, is.null)]
+      
+      # # rules to identify chains that have converged to distant local modes
+      # keep_chain = sapply(summaries, function(s) {
+      #   if(s$summaries['pi[1]', 'mean'] > .9) {
+      #     return(FALSE)
+      #   }
+      #   if(s$summaries['lambda[1]', 'mean'] > .7) {
+      #     return(FALSE)
+      #   }
+      #   TRUE
+      # })
+      keep_chain = rep(TRUE, length(summaries))
+      
+      # look at convergence diagnostics
+      df = do.call(
+        rbind, lapply(summaries[keep_chain], function(s) s$summaries)
+      ) %>% 
+        mutate(rep = as.numeric(stringr::str_extract(rep, '[0-9]+')))
+      pl = ggplot(df, aes(x = rep, y = mean, ymin = lower, ymax = upper)) + 
+        geom_pointrange() + 
+        facet_wrap(~param, labeller = label_parsed, scales = 'free_y') + 
+        theme_few()
+      print(pl)
+      
+      #
+      # extract samples used for posterior predictive sampling
+      #
+      
+      # chains to aggregate parameters from
+      chains = sapply(summaries[keep_chain], function(s) s$chain)
+      nchains = length(chains)
       
       # target number of aggregated samples to collect
       npost_samples = 1e4
@@ -29,10 +116,12 @@ cee_targets = list(
       samples_per_chain = ceiling(npost_samples / nchains)
       
       # post-burn in posterior sample indices to extract from each chain
-      sample_inds = seq(from = 8.5e3, to = 10e3, length.out = samples_per_chain)
+      sample_inds = seq(
+        from = post_start, to = post_end, length.out = samples_per_chain
+      )
       
       # aggregate parameter samples from each chain
-      samples = do.call(rbind, lapply(outdirs, function(d) {
+      samples = do.call(rbind, lapply(chains, function(d) {
         
         message(d)
         
