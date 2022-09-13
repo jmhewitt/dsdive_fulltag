@@ -2,9 +2,11 @@ parameter_interpretation_plot_script = tar_target(
   name = parameter_interpretation_plot,
   command = {
     
-    parameter_interp_rep = paste(
-      'parameter_interpretation_', multiple_start_reps, sep =''
-    )
+    # parameter_interp_rep = paste(
+    #   'parameter_interpretation_', multiple_start_reps, sep =''
+    # )
+    
+    parameter_interp_rep = 'fixed_init_beta'
     
     # identify posterior predictive samples
     f = dir(
@@ -168,6 +170,36 @@ parameter_interpretation_plot_script = tar_target(
       ) + 
       theme_few()
     
+    
+    #
+    # load and plot summaries for alternate prototypes
+    #
+    
+    alt_summaries = rbind(
+      # summaries for alternates
+      cbind(
+        readRDS(
+          file.path('output', 'parameter_interpretation', 
+                    'parameter_interpretation_patterns_alt_summaries.rds')
+        )[, c('prop_deep', 'total_vert')],
+        chosen = FALSE
+      ),
+      # summaries for chosen
+      t(apply(ptypes, 1, function(r) {
+        c(prop_deep = mean(r >= 800), total_vert = sum(abs(diff(r))), 
+          chosen = TRUE)
+      }))
+    )
+    
+    pl_summaries = ggplot(alt_summaries, aes(x = prop_deep, y = total_vert,
+                                             col = factor(chosen))) + 
+      geom_point() + 
+      scale_color_manual(values = c('1' = '#d95f02', '0' = 'black')) + 
+      xlab('Proportion deep') + 
+      ylab('Total vertical distance') + 
+      guides(color = 'none') + 
+      theme_few()
+      
     #
     # save figures
     #
@@ -183,12 +215,18 @@ parameter_interpretation_plot_script = tar_target(
                                               sep = '')),
            width = 8, height = 4, dpi = 'print')
     
+    ggsave(
+      pl_summaries, 
+      filename = file.path(f, paste(tar_name(), '_summaries.pdf', sep = '')),
+      dpi = 'print', width = 6, height = 4
+    )
+    
     # output summary information for rep so we can compare findings
     summaries$rep = multiple_start_reps
     summaries
     
   }, 
-  pattern = map(multiple_start_reps), 
+  # pattern = map(multiple_start_reps), 
   deployment = 'worker', 
   memory = 'transient',
   storage = 'worker'
