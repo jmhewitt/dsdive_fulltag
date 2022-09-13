@@ -47,6 +47,9 @@ random_starts_convergence_script = tar_target(
       
       samples = samples[,tgt]
       
+      # relabel pi[3] for consistency with manuscript notation
+      colnames(samples)[2] = 'pi[2]'
+      
       if(nrow(samples) < 1e4) {
         return(NULL)
       }
@@ -87,6 +90,15 @@ random_starts_convergence_script = tar_target(
       guides(col = 'none') + 
       xlab('Iteration') + 
       ylab(label = 'Value') + 
+      theme_few()
+    
+    ggplot(
+      df_longer %>% group_by(name, rep) %>% 
+        summarise(mean = mean(value)),
+      aes(x = mean)
+    ) + 
+      stat_density(geom = 'line') + 
+      facet_wrap(~name, scales = 'free', labeller = label_parsed) + 
       theme_few()
     
     # create output directory
