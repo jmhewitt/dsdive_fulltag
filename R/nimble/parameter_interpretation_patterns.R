@@ -89,15 +89,37 @@ parameter_interpretation_pattern_script = tar_target(
         depth = template_bins$center[depth_bin],
         id = rep(1:nrow(clusters$centers), 
                  rep(ncol(clusters$centers), nrow(clusters$centers)))
-      ) %>% 
-      filter(id %in% patterns)
+      )
     
+    # add depth bin limits
+    df = df %>% mutate(
+      lwr = depth - template_bins$halfwidth[depth_bin],
+      upr = depth + template_bins$halfwidth[depth_bin],
+      t = (window_ind - 1) * 5
+    )
+      
     # plot time series for each cluster center
-    pl = ggplot(df, aes(x = window_ind, y = depth)) + 
-      geom_line() + 
-      geom_point() + 
-      scale_y_reverse('Depth (m)') + 
-      facet_wrap(~factor(id)) + 
+    pl = ggplot(df, aes(x = t, y = depth, ymin = lwr, ymax = upr)) + 
+      # horizontal surface line
+      geom_hline(yintercept = template_bins$center[1], lty = 3) +
+      # horizontal deep depth line
+      geom_hline(yintercept = covariate_tx_control$deep_depth, 
+                 lty = 2, alpha = .5) +
+      # depth trajectory
+      geom_line(col = 'grey60') + 
+      geom_pointrange(size = .3) + 
+      # panels
+      facet_wrap(~factor(id), ncol = 5) + 
+      # formatting
+      scale_y_reverse(
+        'Depth (m)', 
+        breaks = seq(from = 0, to = 1600, by = 400)
+      ) + 
+      scale_x_continuous(
+        'Time (min)', 
+        breaks = seq(from = 0, to = 60, by = 15), 
+        limits = c(0, 60)
+      ) + 
       theme_few()
     
     pl
@@ -117,6 +139,18 @@ parameter_interpretation_pattern_script = tar_target(
     f = file.path('output', 'parameter_interpretation')
     dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
     saveRDS(ptypes, file = file.path(f, paste(tar_name(), '.rds', sep = '')))
+    
+    # save summaries for additional cluster centers
+    saveRDS(covs, file = file.path(f, paste(tar_name(), '_alt_summaries.rds', 
+                                            sep = '')))
+    
+    # save plots of additional cluster centers
+    f = file.path('output', 'figures')
+    dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
+    ggsave(pl, filename = file.path(f, paste(tar_name(), '_alt.pdf', sep = '')), 
+           width = 8, height = 10, dpi = 'print')
+    
+    
     
     f
   }, 
