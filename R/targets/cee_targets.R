@@ -334,7 +334,7 @@ cee_targets = list(
             #   round(cee_results$pval['first_deep_shorter'],2),
             #   sep = ''
             # ),
-            labels = expression(F(h[1]('\u2113'[ij^'*']))==.01)
+            labels = expression(F(h[1]('\u2113'[ij^'*']))==.02)
           )
         ) +
         # title and formatting
