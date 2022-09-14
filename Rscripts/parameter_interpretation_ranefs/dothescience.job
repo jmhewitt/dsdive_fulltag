@@ -11,7 +11,7 @@
 
 date
 START=`date +%s`
-R --no-save --no-restore CMD BATCH Rscripts/parameter_interpretation_ranefs/parameter_interpretation_ranefs.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
+R CMD BATCH --no-save --no-restore Rscripts/parameter_interpretation_ranefs/parameter_interpretation_ranefs.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
 END=`date +%s`
 date
 

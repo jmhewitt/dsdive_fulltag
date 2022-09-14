@@ -14,7 +14,7 @@ module load R/3.5.2
 
 date
 START=`date +%s`
-R --no-save --no-restore CMD BATCH Rscripts/cee_prediction/marginalized_model_cee_prediction.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
+R CMD BATCH --no-save --no-restore Rscripts/cee_prediction/marginalized_model_cee_prediction.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
 END=`date +%s`
 date
 

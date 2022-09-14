@@ -14,7 +14,7 @@ module load R/3.5.2
 
 date
 START=`date +%s`
-R --no-save --no-restore CMD BATCH Rscripts/model_fitting/fit_script.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
+R CMD BATCH --no-save --no-restore Rscripts/model_fitting/fit_script.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
 END=`date +%s`
 date
 
