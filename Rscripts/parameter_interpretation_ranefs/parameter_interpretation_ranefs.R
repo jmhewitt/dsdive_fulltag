@@ -191,10 +191,12 @@ pred_samples = function(ptype, times, init_stage, subject_id) {
       shallow_threshold = shallow_threshold
     )
     # extract times taken to reach a deep depth (sec)
-    c(first_deep = min(which(
+    res = c(first_deep = min(which(
         template_bins$center[sim$depth_bins] > covariate_tx_control$deep_depth
       )) * nim_pkg$consts$tstep,
       second_deep = length(sim$depth_bins) * nim_pkg$consts$tstep)
+    rm(sim)
+    res
   })
 
   # package results
