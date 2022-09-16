@@ -1,3 +1,5 @@
+Steps to reproduce analysis and figures
+
 - Run make.R to prepare data for model fitting
 - Run Rscripts/model_fitting/dothescience.job on HPC to fit model with
   multiple random starts
@@ -7,6 +9,7 @@
         - parameter_interpretation_patterns (interactive: to determine posterior predictive simulation starts)
 - Run Rscripts/cee_prediction/dothescience.job on HPC to evaluate CEE responses
 - Run Rscripts/parameter_interpretation/dothescience.job on HPC to evaluate covariate effects
+- Run Rscripts/parameter_interpretation_ranefs/dothescience.job on HPC to evaluate random effects for each animal
 - Run additional scripts and targets to generate figures and tables
     - Targets:
         - random_starts_convergence (Table 1; Supplement Figs. 1, 2)

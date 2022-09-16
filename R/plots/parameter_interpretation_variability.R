@@ -2,6 +2,8 @@ parameter_interpretation_variability_plot_script = tar_target(
   name = parameter_interpretation_variability_plot,
   command = {
     
+    browser()
+    
     # parameter_interp_rep = paste(
     #   'parameter_interpretation_', multiple_start_reps, sep =''
     # )
@@ -98,6 +100,14 @@ parameter_interpretation_variability_plot_script = tar_target(
         prototype = r['ptype']
       )
     }))
+    
+    # relabel the lighting conditions
+    summary_dfs$time = factor(
+      x = summary_dfs$time,
+      levels = c("Daytime", "Dark Night", "Moonlit Night")[c(1,3,2)],
+      # labels = c('Daytime', 'Dark\nNight', 'Moonlit\nNight')[c(1,3,2)]
+      labels = c('Daytime', 'Dark Night', 'Moonlit Night')[c(1,3,2)]
+    )
     
     # alternate visualization for parameter effects
     plalt = ggplot(summary_dfs, aes(x = first_deep, y = dens, 

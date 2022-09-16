@@ -404,6 +404,8 @@ plot_targets = list(
   
   random_effect_plot_script,
   
+  random_effect_interpretation_plot_script,
+  
   random_starts_plot_script,
   
   random_starts_convergence_script
