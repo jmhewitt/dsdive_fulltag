@@ -35,18 +35,15 @@ rcovariates = nimble::nimbleFunction(
 )
 
 dstages = nimble::nimbleFunction(
-  run = function(x = double(1), betas = double(2), covariates = double(2), 
-                 stage_supports = double(2),
+  run = function(x = double(1), beta_tx = double(3), covariates = double(2),
                  n_timepoints = double(0), log = logical(0, default = 0)) {
-    # likelihood for sequence of latent stages, conditional on covariates and 
+    # likelihood for sequence of latent stages, conditional on 
     # transition parameter coefficients
     #
     # Parameters:
     #  x - sequence of stages
-    #  betas - matrix of coefficients for multinomial logit distributions. see 
-    #    documentation for stageTxMats function for more details.
-    #  covariates - matrix of covariates used to generate stage transition 
-    #    matrices.  each column specifies covariates for a timepoint.
+    #  beta_tx - coefs. to define stage transition matrix via multinomial logits
+    #  covariates - covariates used to define stage transition matrix
     #  n_timepoints - number of timepoints, each of which will get a stage 
     #    transition matrix.
     #  log - if TRUE, then the log-likelihood is returned
@@ -64,15 +61,15 @@ dstages = nimble::nimbleFunction(
       # process each transition in segment; we go one fewer than the
       # segment length b/c this accounts for the last transition
       for(ind in 2:n_timepoints) {
-        # # aggregate support for stage
-        # ll <- ll + log(stage_supports[x[ind], ind])
         # compute stage transition distribution for timepoint:
         #   the stage s_{ij}(t_k) is drawn using covariates at time t_k, and 
         #   the stage is Markov wrt. the previous stage
-        stx <- stageTxVec(stageFrom = x[ind-1], betas = betas, 
-                          covariates = covariates[, ind], log = TRUE)
+        stx <- stageTxVec(stageFrom = x[ind-1], betas = beta_tx, 
+                          covariates = covariates[, ind], 
+                          log = TRUE)
         # aggregate probability of transition
         ll <- ll + stx[x[ind]]
+        
       }
     }
     
@@ -81,120 +78,68 @@ dstages = nimble::nimbleFunction(
 )
 
 stageTxVec = nimble::nimbleFunction(
-  run = function(stageFrom = double(0), betas = double(2), 
+  run = function(stageFrom = double(0), betas = double(3), 
                  covariates = double(1), log = logical(0)) {
     # discrete-time stage transition vector, conditional on covariates and 
     # the stage being transitioned from
     # 
     # Parameters: 
     #   stageFrom - the row of the complete stage transition matrix to compute
-    #   betas - matrix of coefficients for multinomial logit distributions.
+    #   betas - array of coefficients for multinomial logit distributions.
     #    each column holds the coefficient for the logit of one pair of 
-    #    allowed state transitions.  the columns should define coeffs. for
-    #    logit(stage_from->stage_to) = log(pi_stage_to/pi_stage_from) in the 
-    #    following order:
-    #    logit(deep_descent->deep_forage), 
-    #    logit(deep_forage->deep_ascent), 
-    #    logit(deep_ascent->deep_descent),
-    #    logit(deep_ascent->shallow_descent), 
-    #    logit(deep_ascent->free_surface),
-    #    logit(shallow_descent->shallow_ascent), 
-    #    logit(shallow_ascent->deep_descent), 
-    #    logit(shallow_ascent->shallow_descent), 
-    #    logit(shallow_ascent->free_surface),
-    #    logit(free_surface->deep_descent), 
-    #    logit(free_surface->shallow_descent)
+    #    allowed state transitions.  the columns should define coefs. for
+    #    logit(stage_from->stage_to) = log(pi_stage_to/pi_stage_from), ordered 
+    #    such that the last stage is the reference stage, and the other columns 
+    #    define the other stages
     #   covariates - vector of covariates used to generate stage transition 
     #     probabilities.
     #   log - if TRUE, returns an approximation to the log probabilities
     # 
     # Return:
-    #   vector of stage transition probabilities order of transition-to 
-    #   probabilities follows:
-    #     1) deep_descent
-    #     2) deep_forage
-    #     3) deep_ascent
-    #     4) shallow_descent
-    #     5) shallow_ascent
-    #     6) free_surface
+    #   vector of stage transition probabilities
     
     returnType(double(1))
     
-    m <- numeric(6)
+    n_stages <- length(betas[1,,1])
     
-    if(stageFrom == 1) {
-      p <- multinomialLogitProbs(betas = betas[, 1, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[2] <- p[1]  # deep_descent -> deep_forage
-      m[1] <- p[2]  # deep_descent -> deep_descent
-    } else if(stageFrom == 2) {
-      p <- multinomialLogitProbs(betas = betas[, 2, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[3] <- p[1]  # deep_forage -> deep_ascent
-      m[2] <- p[2]  # deep_forage -> deep_forage
-    } else if(stageFrom == 3) {
-      p <- multinomialLogitProbs(betas = betas[, 3:5, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[1] <- p[1]  # deep_ascent -> deep_descent
-      m[4] <- p[2]  # deep_ascent -> shallow_descent
-      m[6] <- p[3]  # deep_ascent -> free_surface
-      m[3] <- p[4]  # deep_ascent -> deep_ascent
-    } else if(stageFrom == 4) {
-      p <- multinomialLogitProbs(betas = betas[, 6, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[5] <- p[1]  # shallow_descent -> shallow_ascent
-      m[4] <- p[2]  # shallow_descent -> shallow_descent
-    } else if(stageFrom == 5) {
-      p <- multinomialLogitProbs(betas = betas[, 7:9, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[1] <- p[1]  # shallow_ascent -> deep_descent
-      m[4] <- p[2]  # shallow_ascent -> shallow_descent
-      m[6] <- p[3]  # shallow_ascent -> free_surface
-      m[5] <- p[4]  # shallow_ascent -> shallow_ascent
-    } else if(stageFrom == 6) {
-      p <- multinomialLogitProbs(betas = betas[, 10:11, drop = FALSE], 
-                                 x = covariates, log = log)
-      m[1] <- p[1]  # free_surface -> deep_descent
-      m[4] <- p[2]  # free_surface -> shallow_descent
-      m[6] <- p[3]  # free_surface -> free_surface
-    }
+    m <- multinomialLogitProbs(
+      betas = betas[, stageFrom, 1:(n_stages-1)],
+      x = covariates, log = log
+    )
     
     return(m)
   }
 )
 
 stageTxMats = nimble::nimbleFunction(
-  run = function(betas = double(2), covariates = double(2), 
-                 n_timepoints = double(0)) {
+  run = function(betas = double(3), covariates = double(2),
+                 n_timepoints = double(0), log = logical(0)) {
     # discrete-time stage transition matrices, conditional on covariates
     # 
     # Parameters: 
-    #   betas - matrix of coefficients for multinomial logit distributions.
+    #   betas - array of coefficients for multinomial logit distributions.
     #    see stageTxVec documentation for details about the specification of the 
     #    coefficient matrix.
     #   covariates - matrix of covariates used to generate stage transition 
     #     matrices.  each column specifies covariates for a timepoint.
     #   n_timepoints - number of timepoints, each of which will get a stage 
     #     transition matrix.
+    #   log - TRUE to return matrix entries on log scale
     # 
     # Return:
-    #   array of stage transition matrices, one for each timepoint. the row/col
-    #   order both follow:
-    #     1) deep_descent
-    #     2) deep_forage
-    #     3) deep_ascent
-    #     4) shallow_descent
-    #     5) shallow_ascent
-    #     6) free_surface
+    #   array of stage transition matrices, one for each timepoint. 
     
     returnType(double(3))
     
-    m <- array(dim = c(6, 6, n_timepoints), init = FALSE)
+    n_stages <- length(betas[1,,1])
+    
+    m <- array(dim = c(n_stages, n_stages, n_timepoints), init = FALSE)
     
     for(i in 1:n_timepoints) {
-      for(j in 1:6) {
+      for(j in 1:n_stages) {
         m[j,,i] <- stageTxVec(stageFrom = j, betas = betas, 
-                              covariates = covariates[,i], log = FALSE)
+                              covariates = covariates[,i], 
+                              log = log)
       }
     }
     
@@ -202,13 +147,12 @@ stageTxMats = nimble::nimbleFunction(
   }
 )
 
+
 dstageLik = nimble::nimbleFunction(
-  run = function(x = double(1), n_timepoints = double(0), tmats = double(1),
-                 n_bins = double(0), n_stages = double(0),
-                 stage_map = double(1), alpha = double(2), beta = double(2),
-                 covariates = double(2), pi_discretization = double(2),
-                 n_pi = double(1), n_lambda = double(1),
-                 lambda_discretization = double(2)) {
+  run = function(x = double(1), n_timepoints = double(0), n_stages = double(0),
+                 stage_defs = double(2), lambda_inds = double(1), 
+                 n_bins = double(0), n_pi = double(0), n_lambda = double(0),
+                 tmats = double(1)) {
     # distribution for depth bin transitions as a function of latent stages
     # given movement parameters. used as the unnormalized likelihood for 
     # latent stages, conditional on observed movement (i.e., transitions).  the 
@@ -225,21 +169,13 @@ dstageLik = nimble::nimbleFunction(
     # Parameters:
     #  x - sequence of observed depth bins
     #  n_timepoints - number of observations
-    #  tmats - family of pre-computed transition matrices, in flat format
-    #  n_bins - the number of depth bins
     #  n_stages - the number of possible stages
-    #  stage_map - maps the stage value to an associated movement type in tmats
-    #  alpha - matrix of coefficients for descent probability, each column 
-    #   specifies coefficients for a different stage
-    #  beta - matrix of coefficients for vertical speed, each column 
-    #   specifies coefficients for a different stage
-    #  covariates - matrix of covariates associated with depth bins. each column
-    #   contains all covariates for each timepoint
-    #  pi_discretization - matrix describing descent probability grids
-    #  lambda_discretization - matrix describing grid for descent probabilities
+    #  stage_defs - map between stage number and pi/lambda values used
+    #  lambda_inds - indices of discretized lambda values in model
+    #  n_bins - the number of depth bins
     #  n_pi - the number of pre-specified descent preference values
     #  n_lambda - the number of pre-specified speed values
-    
+    #  tmats - family of pre-computed transition matrices, in flat format
     #
     # Return:
     #  a matrix, where each column outlines the unnormalized distribution,
@@ -258,29 +194,14 @@ dstageLik = nimble::nimbleFunction(
       for(ind in 1:(n_timepoints - 1)) {
         # consider movement from all stages
         for(s in 1:n_stages) {
-          # extract movement type associated with dive stage
-          mtype <- stage_map[s]
-          # compute pi and lambdas
-          pi_val <- ilogit(inprod(alpha[,s], covariates[,ind]))
-          lambda_val <- exp(inprod(beta[,s], covariates[,ind]))
-          # discretize pi and lambdas
-          pi_ind  <- closestIndex(
-            value = pi_val,
-            minval = pi_discretization[mtype, 1], 
-            stepsize = pi_discretization[mtype, 2], 
-            nvals = pi_discretization[mtype, 3]
-          )
-          lambda_ind  <- closestIndex(
-            value = lambda_val,
-            minval = lambda_discretization[mtype, 1], 
-            stepsize = lambda_discretization[mtype, 2], 
-            nvals = lambda_discretization[mtype, 3]
-          )
+          # extract pi/lambda values associated with dive stage
+          pi_ind <- stage_defs[s, 1]
+          lambda_ind <- lambda_inds[stage_defs[s, 2]]
           # aggregate likelihood for transition
           res[s,ind] <- lookupProb(
-            movement_type = mtype, pi_ind = pi_ind, lambda_ind = lambda_ind, 
-            i = x[ind], j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda, 
-            n_bins = n_bins, tmats = tmats
+            pi_ind = pi_ind, lambda_ind = lambda_ind, i = x[ind], 
+            j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda, n_bins = n_bins, 
+            tmats = tmats
           )
           # end transition processing for stage s
         }
@@ -298,31 +219,23 @@ dstageLik = nimble::nimbleFunction(
 )
 
 dbins = nimble::nimbleFunction(
-  run = function(x = double(1), stages = double(1), n_timepoints = double(0),
-                 stage_map = double(1), n_bins = double(0), tmats = double(1),
-                 alpha = double(2), beta = double(2), covariates = double(2), 
-                 pi_discretization = double(2), n_pi = double(1), 
-                 n_lambda = double(1), lambda_discretization = double(2),
-                 log = logical(0, default = 0)) {
+  run = function(x = double(1), n_timepoints = double(0), n_pi = double(0), 
+                 n_lambda = double(0), n_bins = double(0), tmats = double(1),
+                 stages = double(1), stage_defs = double(2), 
+                 lambda_inds = double(1), log = logical(0, default = 0)) {
     # likelihood for depth bin transitions, conditional on latent stages and 
     # movement parameters (alpha, beta)
     # 
     # Parameters:
     #  x - sequence of observed depth bins
+    #  n_timepoints - length of x
     #  stages - sequence of dive stages
-    #  n_segments - number of sattag segments in the data
-    #  segment_info - matrix, each row of which describes a segment's support
-    #  tmats - family of pre-computed transition matrices, in flat format
+    #  stage_defs - map between stage number and pi/lambda values used
+    #  n_pi - number of discretized pi values used in tmats
+    #  n_lambda - number of discretized lambda values used in tmats
     #  n_bins - the number of depth bins
-    #  stage_map - maps the stage value to an associated movement type in tmats
-    #  alpha - matrix of coefficients for descent probability, each column 
-    #   specifies coefficients for a different stage
-    #  beta - matrix of coefficients for vertical speed, each column 
-    #   specifies coefficients for a different stage
-    #  covariates - matrix of covariates associated with depth bins. each column
-    #   contains all covariates for each timepoint
-    #  pi_discretization - matrix describing descent probability grids
-    #  lambda_discretization - matrix describing grid for descent probabilities
+    #  tmats - family of pre-computed transition matrices, in flat format
+    #  lambda_inds - indices of discretized lambda values in model
     #  log - if TRUE, then the log-likelihood is returned
     #
     # Return:
@@ -338,29 +251,13 @@ dbins = nimble::nimbleFunction(
       # process each transition in segment; we go one fewer than the
       # segment length b/c this accounts for the last transition
       for(ind in 1:(n_timepoints - 1)) {
-        # extract movement type associated with dive stage
-        s <- stages[ind]
-        mtype <- stage_map[s]
-        # compute pi and lambdas
-        pi_val <- ilogit(inprod(alpha[,s], covariates[,ind]))
-        lambda_val <- exp(inprod(beta[,s], covariates[,ind]))
-        # discretize pi and lambdas
-        pi_ind  <- closestIndex(
-          value = pi_val,
-          minval = pi_discretization[mtype, 1],
-          stepsize = pi_discretization[mtype, 2],
-          nvals = pi_discretization[mtype, 3]
-        )
-        lambda_ind  <- closestIndex(
-          value = lambda_val,
-          minval = lambda_discretization[mtype, 1],
-          stepsize = lambda_discretization[mtype, 2],
-          nvals = lambda_discretization[mtype, 3]
-        )
+        # extract pi/lambda values
+        pi_ind <- stage_defs[stages[ind], 1]
+        lambda_ind <- lambda_inds[stage_defs[stages[ind], 2]]
+        # aggregate likelihood
         lp <- log(lookupProb(
-          movement_type = mtype, pi_ind = pi_ind, lambda_ind = lambda_ind,
-          i = x[ind], j = x[ind + 1], n_pi = n_pi, n_lambda = n_lambda,
-          n_bins = n_bins, tmats = tmats
+          pi_ind = pi_ind, lambda_ind = lambda_ind, i = x[ind], j = x[ind + 1], 
+          n_pi = n_pi, n_lambda = n_lambda, n_bins = n_bins, tmats = tmats
         ))
         ll <- ll + lp
       }
@@ -371,23 +268,21 @@ dbins = nimble::nimbleFunction(
 )
   
 dist_str_bins = paste(
-  'dbins(stages, n_timepoints, stage_map, n_bins, alpha, beta, ',
-        'covariates, tmats, pi_discretization, n_pi, n_lambda, ',
-        'lambda_discretization)',
+  'dbins(n_timepoints, n_pi, n_lambda, n_bins, tmats, stages, stage_defs, ',
+        'lambda_inds)',
   sep = ''
 )
 
-dist_str_stages = 'dstages(betas, covariates, stage_supports, n_timepoints)'
-
-
+dist_str_stages = 'dstages(beta_tx, covariates, n_timepoints)'
+ 
+ 
 nimble::registerDistributions(list(
   
   dstages = list(
     BUGSdist = dist_str_stages,
     Rdist = dist_str_stages,
-    types = c('value = double(1)', 'betas = double(2)', 
-              'covariates = double(2)', 'stage_supports = double(2)',
-              'n_timepoints = double(0)'),
+    types = c('value = double(1)', 'beta_tx = double(3)', 
+              'covariates = double(2)', 'n_timepoints = double(0)'),
     discrete = TRUE,
     pqAvail = FALSE
   ),
@@ -395,13 +290,11 @@ nimble::registerDistributions(list(
   dbins = list(
     BUGSdist = dist_str_bins,
     Rdist = dist_str_bins,
-    types = c('value = double(1)', 'stages = double(1)', 
-              'n_timepoints = double(0)', 
-              'stage_map = double(1)', 'n_bins = double(0)', 
-              'alpha = double(2)', 'beta = double(2)', 
-              'covariates = double(2)', 'tmats = double(1)', 
-              'pi_discretization = double(2)', 'n_pi = double(1)',
-              'lambda_discretization = double(2)', 'n_lambda = double(1)'),
+    types = c('value = double(1)', 
+              'n_timepoints = double(0)', 'n_pi = double(0)', 
+              'n_lambda = double(0)', 'n_bins = double(0)', 'tmats = double(1)',
+              'stages = double(1)', 'stage_defs = double(2)', 
+              'lambda_inds = double(1)'),
     discrete = TRUE,
     pqAvail = FALSE
   )

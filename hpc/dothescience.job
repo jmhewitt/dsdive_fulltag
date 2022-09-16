@@ -1,17 +1,19 @@
 #!/bin/sh
 
-#SBATCH --job-name dive_fulltag
+#SBATCH --job-name dsdive_fulltag
 #SBATCH --partition common
 #SBATCH --account gelfandlab
 #SBATCH --mail-type ALL
 #SBATCH --mail-user joshua.hewitt@duke.edu
 #SBATCH --ntasks 1
-#SBATCH --time 96:00:00
-#SBATCH --mem 6GB
+#SBATCH --mem=20G
+
+module unload R
+module load R/3.5.2
 
 date
 START=`date +%s`
-R --no-save --no-restore CMD BATCH make_slurm.R ${SLURM_JOB_NAME}.Rout
+R --no-save --no-restore CMD BATCH make.R ${SLURM_JOB_NAME}.Rout
 END=`date +%s`
 date
 

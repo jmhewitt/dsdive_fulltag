@@ -1,0 +1,24 @@
+#PKG_FFLAGS = -w  # "Non-portable flags in variable 'PKG_FFLAGS': -w"
+PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+
+
+R_OBJS = \
+    lapack/blas_mod.o \
+    lapack/lapack.o \
+    mataid.o \
+    my_expokit.o \
+    my_matexp.o \
+    itscale5.o \
+    coo.o \
+    wrappers.o
+
+
+OBJECTS = $(R_OBJS)
+
+all: $(SHLIB)
+
+$(SHLIB): $(OBJECTS)
+
+
+clean:
+	@rm -rf *.o *.so *.dll lapack/*.o $(USER_CONF) $(SHLIB) $(OBJECTS)

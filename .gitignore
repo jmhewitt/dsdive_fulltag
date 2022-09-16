@@ -15,3 +15,6 @@ imputed_bins/
 *.pdf
 *cache/
 _targets
+*.aux
+*.toc
+.idea

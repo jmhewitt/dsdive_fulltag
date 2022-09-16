@@ -1,0 +1,22 @@
+#!/bin/sh
+
+#SBATCH --job-name dsdive_fulltag_validation
+#SBATCH --partition common
+#SBATCH --account gelfandlab
+#SBATCH --mail-type ALL
+#SBATCH --mail-user joshua.hewitt@duke.edu
+#SBATCH --ntasks 1
+#SBATCH --array=1-100
+#SBATCH --mem=4G
+
+module unload R
+module load R/3.5.2
+
+date
+START=`date +%s`
+R CMD BATCH --no-save --no-restore Rscripts/validation_nstep/validation_samples_nstep.R ${SLURM_JOB_NAME}_${SLURM_ARRAY_TASK_ID}.Rout
+END=`date +%s`
+date
+
+ELAPSED=$(( $END - $START ))
+echo "Elapsed time (hrs): $(echo "scale=10; $ELAPSED/3600" | bc)"

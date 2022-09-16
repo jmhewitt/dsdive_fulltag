@@ -15,17 +15,15 @@ multinomialLogitProbs = nimble::nimbleFunction(
     
     # eqn. 7.1, with alpha_j assumed to live in betas as an intercept term
     logits <- c(t(betas) %*% x, 0)
-    exp_logits <- exp(logits)
-    
-    
+
     # eqn. 7.2
-    norm_const <- sum(exp_logits)
+    lnorm_const <- log_sum(log_x = logits, n = length(logits))
+    res <- logits - lnorm_const
+
     if(log) {
-      res <- logits - log(norm_const)
+      return(res) 
     } else {
-      res <- exp_logits / norm_const
+      return(exp(res))
     }
-    
-    return(res)
   }
 )

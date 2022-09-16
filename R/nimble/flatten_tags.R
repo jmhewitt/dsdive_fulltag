@@ -1,179 +1,142 @@
-flatten_tags = function(tag_list, transition_matrices, movement_types,
-                        pi_discretization, lambda_discretization, 
-                        template_bins, init_movement_coefficients,
-                        init_stage_tx_coefficients, stages_tx_from, stages,
-                        population_effects) {
-  
-  # extract dimensions
-  n_bins = nrow(template_bins)
-  
-  # extract initial coefficients
-  alpha = init_movement_coefficients$alpha
-  beta = init_movement_coefficients$beta
-  betas_tx = init_stage_tx_coefficients
+flatten_tags = function(template_bins, tag_list, depth_threshold, 
+                        sattag_timestep, repeated_surface_bin_break = NULL,
+                        min_segment_length = 0) {
+  # Parameters:
+  #   depth_threshold - depth used to generate prop_recent_deep covariate
   
   # initialize flattened structures
   nim_pkg = list(
     data = list(
-      depths = NULL,
-      times = NULL,
-      stages = NULL,
-      stage_supports = NULL,
+      depth_bins = NULL,
       covariates = NULL,
-      transition_matrices = transition_matrices
+      times = NULL
     ),
     consts = list(
+      n_bins = nrow(template_bins),
+      widths = 2 * template_bins$halfwidth,
       segments = NULL,
-      n_bins = n_bins,
-      movement_types = movement_types,
-      pi_discretization = pi_discretization,
-      lambda_discretization = lambda_discretization,
-      n_pi = as.integer(pi_discretization[, 'nvals']),
-      n_lambda = as.integer(lambda_discretization[, 'nvals']),
       subject_id_labels = NULL,
-      betas_tx_stage_from = as.integer(stages_tx_from),
-      population_effects = population_effects
-    ),
-    inits = list(
-      # population-level effects
-      alpha_mu = alpha,
-      beta_mu = beta,
-      betas_tx_mu = betas_tx,
-      alpha_var = matrix(1, nrow = nrow(alpha), ncol = ncol(alpha)),
-      beta_var = matrix(1, nrow = nrow(beta), ncol = ncol(beta)),
-      betas_tx_var = matrix(1, nrow = nrow(betas_tx), ncol = ncol(betas_tx))
+      tstep = sattag_timestep
     )
   )
   
   # flatten tag data
+  saved_subjects = 0
   for(tag_ind in 1:length(tag_list)) {
     
     # unwrap tag
     tag = tag_list[[tag_ind]]
     
-    # store tag name
-    nim_pkg$consts$subject_id_labels = c(
-      nim_pkg$consts$subject_id_labels, tag$tag
-    )
+    # treat repeated surface bin observations as gaps in animal movement record
+    if(!is.null(repeated_surface_bin_break)) {
+      # summarize runs of surface vs. non-surface observations
+      surface_obs_runs = rle(tag$depth.bin == 1)
+      # ids of surface bin runs
+      surface_block_ids = which(surface_obs_runs$values == TRUE)
+      # identify surface bin runs that are longer than desired
+      long_surface_run = surface_obs_runs$lengths[surface_block_ids] >= 
+        repeated_surface_bin_break
+      # tag interior of long surface runs as data gaps
+      if(sum(long_surface_run) > 0) {
+        # data indices at which runs begin
+        run_starts = cumsum(c(1, surface_obs_runs$lengths))
+        # loop over the long surface runs
+        for(block_ind in surface_block_ids[long_surface_run]) {
+          # label interior of long surface run as a data gap
+          tag$gap_after[
+            seq(
+              from = run_starts[block_ind] + 1,
+              by = 1, 
+              length.out = surface_obs_runs$lengths[block_ind] - 2
+            )
+          ] = TRUE
+        }
+      }
+    }
     
-    # identify all of the observations to analyze
-    tag_segments = rle(tag$data_gaps)
-    valid_segments = which(tag_segments$values == FALSE)
+    # identify all of the contiguous observations we might analyze
+    tag_segments = rle(tag$gap_after)
+    segments = data.frame(start = cumsum(c(1, tag_segments$lengths)))
+    segments$end = segments$start + c(tag_segments$lengths, 1) - 1
+    segments$id = 1:nrow(segments)
     
-    # first indices of observations to analyze
-    segment_starts = cumsum(c(1, tag_segments$lengths))
+    # long-format segments
+    segment_vec = rep(NA, length(tag$gap_after))
+    for(i in 1:nrow(segments)) {
+      if(segments$end[i] <= length(segment_vec)) {
+        segment_vec[segments$start[i]:segments$end[i]] = segments$id[i]
+      }
+    }
     
+    # restrict contiguous segments to baseline periods
+    tag_segments = rle(segment_vec * tag$baseline)
+    segments = data.frame(start = cumsum(c(1, tag_segments$lengths)))
+    segments$end = segments$start + c(tag_segments$lengths, 1) - 1
+    segments$id = 1:nrow(segments)
+    
+    # identify all of the baseline observations to analyze
+    valid_segments = which(tag_segments$values > 0)
+    
+    # do not analyze short segments
+    valid_segments = valid_segments[
+      tag_segments$lengths[valid_segments] > min_segment_length
+    ]
+      
     # flatten data
+    exported_segments = FALSE
     for(seg_ind in valid_segments) {
       # next available index in nimble package
-      flat_ind = length(nim_pkg$data$depths) + 1
-      # indices of data segment
-      start_ind = segment_starts[seg_ind]
-      end_ind = segment_starts[seg_ind + 1] - 1
+      flat_ind = length(nim_pkg$data$depth_bins) + 1
+      # start/end indices of data segment
+      start_ind = segments$start[seg_ind]
+      end_ind = segments$end[seg_ind]
+      # indices to analyze
       seg_inds = seq(from = start_ind, to = end_ind, by = 1)
-      # copy data to package
-      nim_pkg$data$depths = c(nim_pkg$data$depths, tag$depth.bin[seg_inds])
-      nim_pkg$data$stages = c(nim_pkg$data$stages, tag$stages[seg_inds])
-      nim_pkg$data$stage_supports = cbind(
-        nim_pkg$data$stage_supports,
-        tag$stage_support[,seg_inds]
-      )
-      nim_pkg$data$times = c(nim_pkg$data$times, tag$times[seg_inds])
-      # build and add covariates
-      covariates = rbind(
-        intercept = rep(1, length(seg_inds)),
-        depth =  log(tag$depths[seg_inds]),
-        deep_depth = tag$depths[seg_inds] >= 800,
-        shallow_depth = tag$depths[seg_inds] < 800,
-        non_surface_bin = tag$depth.bin[seg_inds] > 1,
-        surface_bin = tag$depth.bin[seg_inds] == 1,
-        time_since_surface = rep(0, length(seg_inds)),
-        all_shallow_depths_since_surface = rep(0, length(seg_inds)),
-        daytime = tag$daytime[seg_inds],
-        moonlit = tag$moonlit[seg_inds]
-      )
-      covariates['time_since_surface',] =  (
-        1 + time_in_state(covariates['non_surface_bin',], ncol(covariates))
-      ) * covariates['non_surface_bin',]
-      all_shallow = TRUE
-      for(i in 1:ncol(covariates)) {
-        if(covariates['surface_bin',i] == TRUE) {
-          all_shallow = TRUE
-        } else if(covariates['deep_depth',i] == TRUE) {
-          all_shallow = FALSE
-        }
-        covariates['all_shallow_depths_since_surface',i] = all_shallow
+      # skip segment if there are no transitions to analyze
+      if(length(seg_inds) <= 1) {
+        next
       }
+      # copy data to package
+      nim_pkg$data$depth_bins = c(nim_pkg$data$depth_bins, 
+                                  tag$depth.bin[seg_inds])
+      nim_pkg$data$times = c(nim_pkg$data$times, tag$times[seg_inds])
+      # add untransformed covariates
       nim_pkg$data$covariates = cbind(
         nim_pkg$data$covariates,
-        covariates
+        rbind(
+          daytime = tag$daytime[seg_inds],
+          moonlit = tag$moonlit[seg_inds],
+          time = tag$times[seg_inds],
+          depth = tag$depths[seg_inds]
+        )
       )
       # save segment information
       nim_pkg$consts$segments = rbind(
         nim_pkg$consts$segments,
         c(start_ind = flat_ind, 
           length = end_ind - start_ind + 1, 
-          subject_id = tag_ind,
+          subject_id = saved_subjects + 1,
           end_ind = flat_ind + end_ind - start_ind)
+      )
+      # record that we will analyze data from this tag
+      exported_segments = TRUE
+    }
+    
+    # store tag name and increment subject counter
+    if(exported_segments) {
+      saved_subjects = saved_subjects + 1
+      nim_pkg$consts$subject_id_labels = c(
+        nim_pkg$consts$subject_id_labels, tag$tag
       )
     }
   }
   
   # compute size, etc. constants
-  nim_pkg$consts$n_timepoints = length(nim_pkg$data$depths)
-  nim_pkg$consts$n_stage_txs = ncol(nim_pkg$inits$betas_tx_mu)
-  nim_pkg$consts$n_stages = length(stages)
-  nim_pkg$consts$n_txmat_entries = length(nim_pkg$data$transition_matrices)
-  nim_pkg$consts$n_txmat_types = nrow(nim_pkg$consts$pi_discretization)
   nim_pkg$consts$n_covariates = nrow(nim_pkg$data$covariates)
   nim_pkg$consts$n_segments = nrow(nim_pkg$consts$segments)
   nim_pkg$consts$n_subjects = length(unique(
     nim_pkg$consts$segments[, 'subject_id']
   ))
   
-  # add initial individual-level random effects
-  nim_pkg$inits$alpha = array(
-    data = alpha, 
-    dim = c(nrow(alpha), ncol(alpha), nim_pkg$consts$n_subjects)
-  )
-  nim_pkg$inits$beta = array(
-    data = beta, 
-    dim = c(nrow(beta), ncol(beta), nim_pkg$consts$n_subjects)
-  )
-  nim_pkg$inits$betas_tx = array(
-    data = betas_tx, 
-    dim = c(nrow(betas_tx), ncol(betas_tx), nim_pkg$consts$n_subjects)
-  )
-  
-  # initial group-level intercept contribution for stage transition params.
-  nim_pkg$inits$betas_tx_stage_offset = matrix(
-    data = 0, nrow = nim_pkg$consts$n_covariates, ncol = nim_pkg$consts$n_stages
-  )
-  colnames(nim_pkg$inits$betas_tx_stage_offset) = names(stages)
-  rownames(nim_pkg$inits$betas_tx_stage_offset) = rownames(
-    nim_pkg$data$covariates
-  )
-  
-  # add information about key stages and covariates
-  nim_pkg$consts$intercept_covariate = which(
-    rownames(nim_pkg$data$covariates) == 'intercept'
-  )
-  nim_pkg$consts$ascent_like_stages = stages[
-    c('deep_ascent', 'shallow_ascent', 'free_surface')
-  ]
-  nim_pkg$consts$n_ascent_like_stages = length(
-    nim_pkg$consts$ascent_like_stages
-  )
-  
-  # initial parameters become priors if population-level effects aren't est'd.
-  if(!population_effects) {
-    nim_pkg$inits$betas_tx_mu = 0 * nim_pkg$inits$betas_tx_mu
-    nim_pkg$inits$beta_mu = 0 * nim_pkg$inits$beta_mu
-    nim_pkg$inits$beta_var = matrix(1e2, nrow = nrow(beta), ncol = ncol(beta))
-    nim_pkg$inits$betas_tx_var = matrix(
-      1e2, nrow = nrow(betas_tx), ncol = ncol(betas_tx)
-    )
-  }
-
   nim_pkg
 }

@@ -12,8 +12,16 @@ impute_bins = function(message_files, depth_files, imputed_out_dir,
     # load metadata about each 4-hr message block
     messages = read.csv(message.file)
     
+    # remove messages without duration from message file list
+    messages = messages[messages$Start != messages$End, ]
+    
     # load observations
     depths = read.csv(depth.file)
+    
+    # skip processing
+    if(all(is.na(messages$End))) {
+      return(NULL)
+    }
     
     # add message block ids to each depth record
     depths$message.id = findInterval(depths$Date, messages$End) + 1
@@ -30,7 +38,6 @@ impute_bins = function(message_files, depth_files, imputed_out_dir,
       ungroup())
     
   }, message_files, depth_files)))
-  
   
   # merge depth bins from all sattag records; enumerate bin indices
   bins_merged = bins_by_sattag %>% 
