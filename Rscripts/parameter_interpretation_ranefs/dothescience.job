@@ -7,7 +7,7 @@
 #SBATCH --mail-user joshua.hewitt@duke.edu
 #SBATCH --ntasks 1
 #SBATCH --array=1-93
-#SBATCH --mem=50G
+#SBATCH --mem=40G
 
 date
 START=`date +%s`
