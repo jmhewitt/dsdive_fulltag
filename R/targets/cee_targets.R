@@ -371,6 +371,13 @@ cee_targets = list(
       dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
       saveRDS(samples, file = file.path(f, paste(tar_name(), '.rds', sep = '')))
       
+      # save order in which chains are collated
+      chain_order = as.numeric(str_extract(string = chains, pattern = '[0-9]+'))
+      saveRDS(
+        chain_order, 
+        file = file.path(f, paste(tar_name(), '_order.rds', sep = ''))
+      )
+      
       0
     }
   ),
