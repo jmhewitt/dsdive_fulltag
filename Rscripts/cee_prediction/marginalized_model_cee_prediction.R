@@ -57,7 +57,7 @@ cee = cees[taskId,]
 
 # load burned-in posterior samples
 samples = readRDS(
-  file.path('output', 'mcmc', 'fixed_init_beta', 'cee_predictive_samples.rds')
+  file.path('output', 'mcmc', 'fixed_init_beta', 'cee_predictive_samples_stacked.rds')
 )
 
 nim_pkg = readRDS(
@@ -227,6 +227,8 @@ cee_preds = function() {
 
   # draw from posterior predictive distribution for time-till-deep
   baseline_deep_pred_samples = sapply(posterior_sample_inds, function(ind) {
+    
+    message(ind)
 
     # transfer posterior sample of model parameters to model object
     for(tgt_group in sampling_groups) {
@@ -361,7 +363,7 @@ res = cee_preds()
 # save output
 #
 
-f = file.path('output', 'cee', 'samples')
+f = file.path('output', 'cee', 'samples_stacked')
 
 dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
 

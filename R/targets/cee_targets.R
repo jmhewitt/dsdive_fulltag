@@ -186,6 +186,194 @@ cee_targets = list(
       0
     }
   ),
+  
+  tar_target(
+    name = cee_predictive_samples_stacked,
+    command = {
+      
+      # collate a posterior sample of parameters from across the multiple chains
+      # that will be used to draw posterior predictive samples for covariate
+      # effect interpretation, and cee response estimation
+      
+      #
+      # enumerate random starts outputs
+      #
+      
+      # scrape directory where posterior samples from chains live
+      outdirs = dir(
+        path = file.path('output', 'mcmc', 'fixed_init_beta'), 
+        pattern = 'fit_marginalized_model_', 
+        full.names = TRUE
+      )
+      
+      # post-burn in samples to work with
+      post_start = 8.5e3
+      post_end = 10e3
+      sample_inds = post_start:post_end
+      
+      # compute posterior summaries for each chain
+      summaries = lapply(outdirs, function(d) {
+        
+        message(d)
+        
+        #
+        # load, label, and merge posterior samples
+        #
+        
+        mvSample_files = dir(
+          path = d, 
+          pattern = 'mvSamples_[0-9]+', 
+          full.names = TRUE
+        )
+        
+        if(length(mvSample_files) == 0) {
+          return(NULL)
+        }
+        
+        samples = do.call(rbind, lapply(mvSample_files, readRDS))
+        
+        # skip file if not enough samples are available for subsetting
+        if(nrow(samples) < max(sample_inds)) {
+          return(NULL)
+        }
+        
+        colnames(samples) = readRDS(dir(
+          path = d, 
+          pattern = 'mvSamples_colnames',
+          full.names = TRUE
+        ))
+        
+        # target nodes
+        tgt = c(
+          paste('lambda[', 1:2, ']', sep = ''),
+          paste('pi[', c(1,3), ']', sep = '')
+        )
+        
+        # extract samples into single object
+        list(
+          chain = d,
+          summaries = data.frame(
+            param = tgt,
+            mean = colMeans(samples[sample_inds, tgt]),
+            sd = apply(samples[sample_inds, tgt], 2, sd),
+            HPDinterval(mcmc(samples[sample_inds, tgt])),
+            rep = d
+          )
+        )
+      })
+      
+      # remove null output
+      summaries = summaries[!sapply(summaries, is.null)]
+      
+      # # rules to identify chains that have converged to distant local modes
+      # keep_chain = sapply(summaries, function(s) {
+      #   if(s$summaries['pi[1]', 'mean'] > .9) {
+      #     return(FALSE)
+      #   }
+      #   if(s$summaries['lambda[1]', 'mean'] > .7) {
+      #     return(FALSE)
+      #   }
+      #   TRUE
+      # })
+      
+      chain_weights = readRDS(
+        file.path('output','mcmc','chain_weights','stacking_weights.rds')
+      )
+      keep_chain = chain_weights >= .01
+      
+      # look at convergence diagnostics
+      df = do.call(
+        rbind, lapply(summaries[keep_chain], function(s) s$summaries)
+      ) %>% 
+        mutate(rep = as.numeric(stringr::str_extract(rep, '[0-9]+')))
+      pl = ggplot(df, aes(x = rep, y = mean, ymin = lower, ymax = upper)) + 
+        geom_pointrange() + 
+        facet_wrap(~param, labeller = label_parsed, scales = 'free_y') + 
+        theme_few()
+      print(pl)
+      
+      #
+      # extract samples used for posterior predictive sampling
+      #
+      
+      # chains to aggregate parameters from
+      chains = sapply(summaries[keep_chain], function(s) s$chain)
+      nchains = length(chains)
+      
+      # number of samples to extract from each chain
+      samples_per_chain = 1e3
+      
+      # post-burn in posterior sample indices to extract from each chain
+      sample_inds = seq(
+        from = post_start, to = post_end, length.out = samples_per_chain
+      )
+      
+      # aggregate parameter samples from each chain
+      samples = do.call(rbind, lapply(chains, function(d) {
+        
+        message(d)
+        
+        #
+        # load, label, and merge posterior samples
+        #
+        
+        mvSample_files = dir(
+          path = d, 
+          pattern = 'mvSamples_[0-9]+', 
+          full.names = TRUE
+        )
+        
+        mvSample2_files = dir(
+          path = d, 
+          pattern = 'mvSamples2_[0-9]+', 
+          full.names = TRUE
+        )
+        
+        if(length(mvSample_files) == 0) {
+          return(NULL)
+        }
+        
+        if(length(mvSample2_files) == 0) {
+          return(NULL)
+        }
+        
+        samples = do.call(rbind, lapply(mvSample_files, readRDS))
+        samples2 = do.call(rbind, lapply(mvSample2_files, readRDS))
+        
+        # skip file if not enough samples are available for subsetting
+        if(nrow(samples) < max(sample_inds)) {
+          return(NULL)
+        }
+        
+        # skip file if not enough samples are available for subsetting
+        if(nrow(samples2) < max(sample_inds)) {
+          return(NULL)
+        }
+        
+        colnames(samples) = readRDS(dir(
+          path = d, 
+          pattern = 'mvSamples_colnames',
+          full.names = TRUE
+        ))
+        
+        colnames(samples2) = readRDS(dir(
+          path = d, 
+          pattern = 'mvSamples2_colnames',
+          full.names = TRUE
+        ))
+        
+        # extract samples into single object
+        cbind(samples, samples2)[sample_inds,]
+      }))
+      
+      # save thinned, collated posterior samples 
+      f = file.path('output', 'mcmc', 'fixed_init_beta')
+      dir.create(path = f, showWarnings = FALSE, recursive = TRUE)
+      saveRDS(samples, file = file.path(f, paste(tar_name(), '.rds', sep = '')))
+      
+      0
+    }
+  ),
 
   tar_target(
     name = cee_results,
