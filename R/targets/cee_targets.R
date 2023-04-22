@@ -279,7 +279,16 @@ cee_targets = list(
       chain_weights = readRDS(
         file.path('output','mcmc','chain_weights','stacking_weights.rds')
       )
-      keep_chain = chain_weights >= .01
+      
+      keep_chain = sapply(summaries, function(s) {
+        chain_weights %>% 
+          filter(
+            rep == as.numeric(str_extract(string = s$chain, pattern = '[0-9]+'))
+          ) %>% 
+          select(w) %>% 
+          unlist() %>% 
+          as.numeric() >= .01
+      })
       
       # look at convergence diagnostics
       df = do.call(
